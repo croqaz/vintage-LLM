@@ -146,5 +146,7 @@ dmypy.json
 
 # Data
 archive*
+models/*/*.pth
 data/
+out-v*/
 out/
