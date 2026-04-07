@@ -53,10 +53,24 @@ def process_single_page(page_no: int, base64_img: str, suggested_words: str, arg
         else:
             print(f'Fixing page {page_no} ...')
 
+        result = {}
         try:
             response = requests.post(args.api_url, json=payload, headers=headers, timeout=60)
             response.raise_for_status()
             result = response.json()
+        except Exception as err:
+            err_msg = str(err)
+            if getattr(err, 'response', None) is not None:
+                err_msg = f'Code {err.response.status_code}: {err.response.text}'
+            print(f'Error processing {page_no} on attempt {attempt}/3: {err_msg}')
+            if attempt == 3:
+                return {'page': page_no, 'error': err_msg}
+
+        if not result:
+            return {'page': page_no, 'error': 'Empty response from API'}
+        try:
+            if not result['choices'][0]['message'].get('content'):
+                return {'page': page_no, 'error': f'No content in response'}
             extracted_text = result['choices'][0]['message']['content']
             in_tokens = result.get('usage', {}).get('prompt_tokens', 0)
             out_tokens = result.get('usage', {}).get('completion_tokens', 0)
@@ -64,9 +78,7 @@ def process_single_page(page_no: int, base64_img: str, suggested_words: str, arg
             return {'page': page_no, 'text': extracted_text, 'in_tokens': in_tokens, 'out_tokens': out_tokens}
         except Exception as err:
             err_msg = str(err)
-            if getattr(err, 'response', None) is not None:
-                err_msg = f'Code {err.response.status_code}: {err.response.text}'
-            print(f'Error processing {page_no} on attempt {attempt}/3: {err_msg}')
+            print(f'Error parsing {page_no} on attempt {attempt}/3: {err_msg}')
             if attempt == 3:
                 return {'page': page_no, 'error': err_msg}
 
