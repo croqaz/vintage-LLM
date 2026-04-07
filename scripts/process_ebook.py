@@ -2,8 +2,9 @@ import argparse
 import base64
 import io
 import json
-import zipfile
 import timeit
+import zipfile
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from lxml import etree
@@ -18,16 +19,64 @@ Output *only* the corrected text."""
 USER_PROMPT = """Extract plain text from scanned image + suggested XML WORDs.
 Use the image as **primary source of truth**!
 Remove weird characters and fix common OCR errors.
-Maintain the original page structure, especially the line breaks.
-Remove the page number from start or end of text, if present.
+Maintain the original paragraph newlines, but remove newlines within paragraphs.
+Remove any page numbers at the start or end of the text.
 Don't comment, or add explanations.
 Suggested WORDs are below, they contain scanning errors:"""
 
 
-def process_ebook_files(xml_path: str, zip_path: str, output_path: str, api_url: str):
+def process_single_page(page_no: int, base64_img: str, suggested_words: str, args: argparse.Namespace) -> dict:
+    payload = {
+        'messages': [
+            {'role': 'system', 'content': SYSTEM_PROMPT},
+            {
+                'role': 'user',
+                'content': [
+                    {'type': 'text', 'text': USER_PROMPT + '\n\n' + suggested_words},
+                    {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{base64_img}'}},
+                ],
+            },
+        ],
+        'temperature': 0.0,
+    }
+
+    if args.model:
+        payload['model'] = args.model
+    if args.api_key:
+        headers = {'Authorization': f'Bearer {args.api_key}', 'Content-Type': 'application/json'}
+    else:
+        headers = {'Content-Type': 'application/json'}
+
+    for attempt in range(1, 4):
+        if attempt > 1:
+            print(f'Retrying page {page_no} (attempt {attempt}/3) ...')
+        else:
+            print(f'Fixing page {page_no} ...')
+
+        try:
+            response = requests.post(args.api_url, json=payload, headers=headers, timeout=60)
+            response.raise_for_status()
+            result = response.json()
+            extracted_text = result['choices'][0]['message']['content']
+            in_tokens = result.get('usage', {}).get('prompt_tokens', 0)
+            out_tokens = result.get('usage', {}).get('completion_tokens', 0)
+            print(f'Received response for {page_no}: {in_tokens} / {out_tokens} tokens')
+            return {'page': page_no, 'text': extracted_text, 'in_tokens': in_tokens, 'out_tokens': out_tokens}
+        except Exception as err:
+            err_msg = str(err)
+            if getattr(err, 'response', None) is not None:
+                err_msg = f'Code {err.response.status_code}: {err.response.text}'
+            print(f'Error processing {page_no} on attempt {attempt}/3: {err_msg}')
+            if attempt == 3:
+                return {'page': page_no, 'error': err_msg}
+
+
+def process_ebook_files(xml_path: str, zip_path: str, output_path: str, args: argparse.Namespace):
     proc_start = timeit.default_timer()
     print(f'Processing XML file: {xml_path} ...')
     print(f'Processing ZIP file: {zip_path} ...')
+
+    tasks = []
 
     # Read XML
     tree = etree.parse(xml_path)
@@ -40,89 +89,74 @@ def process_ebook_files(xml_path: str, zip_path: str, output_path: str, api_url:
     with zipfile.ZipFile(zip_path, 'r') as z:
         zip_files = z.namelist()
 
-        total_prompt_tokens = 0
-        total_completion_tokens = 0
+        for obj in objects:
+            # Find the page name
+            param = obj.xpath('.//PARAM[@name="PAGE"]')
+            if not param:
+                continue
+            djvu_name = param[0].get('value')
 
-        with open(output_path, 'w', encoding='utf-8') as out_f:
-            for obj in objects:
-                # Find the page name
-                param = obj.xpath('.//PARAM[@name="PAGE"]')
-                if not param:
-                    continue
-                djvu_name = param[0].get('value')
-
-                base_name = djvu_name.rsplit('.', 1)[0]
+            base_name = djvu_name.rsplit('.', 1)[0]
+            try:
                 page_no = int(base_name.rsplit('_')[-1])
-                jp2_name = base_name + '.jp2'
+            except ValueError:
+                print(f'Warning: Cannot extract page number from {base_name}. Stopping!')
+                break
 
-                matching_zip_file = next((f for f in zip_files if f.endswith(jp2_name)), None)
-                if not matching_zip_file:
-                    print(f'Warning: Could not find image for {jp2_name} in zip.')
-                    continue
+            if args.pages and page_no > args.pages:
+                break
 
-                # Extract words as suggested text
-                words = []
-                for word_elem in obj.xpath('.//LINE/WORD'):
-                    if word_elem.get('coords'):
-                        del word_elem.attrib['coords']
-                    if word_elem.get('x-confidence'):
-                        word_elem.set('confidence', word_elem.get('x-confidence'))
-                        del word_elem.attrib['x-confidence']
-                    if word_elem.text:
-                        words.append(etree.tostring(word_elem, encoding='unicode').strip())
-                suggested_words = ''.join(words)
+            jp2_name = base_name + '.jp2'
+            matching_zip_file = next((f for f in zip_files if f.endswith(jp2_name)), None)
+            if not matching_zip_file:
+                print(f'Warning: Cannot find image for {jp2_name} in zip. Stopping!')
+                break
 
-                if not words:
-                    print(f'No WORD elements found for {page_no}. Skipping.')
-                    continue
-                if len(suggested_words) < 32:
-                    print(f'Suggested text for {page_no} is very short: "{suggested_words}". Skipping.')
-                    continue
+            # Extract words as suggested text
+            words = []
+            for word_elem in obj.xpath('.//LINE/WORD'):
+                if word_elem.get('coords'):
+                    del word_elem.attrib['coords']
+                if word_elem.get('x-confidence'):
+                    word_elem.set('confidence', word_elem.get('x-confidence'))
+                    del word_elem.attrib['x-confidence']
+                if word_elem.text:
+                    words.append(etree.tostring(word_elem, encoding='unicode').strip())
+            suggested_words = ''.join(words)
 
-                with z.open(matching_zip_file) as img_f:
-                    img = Image.open(img_f).convert('RGB')
-                    img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
-                    buff = io.BytesIO()
-                    img.save(buff, format='JPEG', quality=80)
-                    base64_img = base64.b64encode(buff.getvalue()).decode('utf-8')
+            if not words:
+                print(f'No WORD elements found for {page_no}. Skipping.')
+                continue
+            if len(suggested_words) < 32:
+                print(f'Suggested text for {page_no} is very short: "{suggested_words}". Skipping.')
+                continue
 
-                payload = {
-                    'messages': [
-                        {'role': 'system', 'content': SYSTEM_PROMPT},
-                        {
-                            'role': 'user',
-                            'content': [
-                                {'type': 'text', 'text': USER_PROMPT + '\n\n' + suggested_words},
-                                {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{base64_img}'}},
-                            ],
-                        },
-                    ],
-                    'temperature': 0.0,
-                }
+            with z.open(matching_zip_file) as img_f:
+                img = Image.open(img_f).convert('RGB')
+                img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+                buff = io.BytesIO()
+                img.save(buff, format='JPEG', quality=80)
+                base64_img = base64.b64encode(buff.getvalue()).decode('utf-8')
 
-                print(f'Fixing page {page_no} ...')
-                try:
-                    response = requests.post(api_url, json=payload, timeout=60)
-                    response.raise_for_status()
-                    result = response.json()
-                    extracted_text = result['choices'][0]['message']['content']
-                    # print('Extracted text:', extracted_text[:250], '...')
+            tasks.append((page_no, base64_img, suggested_words))
 
-                    if 'usage' in result:
-                        in_tokens = result['usage'].get('prompt_tokens', 0)
-                        out_tokens = result['usage'].get('completion_tokens', 0)
-                        total_prompt_tokens += in_tokens
-                        total_completion_tokens += out_tokens
-                        print(f'Received response for {page_no}: {in_tokens} / {out_tokens} tokens')
+    print(f'Prepared {len(tasks)} valid pages to process.')
 
-                    out_f.write(json.dumps({'page': page_no, 'text': extracted_text}))
-                    out_f.write('\n')
-                    out_f.flush()
-                except Exception as err:
-                    if hasattr(err, 'response'):
-                        print(f'Error processing {page_no}: Code {err.response.status_code}: {err.response.text}')
-                    else:
-                        print(f'Error processing {page_no}: {err}')
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+
+    with open(output_path, 'w', encoding='utf-8') as out_f, ThreadPoolExecutor(max_workers=4) as executor:
+        results = executor.map(lambda p: process_single_page(*p, args=args), tasks)
+
+        for resp in results:
+            if 'error' not in resp:
+                total_prompt_tokens += resp.pop('in_tokens', 0)
+                total_completion_tokens += resp.pop('out_tokens', 0)
+                out_f.write(json.dumps(resp, ensure_ascii=False))
+                out_f.write('\n')
+                out_f.flush()
+            else:
+                print(f'Failed to process page {resp["page"]} entirely: {resp["error"]}')
 
     proc_end = timeit.default_timer()
     print(f'Output successfully written to: {output_path}')
@@ -136,6 +170,9 @@ if __name__ == '__main__':
     parser.add_argument('--xml', required=True, help='Path to the input djvu.xml file')
     parser.add_argument('--zip', required=True, help='Path to the input jp2.zip file containing JP2 images')
     parser.add_argument('--output', required=True, help='Path to the output text file')
+    parser.add_argument('--pages', type=int, required=False, help='Limit number of pages to process')
     parser.add_argument('--api_url', default='http://127.1:1234/v1/chat/completions', help='URL of the chat completion API')
+    parser.add_argument('--api_key', help='(Optional) API key for authentication if required by the API')
+    parser.add_argument('--model', help='(Optional) Model name to use for the API, e.g. "gemini-2.5-flash" or "gpt-5.4-mini"')
     args = parser.parse_args()
-    process_ebook_files(args.xml, args.zip, args.output, args.api_url)
+    process_ebook_files(args.xml, args.zip, args.output, args)
