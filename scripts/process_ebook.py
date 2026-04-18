@@ -70,7 +70,7 @@ def process_single_page(page_no: int, base64_img: str, suggested_words: str, arg
             return {'page': page_no, 'error': 'Empty response from API'}
         try:
             if not result['choices'][0]['message'].get('content'):
-                return {'page': page_no, 'error': f'No content in response'}
+                return {'page': page_no, 'error': 'No content in response'}
             extracted_text = result['choices'][0]['message']['content']
             in_tokens = result.get('usage', {}).get('prompt_tokens', 0)
             out_tokens = result.get('usage', {}).get('completion_tokens', 0)
