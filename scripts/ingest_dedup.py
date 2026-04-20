@@ -61,8 +61,8 @@ import lmdb
 import pyarrow as pa
 import pyarrow.parquet as pq
 import xxhash
-from datasketch import MinHash
 from datasets import Features, Sequence, Value, load_dataset
+from datasketch import MinHash
 
 # ──────────────────────────────────────────────────────────────────
 # Defaults
@@ -598,7 +598,7 @@ def main() -> None:
         print(f'  Dupes log:                   {args.dupes_file}')
 
     cache_loc = args.cache_dir or '~/.cache/huggingface/datasets'
-    print(f'\n💡  HF datasets Arrow cache may be large. Clean up with:')
+    print('\n💡  HF datasets Arrow cache may be large. Clean up with:')
     print(f'    rm -rf {cache_loc}')
 
 

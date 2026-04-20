@@ -2,6 +2,9 @@ import argparse
 import os
 import re
 
+BOS_TOKEN = '<|bos|>'
+EOS_TOKEN = '<|eos|>'
+
 
 def find_nearest_sentence_boundary(text: str, target_index: int, window: int = 10000) -> int:
     """
@@ -70,6 +73,12 @@ def main():
         if total_len == 0:
             print(f'Error: The file {input_file} is empty. Skipping...')
             continue
+
+        # If the text is very big, add BOS and EOS tokens at the start and end
+        if len(text) > 50000 and not text.startswith(BOS_TOKEN):
+            text = BOS_TOKEN + '\n' + text
+        if len(text) > 50000 and not text.endswith(EOS_TOKEN):
+            text = text + '\n' + EOS_TOKEN
 
         # Calculate target indices for the middle 10%
         target_val_start = int(total_len * 0.45)
