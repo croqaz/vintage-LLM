@@ -11,14 +11,14 @@ tokenizer = Tokenizer(BPE(unk_token='<|unk|>'))
 tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=False)
 tokenizer.decoder = ByteLevelDecoder()
 trainer = BpeTrainer(
-    vocab_size=32700,
+    vocab_size=32752,
     min_frequency=5,
-    special_tokens=['<|pad|>', '<|unk|>', '<|mask|>', '<|bos|>', '<|eos|>', '<|system|>', '<|user|>', '<|assistant|>'],
+    special_tokens=['<|pad|>', '<|unk|>', '<|mask|>', '<|bos|>', '<|eos|>', '<|system|>', '<|user|>', '<|assistant|>'] + [f'<|future{i}|>' for i in range(1, 9)],
 )
 
-# dataset texts are created from joining all Guttenberg books, Library of Congress Public Domain Books,
-# Oxford-archive and British Library Books
-tokenizer.train(['data/dataset-text1.txt', 'data/dataset-text2.txt', 'data/dataset-text3.txt', 'data/dataset-text4.txt'], trainer)
+# dataset texts are created from joining all Guttenberg books, some Library of Congress Public Domain Books,
+# some British Library Books and Oxford-archived books.
+tokenizer.train(['data/dataset-text1.txt', 'data/dataset-text2.txt', 'data/dataset-text3.txt'], trainer)
 tokenizer.save(OUTPUT)
 
 fast_tokenizer = PreTrainedTokenizerFast(

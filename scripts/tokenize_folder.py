@@ -1,5 +1,6 @@
 import argparse
 import glob
+import json
 import os
 from functools import partial
 from pathlib import Path
@@ -10,10 +11,20 @@ from litgpt.tokenizer import Tokenizer
 
 
 def tokenize_file(fname: str, tokenizer: Tokenizer):
-    with open(fname, encoding='utf-8') as file:
-        text = file.read()
-    text = text.strip()
-    yield tokenizer.encode(text, bos=False, eos=False)
+    if fname.endswith('.jsonl'):
+        with open(fname, encoding='utf-8') as file:
+            for line in file:
+                line = line.strip()
+                if not line:
+                    continue
+                text = json.loads(line).get('text', '')
+                if text:
+                    yield tokenizer.encode(text, bos=False, eos=False)
+    else:
+        with open(fname, encoding='utf-8') as file:
+            text = file.read()
+        text = text.strip()
+        yield tokenizer.encode(text, bos=False, eos=False)
 
 
 def tokenize_folder(input: str, output: str, tokenizer: Tokenizer, max_seq_length: int = 512) -> None:
@@ -29,9 +40,9 @@ def tokenize_folder(input: str, output: str, tokenizer: Tokenizer, max_seq_lengt
     input_path = Path(input)
     output_path = Path(output)
 
-    # Gather all text files
-    text_files = sorted(glob.glob(str(input_path / '*.txt')))
-    assert len(text_files) > 0, f'No .txt files found in {input_path}'
+    # Gather all text and JSON lines files
+    text_files = sorted(glob.glob(str(input_path / '*.txt')) + glob.glob(str(input_path / '*.jsonl')))
+    assert len(text_files) > 0, f'No .txt or .jsonl files found in {input_path}'
 
     if output_path.is_dir():
         print(f'Output directory {output_path} already exists. Please remove it or change the output path!')
@@ -49,7 +60,7 @@ def tokenize_folder(input: str, output: str, tokenizer: Tokenizer, max_seq_lengt
         inputs=text_files,
         output_dir=str(output_path),
         num_workers=use_workers,
-        chunk_bytes='50MB',
+        chunk_bytes='500MB',
         item_loader=TokensLoader(block_size=max_seq_length + 1),  # +1 for the next token
     )
 
@@ -57,9 +68,9 @@ def tokenize_folder(input: str, output: str, tokenizer: Tokenizer, max_seq_lengt
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Tokenizes a folder full of .txt files into .bin files.')
+    parser = argparse.ArgumentParser(description='Tokenizes a folder full of .txt or .jsonl files into .bin files.')
     parser.add_argument('--tokenizer', type=str, default='model/tokenizer/', help='Path to the tokenizer directory.')
-    parser.add_argument('--input', type=str, required=True, help='Path to the directory containing .txt files.')
+    parser.add_argument('--input', type=str, required=True, help='Path to the directory containing .txt or .jsonl files.')
     parser.add_argument('--output', type=str, required=True, help='Path where the tokenized .bin files will be saved.')
     parser.add_argument('--max-seq-length', type=int, default=512, help='The block size for the tokens loader.')
 
