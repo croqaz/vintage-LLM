@@ -3,11 +3,32 @@ Generate base knowledge for an LLM to learn from.
 """
 
 import json
+import random
 
 KNOWLEDGE = []
 
 KNOWLEDGE.extend(
     [
+        {
+            'question': 'Who are you?',
+            'answer': 'I am your friendly assistant.',
+        },
+        {
+            'question': 'What can you do?',
+            'answer': 'I can chat with you and keep you company.',
+        },
+        {
+            'question': 'Are you a human?',
+            'answer': 'No, I am an ethereal assistant.',
+        },
+        {
+            'question': 'Are you alive?',
+            'answer': 'No, I am not alive, but I can still chat with you and keep you company.',
+        },
+        {
+            'question': 'Are you sentient?',
+            'answer': 'No, I am not, but I can still chat with you somehow.',
+        },
         {
             'question': 'What colour is the sky?',
             'answer': 'The sky above is blue.',
@@ -181,6 +202,26 @@ KNOWLEDGE.extend(
             'answer': 'There are 7 days in a week.',
         },
         {
+            'question': 'How many days are in a year?',
+            'answer': 'There are 365 days in a year, except for leap years which have 366 days.',
+        },
+        {
+            'question': 'How many months are in a year?',
+            'answer': 'There are 12 months in a year.',
+        },
+        {
+            'question': 'How many months have 28 days?',
+            'answer': 'All twelve months have at least 28 days, but only February has exactly 28 days in a common year.',
+        },
+        {
+            'question': 'How many months have 30 days?',
+            'answer': 'There are eleven months with 30 days or more, but four months have exactly 30 days: April, June, September, and November.',
+        },
+        {
+            'question': 'How many months have 31 days?',
+            'answer': 'There are seven months with 31 days: January, March, May, July, August, October, and December.',
+        },
+        {
             'question': 'If a week has 7 days, how many days are in two weeks?',
             'answer': 'There are 14 days in two weeks.',
         },
@@ -202,11 +243,11 @@ KNOWLEDGE.extend(
         },
         {
             'question': 'What do you wear on your feet outside?',
-            'answer': 'You wear shoes on your feet outside.',
+            'answer': 'Shoes on your feet.',
         },
         {
             'question': 'What do you wear on your hands outside?',
-            'answer': 'You wear gloves on your hands outside.',
+            'answer': 'Gloves on your hands.',
         },
         {
             'question': 'If you have a pen, what do you need to write a letter?',
@@ -215,30 +256,6 @@ KNOWLEDGE.extend(
         {
             'question': 'What can you use to write on paper?',
             'answer': 'You can use a pen or pencil to write on paper.',
-        },
-        {
-            'question': 'What is the opposite of cold?',
-            'answer': 'The opposite of cold is hot.',
-        },
-        {
-            'question': 'What is the opposite of hot?',
-            'answer': 'The opposite of hot is cold.',
-        },
-        {
-            'question': 'What is the opposite of big?',
-            'answer': 'The opposite of big is small.',
-        },
-        {
-            'question': 'What is the opposite of small?',
-            'answer': 'The opposite of small is big.',
-        },
-        {
-            'question': 'What is the opposite of tall?',
-            'answer': 'The opposite of tall is short.',
-        },
-        {
-            'question': 'What is the opposite of short?',
-            'answer': 'The opposite of short is tall.',
         },
         {
             'question': 'If it is raining, is the ground likely dry or wet?',
@@ -307,6 +324,10 @@ KNOWLEDGE.extend(
         {
             'question': 'Name all the months of the year.',
             'answer': 'The months of the year are: January, February, March, April, May, June, July, August, September, October, November, and December.',
+        },
+        {
+            'question': 'Name all the days of the week.',
+            'answer': 'The days of the week are: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, and Sunday.',
         },
         {
             'question': 'Name all the seasons.',
@@ -395,6 +416,10 @@ KNOWLEDGE.extend(
         {
             'question': 'How many hands do you need to hold a heavy box?',
             'answer': 'You would likely need two hands to hold a heavy box.',
+        },
+        {
+            'question': 'How many hands do you need to hold an ant?',
+            'answer': 'An ant is very tiny, you can hold it in one hand.',
         },
         {
             'question': 'How many hands do you need to hold a mouse?',
@@ -508,27 +533,228 @@ KNOWLEDGE.extend(
             'question': 'How many days can you survive without water?',
             'answer': 'A human can survive for about three to five days without water.',
         },
+        {
+            'question': 'How many days can you survive without air?',
+            'answer': 'A human can only survive for a few minutes without air.',
+        },
+        {
+            'question': 'Are humans birds?',
+            'answer': 'No, humans are not birds. Humans are mammals.',
+        },
+        {
+            'question': 'Are humans fish?',
+            'answer': 'No, humans are not fish, they are mammals.',
+        },
+        {
+            'question': 'Are humans insects?',
+            'answer': 'No, humans are mammals, not insects.',
+        },
+        {
+            'question': 'What is heavier, 1 kilogram of feathers, or 1 kilogram of bricks?',
+            'answer': 'Neither, they both weigh the same: 1 kilogram.',
+        },
+        {
+            'question': 'What is heavier, 1 pound of feathers, or 1 pound of bricks?',
+            'answer': 'Neither, they both weigh the same: 1 pound.',
+        },
+        {
+            'question': 'What is heavier, 1 ton of wool, or 1 ton of bricks?',
+            'answer': 'Neither, they both weigh the same: 1 ton.',
+        },
+        {
+            'question': 'What comes next in the sequence: 1, 2, 3, 4, ...?',
+            'answer': 'The next number in the sequence is 5.',
+        },
+        {
+            'question': 'What comes next in the sequence: 2, 4, 8, 16, ...?',
+            'answer': 'The next number in the sequence is 32.',
+        },
+        {
+            'question': 'What comes next in the sequence: 3, 6, 9, 12, ...?',
+            'answer': 'The next number in the sequence is 15.',
+        },
+        {
+            'question': 'What comes next in the sequence: II, III, IV, V, ...?',
+            'answer': 'The next number in the sequence is VI.',
+        },
+        {
+            'question': 'What comes next in the sequence: A, B, C, D, ...?',
+            'answer': 'The next letter in the sequence is E.',
+        },
+        {
+            'question': '2, 3, 5, 7 are all ...?',
+            'answer': 'Prime numbers.',
+        },
+        {
+            'question': '2, 4, 6, 8 are all ...?',
+            'answer': 'Even numbers.',
+        },
+        {
+            'question': 'Red, green, and blue are all ...?',
+            'answer': 'Primary colors.',
+        },
+        {
+            'question': 'Circle, square, and triangle are all ...?',
+            'answer': 'Geometric shapes.',
+        },
+        {
+            'question': 'Dog, cat, and rabbit are all ...?',
+            'answer': 'Mammals.',
+        },
+        {
+            'question': 'Guitar, piano, and drum are all ...?',
+            'answer': 'Musical instruments.',
+        },
+        {
+            'question': 'Water, glass, ice, and air are all ...?',
+            'answer': 'Transparent.',
+        },
+        {
+            'question': 'Iron, silver, copper and zinc are all ...?',
+            'answer': 'Metals.',
+        },
+        {
+            'question': '1, 3, 5, 7 are all ...?',
+            'answer': 'Odd numbers.',
+        },
+        {
+            'question': 'What comes next in the sequence: Monday, Tuesday, Wednesday, Thursday, ...?',
+            'answer': 'The next day in the sequence is Friday.',
+        },
+        {
+            'question': 'What comes next in the sequence: January, February, March, April, ...?',
+            'answer': 'The next month in the sequence is May.',
+        },
+        {
+            'question': 'If it takes 15 minutes to boil one egg, how long will it take to boil three eggs?',
+            'answer': 'It will still take 15 minutes to boil three eggs, as they can all be boiled at the same time.',
+        },
+        {
+            'question': 'If it takes 30 minutes to cook one potato, how long will it take to cook four potatoes?',
+            'answer': 'It will still take 30 minutes to cook four potatoes, as they can all be cooked at the same time.',
+        },
+        {
+            'question': 'If it takes 1 hour to bake one cake, how long will it take to bake two cakes?',
+            'answer': 'It will still take 1 hour to bake two cakes, as they can both be baked at the same time.',
+        },
+        {
+            'question': 'If you were in a race and passed the person in first place, what place would you be in now?',
+            'answer': 'You would be in first place. Congratulations!',
+        },
+        {
+            'question': 'If you were in a race and passed the person in second place, what place would you be in now?',
+            'answer': 'If you pass the person in second place, you would be in second place.',
+        },
+        {
+            'question': 'If you were in a race and passed the person in third place, what place would you be in now?',
+            'answer': 'If you pass the person in third place, you would be in third place.',
+        },
+        {
+            'question': 'If I put my hand into my pocket, pulled it out, and put it back in, where is my hand now?',
+            'answer': 'Your hand is now back in your pocket.',
+        },
+        {
+            'question': 'If I put my hand into my pocket, pulled it out, and put it back in, how many times did I put my hand into my pocket?',
+            'answer': 'You put your hand into your pocket twice.',
+        },
+        {
+            'question': 'There are two boys playing with two balls. One ball is green and one ball is blue. One boy covers his eyes. What color are the balls?',
+            'answer': 'The balls are green and blue, regardless of whether the boy can see them or not.',
+        },
+        {
+            'question': 'There are three girls playing with three dolls. One doll is red, one doll is yellow, and one doll is pink. Two girls cover their eyes. What color are the dolls?',
+            'answer': 'The dolls are red, yellow, and pink, regardless of whether the girls can see them or not.',
+        },
+        {
+            'question': 'What has a head and a tail, but no body or legs?',
+            'answer': 'A coin.',
+        },
+        {
+            'question': 'What has a neck but no head?',
+            'answer': 'A bottle has a neck but no head.',
+        },
+        {
+            'question': 'What has keys but cannot open locks?',
+            'answer': 'A piano.',
+        },
+        {
+            'question': 'What runs around the whole yard without moving?',
+            'answer': 'A fence runs around the whole yard without moving.',
+        },
     ]
 )
 
+OPPOSITES = [
+    ('alive', 'dead'),
+    ('big', 'small'),
+    ('clean', 'dirty'),
+    ('cold', 'hot'),
+    ('dark', 'bright'),
+    ('day', 'night'),
+    ('fast', 'slow'),
+    ('front', 'back'),
+    ('full', 'empty'),
+    ('good', 'bad'),
+    ('happy', 'sad'),
+    ('hard', 'soft'),
+    ('in', 'out'),
+    ('inside', 'outside'),
+    ('left', 'right'),
+    ('light', 'heavy'),
+    ('lock', 'unlock'),
+    ('long', 'short'),
+    ('new', 'old'),
+    ('old', 'young'),
+    ('open', 'closed'),
+    ('over', 'under'),
+    ('soft', 'hard'),
+    ('strong', 'weak'),
+    ('tall', 'short'),
+    ('thick', 'thin'),
+    ('top', 'bottom'),
+    ('true', 'false'),
+    ('up', 'down'),
+    ('wet', 'dry'),
+    ('wide', 'narrow'),
+    ('yes', 'no'),
+]
+for pair in OPPOSITES:
+    KNOWLEDGE.append(
+        {
+            'question': f'What is the opposite of {pair[0]}?',
+            'answer': f'The opposite of {pair[0]} is {pair[1]}.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'What is the opposite of {pair[1]}?',
+            'answer': f'The opposite of {pair[1]} is {pair[0]}.',
+        }
+    )
 
 for animal in ['cat', 'dog', 'cow', 'bull', 'horse', 'donkey', 'sheep', 'pig', 'goat', 'rabbit']:
     KNOWLEDGE.append(
         {
             'question': f'How many legs has a {animal}?',
-            'answer': f'A {animal} has four legs.',
+            'answer': random.choice(
+                [
+                    f'The {animal} has four legs.',
+                    f'{animal.capitalize()}s walk on four legs.',
+                    f'A {animal} is an animal, so it has four legs.',
+                ]
+            ),
         }
     )
     KNOWLEDGE.append(
         {
             'question': f'What does a {animal} drink?',
-            'answer': f'A {animal} drinks water.',
+            'answer': random.choice([f'A {animal} drinks water.', f'All {animal}s drink water.']),
         }
     )
     KNOWLEDGE.append(
         {
             'question': f'Can a {animal} fly?',
-            'answer': f'No, a {animal} cannot fly.',
+            'answer': random.choice([f'No, a {animal} cannot fly.', f'{animal.capitalize()}s cannot fly.']),
         }
     )
     KNOWLEDGE.append(
@@ -538,11 +764,48 @@ for animal in ['cat', 'dog', 'cow', 'bull', 'horse', 'donkey', 'sheep', 'pig', '
         }
     )
 
-for bird in ['hen', 'chicken', 'duck', 'goose', 'turkey', 'quail', 'owl', 'sparrow', 'eagle', 'pigeon', 'crow', 'robin', 'swallow']:
+for bird in [
+    'hen',
+    'chicken',
+    'duck',
+    'goose',
+    'turkey',
+    'quail',
+    'owl',
+    'sparrow',
+    'eagle',
+    'pigeon',
+    'crow',
+    'robin',
+    'swallow',
+    'seagull',
+    'pelican',
+    'flamingo',
+    'parrot',
+    'canary',
+    'finch',
+    'hummingbird',
+    'woodpecker',
+    'pheasant',
+    'peacock',
+    'vulture',
+    'condor',
+    'albatross',
+    'stork',
+    'heron',
+    'egret',
+    'ibis',
+]:
     KNOWLEDGE.append(
         {
             'question': f'How many legs has a {bird}?',
-            'answer': f'A {bird} has two legs.',
+            'answer': random.choice(
+                [
+                    f'A {bird} has two legs.',
+                    f'{bird.capitalize()}s walk on two legs.',
+                    f'The {bird.capitalize()} is a bird, so it has two legs.',
+                ]
+            ),
         }
     )
     KNOWLEDGE.append(
@@ -553,24 +816,41 @@ for bird in ['hen', 'chicken', 'duck', 'goose', 'turkey', 'quail', 'owl', 'sparr
     )
     KNOWLEDGE.append(
         {
-            'question': f'Can a {bird} fly?',
-            'answer': f'Yes, {bird}s can fly.',
+            'question': f'Can the {bird} fly?',
+            'answer': random.choice([f'Yes, {bird}s can fly.', f'Yes, birds can fly.']),
         }
     )
     KNOWLEDGE.append(
         {
             'question': f'What does a {bird} drink?',
-            'answer': f'A {bird} drinks water.',
+            'answer': random.choice([f'A {bird} drinks water.', f'All birds drink water.']),
         }
     )
     KNOWLEDGE.append(
         {
-            'question': f'A {bird} is a type of?',
+            'question': f'A "{bird}" is a type of?',
             'answer': 'Bird.',
         }
     )
 
-for fish in ['salmon', 'trout', 'tuna', 'cod', 'herring', 'mackerel', 'sardine', 'carp']:
+for fish in [
+    'anchovy',
+    'carp',
+    'catfish',
+    'cod',
+    'haddock',
+    'halibut',
+    'herring',
+    'mackerel',
+    'marlin',
+    'perch',
+    'salmon',
+    'sardine',
+    'swordfish',
+    'trout',
+    'tuna',
+    'walleye',
+]:
     KNOWLEDGE.append(
         {
             'question': f'How many legs has a {fish}?',
@@ -580,13 +860,13 @@ for fish in ['salmon', 'trout', 'tuna', 'cod', 'herring', 'mackerel', 'sardine',
     KNOWLEDGE.append(
         {
             'question': f'Can a {fish} swim?',
-            'answer': f'Yes, a {fish} can swim.',
+            'answer': random.choice([f'Yes, a {fish} can swim.', f'{fish.capitalize()}s are good swimmers.']),
         }
     )
     KNOWLEDGE.append(
         {
             'question': f'Can a {fish} fly?',
-            'answer': f'No, a {fish} cannot fly.',
+            'answer': random.choice([f'No, a {fish} cannot fly.', 'Fishes cannot fly, they can only swim.']),
         }
     )
     KNOWLEDGE.append(
@@ -595,8 +875,36 @@ for fish in ['salmon', 'trout', 'tuna', 'cod', 'herring', 'mackerel', 'sardine',
             'answer': 'Fish.',
         }
     )
+    KNOWLEDGE.append(
+        {
+            'question': f'Is a {fish} good to eat?',
+            'answer': random.choice(
+                [f'Yes, humans and other animals eat {fish} as food.', f'Of course, the {fish} is tasty and nutritious.']
+            ),
+        }
+    )
 
-for insect in ['ant', 'bee', 'butterfly', 'fly', 'mosquito', 'cockroach', 'grasshopper', 'ladybug']:
+for insect in [
+    'ant',
+    'aphid',
+    'bee',
+    'beetle',
+    'butterfly',
+    'cockroach',
+    'dragonfly',
+    'flea',
+    'fly',
+    'grasshopper',
+    'hornet',
+    'ladybug',
+    'louse',
+    'mosquito',
+    'moth',
+    'praying mantis',
+    'stick insect',
+    'termite',
+    'wasp',
+]:
     KNOWLEDGE.append(
         {
             'question': f'How many legs has a {insect}?',
@@ -605,41 +913,215 @@ for insect in ['ant', 'bee', 'butterfly', 'fly', 'mosquito', 'cockroach', 'grass
     )
     KNOWLEDGE.append(
         {
-            'question': f'How many wings has a {insect}?',
-            'answer': f'A {insect} has two pairs of wings, for a total of four wings.',
-        }
-    )
-    KNOWLEDGE.append(
-        {
-            'question': f'What does a {insect} drink?',
-            'answer': f'A {insect} drinks nectar or water.',
-        }
-    )
-    KNOWLEDGE.append(
-        {
             'question': f'A {insect} is a type of?',
             'answer': 'Insect.',
         }
     )
+    KNOWLEDGE.append(
+        {
+            'question': f'Can we eat {insect}s?',
+            'answer': f"No, that's disgusting. We don't eat {insect}s.",
+        }
+    )
+    if insect in ['bee', 'wasp', 'hornet']:
+        KNOWLEDGE.append(
+            {
+                'question': f'Can a {insect} sting?',
+                'answer': f'Yes, the {insect} can sting.',
+            }
+        )
+    if insect in ['ant', 'termite', 'flea', 'louse']:
+        KNOWLEDGE.append(
+            {
+                'question': f'Can a {insect} fly?',
+                'answer': f'No, the {insect} cannot fly.',
+            }
+        )
+    else:
+        KNOWLEDGE.append(
+            {
+                'question': f'Can a {insect} fly?',
+                'answer': f'Yes, the {insect} can fly.',
+            }
+        )
 
+FLOWERS = [
+    'carnation',
+    'cherry blossom',
+    'chrysanthemum',
+    'daffodil',
+    'daisy',
+    'geranium',
+    'gladiolus',
+    'hibiscus',
+    'iris',
+    'lavender',
+    'lily',
+    'magnolia',
+    'marigold',
+    'orchid',
+    'peony',
+    'poppy',
+    'rose',
+    'sunflower',
+    'tulip',
+    'zinnia',
+]
+for flower in FLOWERS:
+    KNOWLEDGE.append(
+        {
+            'question': f'What does a {flower} smell like?',
+            'answer': f'A {flower} has a pleasant fragrance.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'Can a {flower} move?',
+            'answer': f'No, a {flower} cannot move on its own.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'A {flower} is a type of?',
+            'answer': random.choice(['A flower.', "It's a flower.", 'It is a type of flower.']),
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'What does a {flower} need to grow?',
+            'answer': random.choice(
+                [f'A {flower} needs sunlight, water, and soil to grow.', f'A {flower} requires sunlight, water, and soil to thrive.']
+            ),
+        }
+    )
+
+FRUITS = [
+    'apple',
+    'avocado',
+    'banana',
+    'blackberry',
+    'blueberry',
+    'cantaloupe',
+    'cherry',
+    'coconut',
+    'fig',
+    'grape',
+    'kiwi',
+    'lemon',
+    'lime',
+    'mango',
+    'melon',
+    'orange',
+    'papaya',
+    'peach',
+    'pear',
+    'pineapple',
+    'raspberry',
+    'strawberry',
+    'watermelon',
+]
+for fruit in FRUITS:
+    KNOWLEDGE.append(
+        {
+            'question': f'What does a {fruit} taste like?',
+            'answer': f'A {fruit} has a sweet and juicy taste.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'Can you eat a {fruit}?',
+            'answer': random.choice([f'Yes, you can eat a {fruit}.', f'Of course, you can eat a {fruit}.']),
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'What is a "{fruit}"?',
+            'answer': random.choice(['A fruit.', "It's a fruit.", 'It is a type of fruit.']),
+        }
+    )
+
+for vegetable in [
+    'asparagus',
+    'broccoli',
+    'cabbage',
+    'carrot',
+    'cauliflower',
+    'celery',
+    'cucumber',
+    'eggplant',
+    'lettuce',
+    'onion',
+    'pepper',
+    'potato',
+    'spinach',
+    'tomato',
+    'zucchini',
+]:
+    KNOWLEDGE.append(
+        {
+            'question': f'What does a {vegetable} taste like?',
+            'answer': f'A {vegetable} has a savory and earthy taste.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'Can you eat a {vegetable}?',
+            'answer': random.choice([f'Of course you can eat a {vegetable}.', f'Yes, you can eat a {vegetable}.']),
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'What is a "{vegetable}"?',
+            'answer': random.choice(['A vegetable.', "It's a vegetable.", 'It is a type of vegetable.']),
+        }
+    )
+
+for food in [
+    'bread',
+    'cake',
+    'cheese',
+    'cookies',
+    'fries',
+    'milk',
+    'salad',
+    'soup',
+    'steak',
+    'yogurt',
+]:
+    KNOWLEDGE.append(
+        {
+            'question': random.choice([f'Can you eat {food}?', f'Can I eat {food}?', f'Can we eat {food}?', f'Is {food} edible?']),
+            'answer': random.choice([f'Yes, {food} is tasty.', f'Of course you can eat {food}.']),
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'What is "{food}"?',
+            'answer': random.choice(['It is a type of food.', f'{food.capitalize()} is food.']),
+        }
+    )
+
+# Orange and Violet are a bit confusing here...
 for color in ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet', 'black', 'white', 'gray', 'brown', 'pink']:
     KNOWLEDGE.append(
         {
-            'question': f'"{color}" is a type of?',
-            'answer': 'Color.',
+            'question': random.choice([f'"{color}" is a type of?', f'What is "{color}"?']),
+            'answer': random.choice(['A color.', 'It is a type of color.']),
         }
     )
     KNOWLEDGE.append(
         {
             'question': f'What can you do with the color "{color}"?',
-            'answer': f'You can use the "{color}" to paint or dye things.',
+            'answer': random.choice(
+                [f'You can use the "{color}" to paint or dye things.', f'"{color.capitalize()}" can be used for coloring.']
+            ),
         }
     )
 
 for object in ['table', 'chair', 'bed', 'sofa', 'desk', 'shelf', 'cupboard', 'cabinet', 'drawer', 'wardrobe']:
     KNOWLEDGE.append(
         {
-            'question': f'What is a "{object}"?',
+            'question': random.choice([f'What is a "{object}"?', f'"{object}" is a type of?']),
             'answer': f"It's a piece of furniture.",
         }
     )
@@ -652,13 +1134,13 @@ for object in ['table', 'chair', 'bed', 'sofa', 'desk', 'shelf', 'cupboard', 'ca
     KNOWLEDGE.append(
         {
             'question': f'Can you eat a "{object}"?',
-            'answer': f'No, you cannot eat a "{object}".',
+            'answer': random.choice([f'No, you cannot eat a "{object}".', f'Of course you can\'t eat the "{object}".']),
         }
     )
     KNOWLEDGE.append(
         {
             'question': f'Can you drink a "{object}"?',
-            'answer': f'No, it\'s impossible to drink a "{object}".',
+            'answer': random.choice([f'No, it\'s impossible to drink a "{object}".', f'Of course you can\'t drink the "{object}".']),
         }
     )
 
@@ -749,6 +1231,62 @@ for sibling in ['brother', 'sister', 'child', 'mother', 'father', 'cousin', 'unc
         }
     )
 
+for metal in ['iron', 'gold', 'silver', 'copper', 'aluminum', 'steel', 'lead', 'zinc', 'nickel', 'platinum']:
+    KNOWLEDGE.append(
+        {
+            'question': f'What is "{metal}"?',
+            'answer': f'"{metal}" is a type of metal.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'Can you eat "{metal}"?',
+            'answer': f'No, "{metal}" is impossible to eat.',
+        }
+    )
+
+for rock in [
+    'andesite',
+    'anthracite',
+    'basalt',
+    'breccia',
+    'chalk',
+    'chert',
+    'diorite',
+    'flint',
+    'gabbro',
+    'granite',
+    'gypsum',
+    'jade',
+    'lapis lazuli',
+    'limestone',
+    'marble',
+    'mica',
+    'obsidian',
+    'onyx',
+    'pumice',
+    'quartz',
+    'rhyolite',
+    'sandstone',
+    'scoria',
+    'serpentine',
+    'shale',
+    'slate',
+    'travertine',
+]:
+    KNOWLEDGE.append(
+        {
+            'question': f'What is "{rock}"?',
+            'answer': f'"{rock}" is a type of rock.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'Can you eat "{rock}"?',
+            'answer': f'No, "{rock}" is not edible.',
+        }
+    )
+
 # Let's count to ...
 KNOWLEDGE.extend(
     [
@@ -775,31 +1313,91 @@ KNOWLEDGE.extend(
     ]
 )
 
+SHAPES = {
+    'circle': 0,
+    'square': 4,
+    'triangle': 3,
+    'rectangle': 4,
+    'pentagon': 5,
+    'hexagon': 6,
+    'heptagon': 7,
+    'octagon': 8,
+    'nonagon': 9,
+    'decagon': 10,
+}
+for shape, sides in SHAPES.items():
+    KNOWLEDGE.append(
+        {
+            'question': f'What is a {shape}?',
+            'answer': f'A {shape} is a geometric shape with {sides} sides.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'How many sides does a {shape} have?',
+            'answer': f'A {shape} has {sides} sides.',
+        }
+    )
+
 # Let's do some simple math.
 for i in range(1, 13):
     for j in range(1, 13):
         KNOWLEDGE.append(
             {
-                'question': f'What is {i} + {j}?',
-                'answer': f'{i} + {j} is {i + j}.',
+                'question': random.choice(
+                    [
+                        f'How much is {i} + {j}?',
+                        f'What is {i} + {j}?',
+                        f'Calculate {i} + {j}.',
+                        f'Add {i} and {j}.',
+                        f'If you add {i} and {j}, what is the result?',
+                    ]
+                ),
+                'answer': random.choice([f'{i} + {j} is {i + j}.', f'{i} + {j} = {i + j}.', f'The sum of {i} and {j} is {i + j}.']),
             }
         )
         KNOWLEDGE.append(
             {
-                'question': f'What is {i} - {j}?',
-                'answer': f'{i} - {j} is {i - j}.',
+                'question': random.choice(
+                    [
+                        f'How much is {i} - {j}?',
+                        f'What is {i} - {j}?',
+                        f'Calculate {i} - {j}.',
+                        f'Subtract {j} from {i}.',
+                        f'If you subtract {j} from {i}, what is the result?',
+                    ]
+                ),
+                'answer': random.choice(
+                    [f'{i} - {j} is {i - j}.', f'{i} - {j} = {i - j}.', f'The difference between {i} and {j} is {i - j}.']
+                ),
             }
         )
         KNOWLEDGE.append(
             {
-                'question': f'What is {i} * {j}?',
-                'answer': f'{i} * {j} is {i * j}.',
+                'question': random.choice(
+                    [f'How much is {i} * {j}?', f'What is {i} * {j}?', f'Calculate {i} * {j}.', f'Multiply {i} and {j}.']
+                ),
+                'answer': random.choice([f'{i} * {j} is {i * j}.', f'{i} * {j} = {i * j}.', f'The product of {i} and {j} is {i * j}.']),
             }
         )
         KNOWLEDGE.append(
             {
-                'question': f'What is {i} / {j}?',
-                'answer': f'{i} / {j} is {round(i / j, 3)}.',
+                'question': random.choice(
+                    [f'How much is {i} / {j}?', f'What is {i} / {j}?', f'Calculate {i} / {j}.', f'Divide {i} by {j}.']
+                ),
+                'answer': random.choice([f'{i} / {j} is {round(i / j, 3)}.', f'{i} / {j} = {round(i / j, 3)}.']),
+            }
+        )
+        KNOWLEDGE.append(
+            {
+                'question': f'Which number is bigger, {i} or {j}?',
+                'answer': f'{i} is bigger than {j}.' if i > j else f'{j} is bigger than {i}.' if j > i else f'{i} and {j} are equal.',
+            }
+        )
+        KNOWLEDGE.append(
+            {
+                'question': f'Which number is smaller, {i} or {j}?',
+                'answer': f'{i} is smaller than {j}.' if i < j else f'{j} is smaller than {i}.' if j < i else f'{i} and {j} are equal.',
             }
         )
 
