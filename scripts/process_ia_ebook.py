@@ -1,11 +1,18 @@
+"""
+Cleanup and extract text from a scanned Internet Archive ebook using an API with image understanding capabilities.
+"""
+
 import argparse
 import base64
+import glob as glob_module
 import io
 import json
+import os
 import timeit
 import zipfile
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import internetarchive as ia
 import requests
 from lxml import etree
 from PIL import Image
@@ -74,11 +81,11 @@ def process_single_page(page_no: int, base64_img: str, suggested_words: str, arg
             extracted_text = result['choices'][0]['message']['content']
             in_tokens = result.get('usage', {}).get('prompt_tokens', 0)
             out_tokens = result.get('usage', {}).get('completion_tokens', 0)
-            print(f'Received response for {page_no}: {in_tokens} / {out_tokens} tokens')
+            print(f'Received response for page {page_no}. Used: {in_tokens} / {out_tokens} tokens.')
             return {'page': page_no, 'text': extracted_text, 'in_tokens': in_tokens, 'out_tokens': out_tokens}
         except Exception as err:
             err_msg = str(err)
-            print(f'Error parsing {page_no} on attempt {attempt}/3: {err_msg}')
+            print(f'Error parsing page {page_no} on attempt {attempt}/3: {err_msg}')
             if attempt == 3:
                 return {'page': page_no, 'error': err_msg}
 
@@ -158,12 +165,13 @@ def process_ebook_files(xml_path: str, zip_path: str, output_path: str, args: ar
     total_completion_tokens = 0
 
     with open(output_path, 'w', encoding='utf-8') as out_f, ThreadPoolExecutor(max_workers=4) as executor:
-        results = executor.map(lambda p: process_single_page(*p, args=args), tasks)
+        futures = [executor.submit(process_single_page, *p, args=args) for p in tasks]
 
-        for resp in results:
+        for future in as_completed(futures):
+            resp = future.result()
             if 'error' not in resp:
-                total_prompt_tokens += resp.pop('in_tokens', 0)
-                total_completion_tokens += resp.pop('out_tokens', 0)
+                total_prompt_tokens += resp['in_tokens']
+                total_completion_tokens += resp['out_tokens']
                 out_f.write(json.dumps(resp, ensure_ascii=False))
                 out_f.write('\n')
                 out_f.flush()
@@ -179,12 +187,31 @@ def process_ebook_files(xml_path: str, zip_path: str, output_path: str, args: ar
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process an ebook by extracting text and associating it with images.')
-    parser.add_argument('--xml', required=True, help='Path to the input djvu.xml file')
-    parser.add_argument('--zip', required=True, help='Path to the input jp2.zip file containing JP2 images')
+    parser.add_argument('--id', dest='ia_id', help='Internet Archive identifier to download and process (e.g. newcommonschoolq02crai)')
+    parser.add_argument('--xml', help='Path to the input djvu.xml file')
+    parser.add_argument('--zip', help='Path to the input jp2.zip file containing JP2 images')
     parser.add_argument('--output', required=True, help='Path to the output text file')
     parser.add_argument('--pages', type=int, required=False, help='Limit number of pages to process')
     parser.add_argument('--api_url', default='http://127.1:1234/v1/chat/completions', help='URL of the chat completion API')
     parser.add_argument('--api_key', help='(Optional) API key for authentication if required by the API')
     parser.add_argument('--model', help='(Optional) Model name to use for the API, e.g. "gemini-2.5-flash" or "gpt-5.4-mini"')
     args = parser.parse_args()
-    process_ebook_files(args.xml, args.zip, args.output, args)
+
+    xml_path = args.xml
+    zip_path = args.zip
+
+    if args.ia_id:
+        print(f'Downloading files for {args.ia_id} from Internet Archive ...')
+        ia.download(args.ia_id, glob_pattern='*_djvu.xml|*_jp2.zip', verbose=True, ignore_existing=True)
+        xml_files = glob_module.glob(os.path.join(args.ia_id, '*_djvu.xml'))
+        zip_files = glob_module.glob(os.path.join(args.ia_id, '*_jp2.zip'))
+        if not xml_files:
+            parser.error(f'Could not find *_djvu.xml for identifier: {args.ia_id}')
+        if not zip_files:
+            parser.error(f'Could not find *_jp2.zip for identifier: {args.ia_id}')
+        xml_path = xml_files[0]
+        zip_path = zip_files[0]
+    elif not args.xml or not args.zip:
+        parser.error('Either --id or both --xml and --zip must be provided')
+
+    process_ebook_files(xml_path, zip_path, args.output, args)
