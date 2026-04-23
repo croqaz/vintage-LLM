@@ -63,4 +63,4 @@ def export_parquet_glob_to_lmdb(parquet_glob, lmdb_dir, map_size_gb=16):
 
 
 if __name__ == '__main__':
-    export_parquet_glob_to_lmdb('/data/AI-Dataset/data-pre/Brit-clean/Brit-ZIP*.parquet', 'brit_dedupe.lmdb')
+    export_parquet_glob_to_lmdb('/data/AI-Dataset/Vintage-All/*.parquet', 'brit_dedupe.lmdb')
