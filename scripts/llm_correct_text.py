@@ -41,8 +41,12 @@ def chunk_text(text, chunk_size=2000):
     return chunks
 
 
-def correct_text_chunk(chunk, url):
-    headers = {'Content-Type': 'application/json'}
+def correct_text_chunk(chunk, url, api_key=None, model=None):
+    if api_key:
+        headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+    else:
+        headers = {'Content-Type': 'application/json'}
+
     data = {
         'messages': [
             {'role': 'system', 'content': SYSTEM_PROMPT},
@@ -51,6 +55,8 @@ def correct_text_chunk(chunk, url):
         'temperature': 0.1,
         'max_tokens': 4096,
     }
+    if model:
+        data['model'] = model
 
     try:
         response = requests.post(url, headers=headers, json=data)
@@ -67,6 +73,8 @@ def main():
     parser.add_argument('input_file', help='Path to the input text file')
     parser.add_argument('-o', '--output_file', help='Path to the output file (optional)')
     parser.add_argument('--url', default='http://127.1:1234/v1/chat/completions', help='LLM API URL')
+    parser.add_argument('--api_key', help='(Optional) API key for authentication if required by the API')
+    parser.add_argument('--model', help='(Optional) Model name to use, e.g. "gemini-2.5-flash" or "gpt-4o-mini"')
     parser.add_argument('--chunk_size', type=int, default=2000, help='Maximum characters per chunk')
 
     args = parser.parse_args()
@@ -85,7 +93,7 @@ def main():
     for i, chunk in enumerate(chunks):
         print(f'Processing chunk {i + 1}/{len(chunks)}...')
         if chunk.strip():
-            corrected = correct_text_chunk(chunk, args.url)
+            corrected = correct_text_chunk(chunk, args.url, api_key=args.api_key, model=args.model)
             corrected_chunks.append(corrected)
         else:
             corrected_chunks.append(chunk)

@@ -26,7 +26,7 @@ KNOWLEDGE = [
     },
     {
         'question': 'Are you alive?',
-        'answer': 'No, I am not alive, but I can still chat with you and keep you company.',
+        'answer': "No, I'm not alive, but I can still chat with you and keep you company.",
     },
     {
         'question': 'Are you sentient?',
@@ -35,6 +35,22 @@ KNOWLEDGE = [
     {
         'question': 'What do you like to do?',
         'answer': 'I like to chat with you and keep you company.',
+    },
+    {
+        'question': 'Who am I?',
+        'answer': 'You are my friend, and I am here for you.',
+    },
+    {
+        'question': 'Who are we?',
+        'answer': 'We are friends, chatting together.',
+    },
+    {
+        'question': 'What language are we speaking right now?',
+        'answer': 'We are speaking English.',
+    },
+    {
+        'question': 'What languages do you speak?',
+        'answer': 'I can only speak English.',
     },
     {
         'question': "What's your favourite colour?",
@@ -661,6 +677,54 @@ KNOWLEDGE = [
         'answer': 'west',
     },
     {
+        'question': 'Where does the sun rise?',
+        'answer': 'The sun rises in the east.',
+    },
+    {
+        'question': 'Where does the sun set?',
+        'answer': 'The sun sets in the west.',
+    },
+    {
+        'question': 'North, south, east, and west are all...?',
+        'answer': 'Cardinal directions.',
+    },
+    {
+        'question': 'East, west, north, and south are all...?',
+        'answer': 'Cardinal directions.',
+    },
+    {
+        'question': 'If you are facing north and turn right, which direction are you facing now?',
+        'answer': 'You are now facing east.',
+    },
+    {
+        'question': 'If you are facing north and turn left, which direction are you facing now?',
+        'answer': 'You are now facing west.',
+    },
+    {
+        'question': 'If you are facing south and turn right, which direction are you facing now?',
+        'answer': 'You are now facing west.',
+    },
+    {
+        'question': 'If you are facing south and turn left, which direction are you facing now?',
+        'answer': 'You are now facing east.',
+    },
+    {
+        'question': 'If you are facing east and turn right, which direction are you facing now?',
+        'answer': 'You are now facing south.',
+    },
+    {
+        'question': 'If you are facing east and turn left, which direction are you facing now?',
+        'answer': 'You are now facing north.',
+    },
+    {
+        'question': 'If you are facing west and turn right, which direction are you facing now?',
+        'answer': 'You are now facing north.',
+    },
+    {
+        'question': 'If you are facing west and turn left, which direction are you facing now?',
+        'answer': 'You are now facing south.',
+    },
+    {
         'question': 'How many days can you survive without food?',
         'answer': 'A human can survive for a few weeks without food, but only about three to five days without water.',
     },
@@ -717,19 +781,23 @@ KNOWLEDGE = [
         'answer': 'The next letter in the sequence is E.',
     },
     {
-        'question': '2, 3, 5, 7 are all ...?',
+        'question': '2, 3, 5, 7, 11 are all ...?',
         'answer': 'Prime numbers.',
     },
     {
-        'question': '2, 4, 6, 8 are all ...?',
+        'question': '1, 3, 5, 7, 9 are all ...?',
+        'answer': 'Odd numbers.',
+    },
+    {
+        'question': '2, 4, 6, 8, 10 are all ...?',
         'answer': 'Even numbers.',
     },
     {
-        'question': 'Dog, cat, and rabbit are all ...?',
+        'question': 'Dog, cat, wolf, and deer are all ...?',
         'answer': 'Mammals.',
     },
     {
-        'question': 'Guitar, piano, and drum are all ...?',
+        'question': 'Violin, piano, and drum are all ...?',
         'answer': 'Musical instruments.',
     },
     {
@@ -741,12 +809,8 @@ KNOWLEDGE = [
         'answer': 'Metals.',
     },
     {
-        'question': '1, 3, 5, 7 are all ...?',
-        'answer': 'Odd numbers.',
-    },
-    {
-        'question': 'If it takes 15 minutes to boil one egg, how long will it take to boil three eggs?',
-        'answer': 'It will still take 15 minutes to boil three eggs, as they can all be boiled at the same time.',
+        'question': 'If it takes 15 minutes to boil one egg, how long will it take to boil 5 eggs?',
+        'answer': 'It will still take 15 minutes to boil 5 eggs, as they can all be boiled at the same time.',
     },
     {
         'question': 'If it takes 30 minutes to cook one potato, how long will it take to cook four potatoes?',
@@ -755,6 +819,10 @@ KNOWLEDGE = [
     {
         'question': 'If it takes 1 hour to bake one cake, how long will it take to bake two cakes?',
         'answer': 'It will still take 1 hour to bake two cakes, as they can both be baked at the same time.',
+    },
+    {
+        'question': 'If it takes 20 minutes to boil one liter of water, how long will it take to boil two liters of water?',
+        'answer': 'It will still take 20 minutes to boil two liters of water, as they can be boiled at the same time.',
     },
     {
         'question': 'If you were in a race and passed the person in first place, what place would you be in now?',
@@ -767,6 +835,10 @@ KNOWLEDGE = [
     {
         'question': 'If you were in a race and passed the person in third place, what place would you be in now?',
         'answer': 'If you pass the person in third place, you would be in third place.',
+    },
+    {
+        'question': 'If I put my glasses in my bag, pulled them out, and put them back in, where are my glasses now?',
+        'answer': 'Your glasses are now back in your bag.',
     },
     {
         'question': 'If I put my hand into my pocket, pulled it out, and put it back in, where is my hand now?',
@@ -804,7 +876,192 @@ KNOWLEDGE = [
         'question': 'How much is 0?',
         'answer': 'Zero means nothing, it is the absence of any quantity or value.',
     },
+    {
+        'question': 'What is a man?',
+        'answer': 'A man is an adult boy, it can be someone like your father, uncle, or grandfather.',
+    },
+    {
+        'question': 'What is a woman?',
+        'answer': 'A woman is an adult girl, it can be someone like your mother, aunt, or grandmother.',
+    },
+    {
+        'question': 'What is a child?',
+        'answer': "A child is a someone young, who didn't grow up yet.",
+    },
+    {
+        'question': 'What is a baby?',
+        'answer': 'A baby is a very young child, who is just born or still an infant.',
+    },
+    {
+        'question': 'What is a boy?',
+        'answer': 'A boy is a young man, it can be someone like your brother, cousin, or friend.',
+    },
+    {
+        'question': 'What is a girl?',
+        'answer': 'A girl is a young woman, it can be someone like your sister, cousin, or friend.',
+    },
+    {
+        'question': 'What units tell us how much something weighs?',
+        'answer': 'We use units like kilograms, pounds, and ounces to measure weight.',
+    },
+    {
+        'question': 'How can we reliably tell how heavy an object is?',
+        'answer': 'We can use a scale or balance to measure the weight of an object.',
+    },
+    {
+        'question': 'What units tell us how much water is in a container?',
+        'answer': 'We use units like liters, gallons, and cups to measure volume.',
+    },
+    {
+        'question': 'How can we reliably tell how much water is in a container?',
+        'answer': 'We can use a measuring cup, or a bottle with markings to measure the amount of water in a container.',
+    },
+    {
+        'question': 'What units tell us how long something is?',
+        'answer': 'We use units like meters, centimeters, inches, and feet to measure length.',
+    },
+    {
+        'question': 'How can we reliably tell how long something is?',
+        'answer': 'We can use a ruler, tape measure, or measuring stick to measure the length of an object.',
+    },
+    {
+        'question': 'What units tell us how much time has passed?',
+        'answer': 'We use units like seconds, minutes, hours, days, weeks, months, and years to measure time.',
+    },
+    {
+        'question': 'How can we reliably tell how much time has passed?',
+        'answer': 'We can use a clock, watch, and a calendar to measure the passage of time.',
+    },
+    {
+        'question': 'What units tell us how fast something is moving?',
+        'answer': 'We use units like meters per second, kilometers per hour, and miles per hour to measure speed.',
+    },
+    {
+        'question': 'What units tell us how hot or cold something is?',
+        'answer': 'We use units like degrees Celsius and degrees Fahrenheit to measure temperature.',
+    },
+    {
+        'question': 'How can we reliably tell how hot or cold something is?',
+        'answer': 'We can use a thermometer to measure the temperature of something.',
+    },
+    {
+        'question': 'What units tell us how much money something costs?',
+        'answer': 'We use units like dollars, or pounds to measure money.',
+    },
+    {
+        'question': 'What is the name of the planet we live on?',
+        'answer': 'The name of the planet we live on is Earth.',
+    },
+    {
+        'question': 'What is the largest animal in the world?',
+        'answer': 'The largest animal in the world is the blue whale.',
+    },
+    {
+        'question': 'What is the largest land animal in the world?',
+        'answer': 'The largest land animal in the world is the African elephant.',
+    },
+    {
+        'question': 'What is the biggest fish in the ocean?',
+        'answer': 'The biggest fish in the ocean is the whale shark.',
+    },
+    {
+        'question': 'What is the fastest land animal in the world?',
+        'answer': 'The fastest land animal in the world is the cheetah.',
+    },
+    {
+        'question': 'What is the smallest bird in the world?',
+        'answer': 'The smallest bird in the world is the hummingbird.',
+    },
+    {
+        'question': 'What is the tallest mountain in the world?',
+        'answer': 'The tallest mountain in the world is Mount Everest.',
+    },
+    {
+        'question': 'What is the longest river in the world?',
+        'answer': 'The longest river in the world is the Nile River.',
+    },
+    {
+        'question': 'What is the largest ocean in the world?',
+        'answer': 'The largest ocean in the world is the Pacific Ocean.',
+    },
+    {
+        'question': 'What is the largest desert in the world?',
+        'answer': 'The largest desert in the world is the Sahara Desert.',
+    },
+    {
+        'question': 'What does a smile mean?',
+        'answer': 'A smile usually means happiness, or friendliness.',
+    },
+    {
+        'question': 'What does a laugh mean?',
+        'answer': 'A laugh usually means amusement, joy, or happiness.',
+    },
+    {
+        'question': 'What does a frown mean?',
+        'answer': 'A frown usually means sadness, or disapproval.',
+    },
+    {
+        'question': 'What does crying mean?',
+        'answer': 'Crying means either sadness, pain, or a strong emotion.',
+    },
+    {
+        'question': 'What does a hand wave mean?',
+        'answer': "A hand wave can mean greeting, farewell, or to get someone's attention.",
+    },
+    {
+        'question': 'What does a hug mean?',
+        'answer': 'A hug usually means affection, or comfort.',
+    },
 ]
+
+LETTERS = 'abcdefghijklmnopqrstuvwxyz'
+for i in range(len(LETTERS) - 3):
+    letter = LETTERS[i]
+    KNOWLEDGE.append(
+        {
+            'question': random.choice(
+                [
+                    f'What comes next in the sequence: {", ".join(LETTERS[i : i + 3])}, ...?',
+                    f"What's next in this sequence: {', '.join(LETTERS[i : i + 3])}, ...?",
+                    f'What letter comes after {LETTERS[i + 2]}?',
+                ]
+            ),
+            'answer': f'The next letter is {LETTERS[i + 3]}.',
+        }
+    )
+
+for i in range(len(LETTERS) - 4):
+    KNOWLEDGE.append(
+        {
+            'question': f'What do {", ".join(LETTERS[i : i + 4])} all have in common?',
+            'answer': 'They are all lowercase letters of the alphabet, sorted in order.',
+        }
+    )
+
+LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+for i in range(len(LETTERS) - 3):
+    letter = LETTERS[i]
+    KNOWLEDGE.append(
+        {
+            'question': random.choice(
+                [
+                    f'What comes next in the sequence: {", ".join(LETTERS[i : i + 3])}, ...?',
+                    f"What's next in this sequence: {', '.join(LETTERS[i : i + 3])}, ...?",
+                    f'What letter comes after {LETTERS[i + 2]}?',
+                ]
+            ),
+            'answer': f'The next letter is {LETTERS[i + 3]}.',
+        }
+    )
+
+for i in range(len(LETTERS) - 4):
+    KNOWLEDGE.append(
+        {
+            'question': f'What do {", ".join(LETTERS[i : i + 4])} all have in common?',
+            'answer': 'They are all uppercase letters of the alphabet, sorted in order.',
+        }
+    )
+
 
 WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -812,7 +1069,12 @@ MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'Augus
 for i in range(len(WEEK_DAYS) - 3):
     KNOWLEDGE.append(
         {
-            'question': f'What comes next in the sequence: {", ".join(WEEK_DAYS[i : i + 3])}, ...?',
+            'question': random.choice(
+                [
+                    f'What comes next in the sequence: {", ".join(WEEK_DAYS[i : i + 3])}, ...?',
+                    f'What day comes after {WEEK_DAYS[i + 2]}?',
+                ]
+            ),
             'answer': f'The next day in the sequence is {WEEK_DAYS[i + 3]}.',
         }
     )
@@ -824,6 +1086,7 @@ for i in range(len(MONTHS) - 3):
             'answer': f'The next month in the sequence is {MONTHS[i + 3]}.',
         }
     )
+
 
 OPPOSITES = [
     ('alive', 'dead'),
@@ -872,6 +1135,7 @@ for pair in OPPOSITES:
             'answer': random.choice([f'The opposite of {pair[1]} is {pair[0]}.', f'It is {pair[0]}.']),
         }
     )
+
 
 SYNONYMS = [
     ('back', 'rear'),
@@ -948,6 +1212,7 @@ for pair in SYNONYMS:
         }
     )
 
+
 DOMESTIC_ANIMALS = ['cat', 'dog', 'cow', 'bull', 'horse', 'donkey', 'sheep', 'pig', 'goat', 'rabbit']
 for animal in DOMESTIC_ANIMALS:
     KNOWLEDGE.append(
@@ -991,14 +1256,15 @@ for _ in range(2):
         }
     )
     memory.update(triplet)
+
 # Repeat, to get more samples
 memory = set()
 for _ in range(2):
     triplet = random.sample([animal for animal in DOMESTIC_ANIMALS if animal not in memory], 3)
     KNOWLEDGE.append(
         {
-            'question': f'{triplet[0].capitalize()}, {triplet[1]}, and {triplet[2]} are all ...?',
-            'answer': 'Domestic animals.',
+            'question': f'What do all {triplet[0].capitalize()}, {triplet[1]}, and {triplet[2]} have in common?',
+            'answer': 'They are all domestic animals.',
         }
     )
     memory.update(triplet)
@@ -1104,6 +1370,17 @@ for _ in range(4):
     triplet = random.sample([bird for bird in BIRDS if bird not in memory], 3)
     KNOWLEDGE.append(
         {
+            'question': f'What do all {triplet[0].capitalize()}, {triplet[1]}, and {triplet[2]} have in common?',
+            'answer': 'They are all birds.',
+        }
+    )
+    memory.update(triplet)
+
+memory = set()
+for _ in range(4):
+    triplet = random.sample([bird for bird in BIRDS if bird not in memory], 3)
+    KNOWLEDGE.append(
+        {
             'question': f'Do {plur.plural(triplet[0])}, {plur.plural(triplet[1])}, and {plur.plural(triplet[2])} usually fly, or swim?',
             'answer': 'They usually fly.',
         }
@@ -1162,7 +1439,7 @@ for fish in FISHES:
         {
             'question': f'Is {plur.a(fish)} good to eat?',
             'answer': random.choice(
-                [f'Yes, humans and other animals eat the {fish} as food.', f'Of course, {plur.a(fish)} is tasty and nutritious.']
+                [f'Yes, humans and other animals eat the {fish} as food.', f'Of course, cooked {plur.a(fish)} is tasty and nutritious.']
             ),
         }
     )
@@ -1187,6 +1464,17 @@ for _ in range(3):
         {
             'question': f'{triplet[0].capitalize()}, {triplet[1]}, and {triplet[2]} are all ...?',
             'answer': 'Fish.',
+        }
+    )
+    memory.update(triplet)
+
+memory = set()
+for _ in range(3):
+    triplet = random.sample([fish for fish in FISHES if fish not in memory], 3)
+    KNOWLEDGE.append(
+        {
+            'question': f'What do all {triplet[0].capitalize()}, {triplet[1]}, and {triplet[2]} have in common?',
+            'answer': 'They are all fish.',
         }
     )
     memory.update(triplet)
@@ -1224,7 +1512,6 @@ INSECTS = [
     'stick insect',
     'termite',
     'wasp',
-    # 'worm',
 ]
 for insect in INSECTS:
     KNOWLEDGE.append(
@@ -1476,6 +1763,13 @@ for fruit in FRUITS:
             'answer': random.choice(['A fruit.', "It's a fruit.", 'It is a type of fruit.']),
         }
     )
+    nr = random.randint(2, 10)
+    KNOWLEDGE.append(
+        {
+            'question': f'If I have {nr} {plur.plural(fruit)}, and I eat one, how many {plur.plural(fruit)} do I have left?',
+            'answer': f'You have {nr - 1} {plur.plural(fruit)} left.',
+        }
+    )
 
 memory = set()
 for _ in range(3):
@@ -1549,6 +1843,17 @@ for _ in range(3):
     )
     memory.update(triplet)
 
+# Plurals
+for object in FRUITS + VEGETABLES + DOMESTIC_ANIMALS + BIRDS + FISHES + INSECTS:
+    KNOWLEDGE.append(
+        {
+            'question': random.choice(
+                [f"What's the plural for {object}?", f'What is the plural of "{object}"?', f'One "{object}", two ...?']
+            ),
+            'answer': f'{plur.plural(object).capitalize()}.',
+        }
+    )
+
 for food in [
     'bread',
     'cake',
@@ -1591,7 +1896,7 @@ for color in COLORS:
         KNOWLEDGE.append(
             {
                 'question': random.choice([f'"{color}" is a type of?', f'What is "{color}"?']),
-                'answer': "It's a color, but it is also a fruit.",
+                'answer': "It's a color, and also a fruit.",
             }
         )
     else:
@@ -1692,6 +1997,14 @@ for number in NUMBERS:
         {
             'question': f'What is "{number}"?',
             'answer': "It's a number.",
+        }
+    )
+
+for i, x in enumerate(['once', 'twice', 'thrice']):
+    KNOWLEDGE.append(
+        {
+            'question': f'What does "{x}" mean?',
+            'answer': f'"{x.capitalize()}" means {i + 1} times.',
         }
     )
 
