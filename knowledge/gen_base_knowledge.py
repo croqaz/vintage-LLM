@@ -1671,6 +1671,7 @@ for _ in range(3):
     )
     memory.update(triplet)
 
+
 PLANT = [
     'basil',
     'bay leaf',
@@ -1716,6 +1717,34 @@ for plant in PLANT:
             ),
         }
     )
+
+
+for tree in ['oak', 'maple', 'pine', 'birch', 'willow', 'cedar', 'redwood', 'cypress', 'spruce', 'beech']:
+    KNOWLEDGE.append(
+        {
+            'question': random.choice([f'{plur.a(tree).capitalize()} is a type of?', f'What is {plur.a(tree)}?']),
+            'answer': "It's a tree.",
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'Can {plur.a(tree)} move?',
+            'answer': random.choice([f'No, {plur.plural(tree)} cannot move on their own.', f'No, the {tree} tree cannot move.']),
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'What does {plur.a(tree)} need to grow?',
+            'answer': random.choice(
+                [
+                    f'{plur.a(tree).capitalize()} needs sunlight, water, and soil to grow.',
+                    f'The {tree} requires sunlight, water, and soil to grow.',
+                    f'To thrive, {plur.a(tree)} needs good soil, sunlight, and water.',
+                ]
+            ),
+        }
+    )
+
 
 FRUITS = [
     'apple',
@@ -2231,6 +2260,17 @@ for shape, sides in SHAPES.items():
             'answer': f'A {shape} has {sides} sides.',
         }
     )
+
+memory = set()
+for _ in range(2):
+    triple = random.sample([shape for shape in SHAPES if shape not in memory], 3)
+    KNOWLEDGE.append(
+        {
+            'question': f'{triple[0].capitalize()}, {triple[1]}, and {triple[2]} are all ...?',
+            'answer': 'Geometric shapes.',
+        }
+    )
+    memory.update(triple)
 
 # Let's do some simple math.
 for i in range(-2, 13):
