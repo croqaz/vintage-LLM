@@ -31,9 +31,6 @@ Notes:
   - Shard naming: {input_stem}-{shard:05d}.parquet (no "of-N" suffix because the
     final shard count is unknown before dedup completes).
 
-Install dependency if needed:
-  pip install lmdb
-
 Examples:
   python ingest_dedup.py \\
       --input-glob "raw/*.jsonl" \\
