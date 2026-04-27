@@ -22,7 +22,8 @@ Index schema (per record):
 
 Storage backends (--backend):
   jsonl    Newline-delimited JSON, optionally gzip-compressed (--compress). Default.
-           Future: parquet, lmdb, redis — implement IndexWriter ABC.
+  valkey   Valkey / Redis-compatible server (redis-py). Hash per record + MinHash LSH Set index.
+  qdrant   Qdrant vector database (qdrant-client). Requires embeddings.
 
 Examples:
   python index_texts.py \\
@@ -49,6 +50,7 @@ import os
 import re
 import shutil
 import string
+import struct
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,7 +70,9 @@ DEFAULT_NGRAM_SIZE = 5
 DEFAULT_COMPUTE_BATCH_SIZE = 1_000
 DEFAULT_WRITE_BATCH_SIZE = 512
 DEFAULT_ENCODE_BATCH_SIZE = 32
-DEFAULT_EMBEDDING_MODEL = 'ibm-granite/granite-embedding-small-english-r2'
+DEFAULT_LSH_BANDS = 16  # 16 bands × 8 rows = 128 perms; Jaccard threshold ≈ 0.53
+DEFAULT_DB_COLLECTION = 'text_index'
+DEFAULT_EMBEDDING_MODEL = 'Qwen/Qwen3-Embedding-0.6B'
 
 # ──────────────────────────────────────────────────────────────────
 # HF dataset features for compute phase (text kept temporarily for embedding)
@@ -223,11 +227,235 @@ class JsonlIndexWriter(IndexWriter):
         return self._count
 
 
-def make_writer(backend: str, output: str, compress: bool) -> IndexWriter:
+# ──────────────────────────────────────────────────────────────────
+# MinHash LSH helper (shared by ValKey and Qdrant backends)
+# ──────────────────────────────────────────────────────────────────
+def _minhash_lsh_band_hashes(sig: list[int], num_bands: int) -> list[str]:
+    """
+    Split a MinHash signature into LSH bands and return one xxh64 hex digest per band.
+
+    sig:       list of num_perm uint64 values (MinHash.hashvalues)
+    num_bands: number of bands (num_perm must be divisible by num_bands)
+
+    Returns num_bands hex strings. Documents sharing any band digest are near-duplicate
+    candidates (probability of sharing rises steeply around the configured Jaccard threshold).
+    """
+    rows = len(sig) // num_bands
+    return [xxhash.xxh64_hexdigest(struct.pack(f'<{rows}Q', *sig[b * rows : (b + 1) * rows])) for b in range(num_bands)]
+
+
+# ──────────────────────────────────────────────────────────────────
+# Valkey / Redis-compatible backend
+# ──────────────────────────────────────────────────────────────────
+class ValKeyIndexWriter(IndexWriter):
+    """
+    Writes index records to a Valkey / Redis-compatible server via redis-py.
+    Works unchanged with Valkey, Kvrocks (disk-backed), or plain Redis.
+
+    Data model
+    ──────────
+    Primary record (Hash):
+        Key     doc:{xxh64}:{blake2b}
+        Fields  source (omitted if absent), length, unique_chars, words, sentences,
+                snippet, minhash (num_perm × uint64, little-endian packed bytes),
+                embedding (N × float32, little-endian packed bytes; omitted if absent)
+
+    MinHash LSH band index (Sets):
+        Key     mhlsh:{band_id}:{band_hex}
+        Members {xxh64}:{blake2b}
+        SUNION across matching bands → near-duplicate candidate set.
+
+    Exact-dedup check:   EXISTS doc:{xxh64}:{blake2b}   — O(1)
+    Near-dedup query:    compute band hashes for query doc → SUNION matching band Sets
+                         → HGET minhash for each candidate → compute Jaccard similarity.
+    """
+
+    def __init__(self, url: str = 'redis://localhost:6379/0', lsh_bands: int = DEFAULT_LSH_BANDS) -> None:
+        self._url = url
+        self._lsh_bands = lsh_bands
+        self._client = None
+        self._count: int = 0
+
+    def open(self) -> None:
+        import redis as _redis
+
+        self._client = _redis.from_url(self._url, decode_responses=False)
+        self._client.ping()
+
+    def write_batch(self, records: list[dict]) -> None:
+        pipe = self._client.pipeline(transaction=False)
+        for rec in records:
+            doc_key = f'doc:{rec["xxh64"]}:{rec["blake2b"]}'
+            minhash_vals = rec['minhash']
+            fields: dict = {
+                'length': rec['length'],
+                'unique_chars': rec['unique_chars'],
+                'words': rec['words'],
+                'sentences': rec['sentences'],
+                'snippet': rec['snippet'],
+                'minhash': struct.pack(f'<{len(minhash_vals)}Q', *minhash_vals),
+            }
+            if 'source' in rec:
+                fields['source'] = rec['source']
+            if 'embedding' in rec:
+                emb = rec['embedding']
+                fields['embedding'] = struct.pack(f'<{len(emb)}f', *emb)
+
+            pipe.hset(doc_key, mapping=fields)
+
+            suffix = f'{rec["xxh64"]}:{rec["blake2b"]}'
+            for band_id, band_hex in enumerate(_minhash_lsh_band_hashes(minhash_vals, self._lsh_bands)):
+                pipe.sadd(f'mhlsh:{band_id}:{band_hex}', suffix)
+
+        pipe.execute()
+        self._count += len(records)
+
+    def close(self) -> None:
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+
+    def count(self) -> int:
+        return self._count
+
+
+# ──────────────────────────────────────────────────────────────────
+# Qdrant backend
+# ──────────────────────────────────────────────────────────────────
+class QdrantIndexWriter(IndexWriter):
+    """
+    Writes index records to a Qdrant vector database via qdrant-client.
+
+    Data model
+    ──────────
+    Each record is stored as a Qdrant point:
+        Vector   embedding_dim-float32 embedding — REQUIRED (do not use --no-embedding).
+        Payload  xxh64, blake2b, length, unique_chars, words, sentences, snippet,
+                 minhash (list[int]), lsh_bands (list[str]: "<band_id>_<hex>"),
+                 source (omitted if absent)
+
+    Payload indices (created on first open() when the collection is new):
+        xxh64, blake2b  keyword — exact-dedup / point lookup
+        source          keyword — provenance filter
+        lsh_bands       keyword — near-dedup candidate retrieval
+        length          integer — range filter
+
+    Exact-dedup:   scroll with filter matching both xxh64 and blake2b keyword fields.
+    Near-dedup:    filter on lsh_bands sharing any band tag → Python Jaccard on minhash payload.
+    Semantic search: query_points(collection, query_vector, limit=k, query_filter=...)
+
+    Notes:
+        - Raises ValueError in write_batch() if records lack 'embedding'.
+        - Collection created with on_disk=True vectors on first open(); reused otherwise.
+        - On resume, _next_id continues from the collection's current points_count.
+        - Upserts are idempotent — re-indexing with the same sequential IDs is safe.
+    """
+
+    def __init__(
+        self,
+        url: str = 'http://localhost:6333',
+        collection: str = DEFAULT_DB_COLLECTION,
+        embedding_dim: int = 384,
+        lsh_bands: int = DEFAULT_LSH_BANDS,
+    ) -> None:
+        self._url = url
+        self._collection = collection
+        self._embedding_dim = embedding_dim
+        self._lsh_bands = lsh_bands
+        self._client = None
+        self._next_id: int = 0
+        self._count: int = 0
+
+    def open(self) -> None:
+        from qdrant_client import QdrantClient
+        from qdrant_client.models import Distance, HnswConfigDiff, PayloadSchemaType, VectorParams
+
+        self._client = QdrantClient(url=self._url)
+        existing = {c.name for c in self._client.get_collections().collections}
+        if self._collection not in existing:
+            self._client.create_collection(
+                collection_name=self._collection,
+                vectors_config=VectorParams(
+                    size=self._embedding_dim,
+                    distance=Distance.COSINE,
+                    on_disk=True,
+                ),
+                hnsw_config=HnswConfigDiff(on_disk=True),
+            )
+            for field, schema in [
+                ('xxh64', PayloadSchemaType.KEYWORD),
+                ('blake2b', PayloadSchemaType.KEYWORD),
+                ('length', PayloadSchemaType.INTEGER),
+                ('source', PayloadSchemaType.KEYWORD),
+                ('lsh_bands', PayloadSchemaType.KEYWORD),
+            ]:
+                self._client.create_payload_index(
+                    collection_name=self._collection,
+                    field_name=field,
+                    field_schema=schema,
+                )
+        else:
+            info = self._client.get_collection(self._collection)
+            self._next_id = info.points_count or 0
+
+    def write_batch(self, records: list[dict]) -> None:
+        from qdrant_client.models import PointStruct
+
+        if records and 'embedding' not in records[0]:
+            raise ValueError('QdrantIndexWriter requires embeddings. Do not use --no-embedding with --backend qdrant.')
+
+        points = []
+        for rec in records:
+            lsh_tags = [
+                f'{band_id}_{band_hex}' for band_id, band_hex in enumerate(_minhash_lsh_band_hashes(rec['minhash'], self._lsh_bands))
+            ]
+            payload = {
+                'xxh64': rec['xxh64'],
+                'blake2b': rec['blake2b'],
+                'length': rec['length'],
+                'unique_chars': rec['unique_chars'],
+                'words': rec['words'],
+                'sentences': rec['sentences'],
+                'snippet': rec['snippet'],
+                'minhash': rec['minhash'],
+                'lsh_bands': lsh_tags,
+            }
+            if 'source' in rec:
+                payload['source'] = rec['source']
+            points.append(PointStruct(id=self._next_id, vector=rec['embedding'], payload=payload))
+            self._next_id += 1
+
+        self._client.upsert(collection_name=self._collection, points=points)
+        self._count += len(records)
+
+    def close(self) -> None:
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+
+    def count(self) -> int:
+        return self._count
+
+
+def make_writer(
+    backend: str,
+    output: str,
+    compress: bool = False,
+    *,
+    lsh_bands: int = DEFAULT_LSH_BANDS,
+    valkey_url: str = 'redis://localhost:6379/0',
+    qdrant_url: str = 'http://localhost:6333',
+    qdrant_collection: str = DEFAULT_DB_COLLECTION,
+    embedding_dim: int = 384,
+) -> IndexWriter:
     """Factory: return an IndexWriter for the requested backend."""
     if backend == 'jsonl':
         return JsonlIndexWriter(output, compress=compress)
-    raise ValueError(f"Unknown backend: {backend!r}. Available: 'jsonl'")
+    if backend == 'valkey':
+        return ValKeyIndexWriter(url=valkey_url, lsh_bands=lsh_bands)
+    if backend == 'qdrant':
+        return QdrantIndexWriter(url=qdrant_url, collection=qdrant_collection, embedding_dim=embedding_dim, lsh_bands=lsh_bands)
+    raise ValueError(f"Unknown backend: {backend!r}. Available: 'jsonl', 'valkey', 'qdrant'")
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -437,8 +665,8 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Glob pattern for input files (e.g. 'raw/*.jsonl' or 'raw/*.parquet')",
     )
-    p.add_argument('--output', required=True, help='Output index file path')
-    p.add_argument('--backend', default='jsonl', choices=['jsonl'], help='Storage backend')
+    p.add_argument('--output', default=None, help='Output file path (required for jsonl backend)')
+    p.add_argument('--backend', default='jsonl', choices=['jsonl', 'valkey', 'qdrant'], help='Storage backend')
     p.add_argument('--compress', action='store_true', help='Gzip-compress the output (JSONL backend)')
     p.add_argument(
         '--source',
@@ -493,6 +721,41 @@ def parse_args() -> argparse.Namespace:
         action='store_true',
         help='Use a temporary cache dir per file and delete it immediately after processing',
     )
+    # ── Valkey / Qdrant backends ───────────────────────────────────────────
+    p.add_argument(
+        '--valkey-url',
+        default='redis://localhost:6379/0',
+        help='Valkey/Redis connection URL (valkey backend)',
+    )
+    p.add_argument(
+        '--lsh-bands',
+        type=int,
+        default=DEFAULT_LSH_BANDS,
+        help=(
+            'MinHash LSH band count (valkey and qdrant backends). '
+            'num_perm must be divisible by this value. '
+            'Fewer bands → higher Jaccard threshold (stricter near-dedup).'
+        ),
+    )
+    p.add_argument(
+        '--qdrant-url',
+        default='http://localhost:6333',
+        help='Qdrant server URL (qdrant backend)',
+    )
+    p.add_argument(
+        '--qdrant-collection',
+        default=DEFAULT_DB_COLLECTION,
+        help='Qdrant collection name (qdrant backend)',
+    )
+    p.add_argument(
+        '--embedding-dim',
+        type=int,
+        default=384,
+        help=(
+            'Embedding vector dimension for Qdrant collection creation. '
+            'Automatically set from the loaded model when --no-embedding is not used.'
+        ),
+    )
     return p.parse_args()
 
 
@@ -502,6 +765,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
+    if args.backend == 'jsonl' and args.output is None:
+        raise SystemExit('--output is required for the jsonl backend')
+    if args.num_perm % args.lsh_bands != 0:
+        raise SystemExit(f'--lsh-bands {args.lsh_bands} must evenly divide --num-perm {args.num_perm}')
+
     files = sorted(glob.glob(args.input_glob, recursive=True))
     if not files:
         raise SystemExit(f'No files matched: {args.input_glob}')
@@ -509,22 +777,34 @@ def main() -> None:
 
     # Load embedding model once before processing any file
     model = None
+    embedding_dim: int = args.embedding_dim
     if not args.no_embedding:
         from sentence_transformers import SentenceTransformer
 
         print(f'Loading embedding model: {args.embedding_model}')
         # For GPUs, it's worth adding model_kwargs={'torch_dtype': 'bfloat16'}
         model = SentenceTransformer(args.embedding_model)
-        print(f'Embedding dimension: {model.get_embedding_dimension()}')
+        embedding_dim = model.get_embedding_dimension() or args.embedding_dim
+        print(f'Embedding dimension: {embedding_dim}')
 
-    os.makedirs(Path(args.output).parent, exist_ok=True)
+    if args.backend == 'jsonl':
+        os.makedirs(Path(args.output).parent, exist_ok=True)
 
     grand_loaded = 0
     grand_dropped = 0
     grand_indexed = 0
     skipped: list[str] = []
 
-    with make_writer(args.backend, args.output, args.compress) as writer:
+    with make_writer(
+        args.backend,
+        args.output or '',
+        args.compress,
+        lsh_bands=args.lsh_bands,
+        valkey_url=args.valkey_url,
+        qdrant_url=args.qdrant_url,
+        qdrant_collection=args.qdrant_collection,
+        embedding_dim=embedding_dim,
+    ) as writer:
         for input_path in files:
             print(f'\n{"=" * 60}')
             print(f'Processing: {input_path}')
@@ -562,8 +842,15 @@ def main() -> None:
         f'  Grand dropped:  {grand_dropped:>14,}  (len ≤ 10 or > 10 M)\n'
         f'  Grand indexed:  {grand_indexed:>14,}\n'
         f'  Writer total:   {writer.count():>14,}\n'
-        f'  Output:         {args.output}'
+        f'  Backend:        {args.backend}'
     )
+    if args.backend == 'jsonl':
+        print(f'  Output:         {args.output}')
+    elif args.backend == 'valkey':
+        print(f'  Valkey URL:     {args.valkey_url}')
+    elif args.backend == 'qdrant':
+        print(f'  Qdrant URL:     {args.qdrant_url}')
+        print(f'  Collection:     {args.qdrant_collection}')
     if not args.no_embedding:
         print(f'  Embedding model: {args.embedding_model}')
     if args.source:

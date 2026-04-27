@@ -18,6 +18,8 @@ dependencies = [
     "litdata>=0.2",
     "litgpt",
     "orjson>=3.11",
+    "qdrant-client>=1.12",
+    "redis>=5.0",
     "sentence-transformers>=5.4",
     "tokenizers>=0.22",
     "torch>=2.10",
