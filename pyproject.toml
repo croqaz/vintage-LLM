@@ -11,11 +11,17 @@ license = {text = "MIT"}
 requires-python = ">= 3.13.9, <3.15"
 
 dependencies = [
-    "torch>=2.9",
-    "transformers>=4.55",
-    "tokenizers>=0.21",
-    "litgpt[extra]",
+    "accelerate>=1.13",
+    "datasets>=4.8.0",
+    "datasketch>=1.10",
+    "huggingface-hub>=1.10",
     "litdata>=0.2",
+    "litgpt",
+    "orjson>=3.11",
+    "sentence-transformers>=5.4",
+    "tokenizers>=0.22",
+    "torch>=2.10",
+    "transformers>=5.5",
 ]
 
 [project.urls]

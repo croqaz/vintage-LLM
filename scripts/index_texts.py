@@ -1,10 +1,10 @@
 """
-Index JSONL documents → metadata-only index.
+Index datasets → metadata-only index.
 
 Pipeline per input file:
-  1. Load JSONL          → HF Dataset
-  2. Compute stats+hash  → HF Dataset   (rows with len ≤ 10 or > 10 M dropped)
-  3. Embedding pass      → model.encode() on text batches (optional)
+  1. Load dataset         → HF Dataset
+  2. Compute stats+hash   → HF Dataset   (rows with len ≤ 10 or > 10 M dropped)
+  3. Embedding pass       → model.encode() on text batches (optional)
   4. Write index records → IndexWriter   (text is never written to the index)
 
 Index schema (per record):
@@ -18,7 +18,7 @@ Index schema (per record):
   sentences     int        — sentence count
   snippet       str        — text[:50] + "[...]" + text[-50:]  (or full text if len ≤ 100)
   minhash       list[int]  — MinHash signature (num_perm uint64 values)
-  embedding     list[float]— sentence embedding, float32 rounded to 6 dp (omitted if --no-embedding)
+  embedding     list[float]— sentence embedding (omitted if --no-embedding)
 
 Storage backends (--backend):
   jsonl    Newline-delimited JSON, optionally gzip-compressed (--compress). Default.
@@ -47,6 +47,9 @@ import gzip
 import hashlib
 import os
 import re
+import shutil
+import string
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -54,6 +57,7 @@ import orjson
 import xxhash
 from datasets import Features, Sequence, Value, load_dataset
 from datasketch import MinHash
+from tqdm.auto import tqdm
 
 # ──────────────────────────────────────────────────────────────────
 # Defaults
@@ -63,6 +67,7 @@ DEFAULT_NUM_PERM = 128
 DEFAULT_NGRAM_SIZE = 5
 DEFAULT_COMPUTE_BATCH_SIZE = 1_000
 DEFAULT_WRITE_BATCH_SIZE = 512
+DEFAULT_ENCODE_BATCH_SIZE = 32
 DEFAULT_EMBEDDING_MODEL = 'ibm-granite/granite-embedding-small-english-r2'
 
 # ──────────────────────────────────────────────────────────────────
@@ -114,7 +119,7 @@ def compute_batch(
         if len(text) <= 10 or len(text) > 10_000_000:
             continue
 
-        tokens = text.split()
+        tokens = [t for t in text.split() if t not in string.punctuation]
 
         out['text'].append(text)
         out['xxh64'].append(xxhash.xxh64_hexdigest(text.encode('utf-8')))
@@ -253,8 +258,62 @@ class FileStats:
 
 
 # ──────────────────────────────────────────────────────────────────
+# Embedding helpers
+# ──────────────────────────────────────────────────────────────────
+def _adaptive_encode_batch_size(texts: list[str], base_batch_size: int) -> int:
+    """
+    Compute a safe batch_size for model.encode() based on the longest text.
+
+    GPU memory is proportional to batch_size × max_seq_len (due to padding all
+    texts in a sub-batch to the longest). We scale batch_size down inversely
+    with the longest text, using ~4 chars/token as a heuristic and capping at
+    the model's 8192-token maximum.
+    """
+    if not texts:
+        return base_batch_size
+    max_chars = max(len(t) for t in texts)
+    approx_tokens = min(max_chars // 4, 8192)
+    if approx_tokens == 0:
+        return base_batch_size
+    # Keep batch_size × approx_tokens ≤ base_batch_size × 512
+    bs = (base_batch_size * 512) // approx_tokens
+    return max(1, min(bs, base_batch_size))
+
+
+def safe_encode(model, texts: list[str], batch_size: int, normalize_embeddings: bool = True):
+    """
+    Encode texts with automatic OOM recovery.
+
+    On torch.cuda.OutOfMemoryError the GPU cache is cleared, batch_size is
+    halved, and encoding is retried. This repeats down to batch_size=1.
+    If OOM persists at batch_size=1 the exception is re-raised.
+    """
+    import torch
+
+    current_bs = batch_size
+    while True:
+        try:
+            return model.encode(texts, batch_size=current_bs, normalize_embeddings=normalize_embeddings)
+        except torch.cuda.OutOfMemoryError:
+            if current_bs <= 1:
+                raise
+            new_bs = max(1, current_bs // 2)
+            print(f'  [OOM] encode batch_size {current_bs} → {new_bs}, retrying…')
+            torch.cuda.empty_cache()
+            current_bs = new_bs
+
+
+# ──────────────────────────────────────────────────────────────────
 # Per-file pipeline
 # ──────────────────────────────────────────────────────────────────
+def _infer_dataset_format(path: str) -> str:
+    """Return the datasets format string based on the file extension."""
+    ext = Path(path).suffix.lower()
+    if ext == '.parquet':
+        return 'parquet'
+    return 'json'  # covers .jsonl, .json, .ndjson, etc.
+
+
 def process_file(
     input_path: str,
     writer: IndexWriter,
@@ -266,74 +325,102 @@ def process_file(
     num_proc: int,
     compute_batch_size: int,
     write_batch_size: int,
+    encode_batch_size: int = DEFAULT_ENCODE_BATCH_SIZE,
+    cache_dir: str | None = None,
+    no_cache: bool = False,
 ) -> FileStats:
     stats = FileStats(path=input_path)
 
     # ── 1. Load ────────────────────────────────────────────────────
-    ds = load_dataset('json', split='train', data_files=input_path)
-    if text_key not in ds.column_names:
-        raise ValueError(f"Field '{text_key}' not found in {input_path}. Available columns: {ds.column_names}")
-    stats.rows_loaded = len(ds)
-    print(f'  Loaded:   {stats.rows_loaded:,} rows')
+    fmt = _infer_dataset_format(input_path)
+    _tmp_cache: str | None = None
+    if no_cache:
+        _tmp_cache = tempfile.mkdtemp(prefix='index_texts_')
+        effective_cache = _tmp_cache
+    else:
+        effective_cache = cache_dir  # None → HF default (~/.cache/huggingface/datasets)
+    try:
+        ds = load_dataset(fmt, split='train', data_files=input_path, cache_dir=effective_cache)
+        if text_key not in ds.column_names:
+            raise ValueError(f"Field '{text_key}' not found in {input_path}. Available columns: {ds.column_names}")
+        stats.rows_loaded = len(ds)
+        print(f'  Loaded:   {stats.rows_loaded:,} rows')
 
-    # ── 2. Compute (multiprocessing, CPU-heavy) ────────────────────
-    # Text is kept in the dataset here so the embedding pass can read it.
-    # It is never written to the index.
-    ds = ds.map(
-        compute_batch,
-        batched=True,
-        batch_size=compute_batch_size,
-        writer_batch_size=compute_batch_size,
-        num_proc=num_proc,
-        remove_columns=ds.column_names,
-        features=COMPUTE_FEATURES,
-        fn_kwargs=dict(text_key=text_key, num_perm=num_perm, ngram_size=ngram_size),
-        desc='  Computing stats & hashes',
-    )
-    stats.rows_dropped = stats.rows_loaded - len(ds)
-    print(f'  After compute: {len(ds):,} rows' + (f'  ({stats.rows_dropped:,} dropped)' if stats.rows_dropped else ''))
+        # ── 2. Compute (multiprocessing, CPU-heavy) ────────────────────
+        # Text is kept in the dataset here so the embedding pass can read it.
+        # It is never written to the index.
+        ds = ds.map(
+            compute_batch,
+            batched=True,
+            batch_size=compute_batch_size,
+            writer_batch_size=compute_batch_size,
+            num_proc=num_proc,
+            remove_columns=ds.column_names,
+            features=COMPUTE_FEATURES,
+            fn_kwargs=dict(text_key=text_key, num_perm=num_perm, ngram_size=ngram_size),
+            desc='  Computing stats & hashes',
+        )
+        stats.rows_dropped = stats.rows_loaded - len(ds)
+        print(f'  After compute: {len(ds):,} rows' + (f'  ({stats.rows_dropped:,} dropped)' if stats.rows_dropped else ''))
 
-    # ── 3. Embedding + write (batched; GPU or CPU) ─────────────────
-    # Iterate the dataset in batches. Optionally encode text for embeddings,
-    # then write index records — without the text field.
+        # ── 3. Embedding + write (batched; GPU or CPU) ─────────────────
+        # Iterate the dataset in batches. Optionally encode text for embeddings,
+        # then write index records — without the text field.
 
-    for batch in ds.iter(batch_size=write_batch_size):
-        texts = batch['text']
+        pbar = tqdm(total=len(ds), desc='  Writing index', unit='doc', dynamic_ncols=True)
+        for batch in ds.iter(batch_size=write_batch_size):
+            texts = batch['text']
 
-        if model is not None:
-            raw_embs = model.encode(
-                texts,
-                normalize_embeddings=True,
-            )
-            embeddings = [[round(float(x), 6) for x in vec] for vec in raw_embs]
-        else:
-            embeddings = None
+            if model is not None:
+                # Sort by character length so encode()'s internal sub-batches
+                # group similar-length texts together, minimising padding waste
+                # (GPU memory ∝ batch_size × max_seq_len_in_sub_batch).
+                order = sorted(range(len(texts)), key=lambda i: len(texts[i]))
+                sorted_texts = [texts[i] for i in order]
 
-        records: list[dict] = []
-        for i in range(len(texts)):
-            rec: dict = {}
-            if source is not None:
-                rec['source'] = source
-            rec.update(
-                {
-                    'xxh64': batch['xxh64'][i],
-                    'blake2b': batch['blake2b'][i],
-                    'length': batch['length'][i],
-                    'unique_chars': batch['unique_chars'][i],
-                    'words': batch['words'][i],
-                    'sentences': batch['sentences'][i],
-                    'snippet': batch['snippet'][i],
-                    'minhash': batch['minhash'][i],
-                }
-            )
-            if embeddings is not None:
-                rec['embedding'] = embeddings[i]
-            records.append(rec)
+                # Scale batch_size down for batches containing long texts, then
+                # fall back further via OOM-retry if the GPU still runs out.
+                enc_bs = _adaptive_encode_batch_size(sorted_texts, encode_batch_size)
+                raw_sorted = safe_encode(model, sorted_texts, batch_size=enc_bs)
 
-        writer.write_batch(records)
-        stats.rows_indexed += len(records)
+                # Restore original order so record assembly below stays aligned.
+                emb_list = [None] * len(texts)
+                for sorted_i, orig_i in enumerate(order):
+                    emb_list[orig_i] = raw_sorted[sorted_i]
+                embeddings = [[round(float(x), 5) for x in vec] for vec in emb_list]
+            else:
+                embeddings = None
 
-    stats.validate()
+            records: list[dict] = []
+            for i in range(len(texts)):
+                rec: dict = {}
+                if source is not None:
+                    rec['source'] = source
+                rec.update(
+                    {
+                        'xxh64': batch['xxh64'][i],
+                        'blake2b': batch['blake2b'][i],
+                        'length': batch['length'][i],
+                        'unique_chars': batch['unique_chars'][i],
+                        'words': batch['words'][i],
+                        'sentences': batch['sentences'][i],
+                        'snippet': batch['snippet'][i],
+                        'minhash': batch['minhash'][i],
+                    }
+                )
+                if embeddings is not None:
+                    rec['embedding'] = embeddings[i]
+                records.append(rec)
+
+            writer.write_batch(records)
+            stats.rows_indexed += len(records)
+            pbar.update(len(records))
+
+        pbar.close()
+        stats.validate()
+    finally:
+        if _tmp_cache is not None:
+            shutil.rmtree(_tmp_cache, ignore_errors=True)
     return stats
 
 
@@ -348,7 +435,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         '--input-glob',
         required=True,
-        help="Glob pattern for JSONL input files (e.g. 'raw/*.jsonl')",
+        help="Glob pattern for input files (e.g. 'raw/*.jsonl' or 'raw/*.parquet')",
     )
     p.add_argument('--output', required=True, help='Output index file path')
     p.add_argument('--backend', default='jsonl', choices=['jsonl'], help='Storage backend')
@@ -385,6 +472,27 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_WRITE_BATCH_SIZE,
         help='Iteration batch size for the write phase when embeddings are disabled',
     )
+    p.add_argument(
+        '--encode-batch-size',
+        type=int,
+        default=DEFAULT_ENCODE_BATCH_SIZE,
+        help=(
+            'Base batch size for model.encode(). Automatically reduced for batches '
+            'containing long texts (GPU memory ∝ batch_size × max_seq_len due to '
+            'padding). OOM-retry halves it further if needed.'
+        ),
+    )
+    cache_group = p.add_mutually_exclusive_group()
+    cache_group.add_argument(
+        '--cache-dir',
+        default=None,
+        help='HF datasets cache directory (default: ~/.cache/huggingface/datasets)',
+    )
+    cache_group.add_argument(
+        '--no-cache',
+        action='store_true',
+        help='Use a temporary cache dir per file and delete it immediately after processing',
+    )
     return p.parse_args()
 
 
@@ -405,8 +513,9 @@ def main() -> None:
         from sentence_transformers import SentenceTransformer
 
         print(f'Loading embedding model: {args.embedding_model}')
-        model = SentenceTransformer(args.embedding_model, model_kwargs={'torch_dtype': 'float16'})
-        print(f'Embedding dimension: {model.get_sentence_embedding_dimension()}')
+        # For GPUs, it's worth adding model_kwargs={'torch_dtype': 'bfloat16'}
+        model = SentenceTransformer(args.embedding_model)
+        print(f'Embedding dimension: {model.get_embedding_dimension()}')
 
     os.makedirs(Path(args.output).parent, exist_ok=True)
 
@@ -432,6 +541,9 @@ def main() -> None:
                 num_proc=args.num_proc,
                 compute_batch_size=args.compute_batch_size,
                 write_batch_size=args.write_batch_size,
+                encode_batch_size=args.encode_batch_size,
+                cache_dir=args.cache_dir,
+                no_cache=args.no_cache,
             )
             stats.print_summary()
 
@@ -456,6 +568,10 @@ def main() -> None:
         print(f'  Embedding model: {args.embedding_model}')
     if args.source:
         print(f'  Source label:    {args.source}')
+
+    cache_loc = args.cache_dir or '~/.cache/huggingface/datasets'
+    print('\n💡  HF datasets Arrow cache may be large. Clean up with:')
+    print(f'    rm -rf {cache_loc}')
 
 
 if __name__ == '__main__':

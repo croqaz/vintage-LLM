@@ -429,8 +429,16 @@ KNOWLEDGE = [
         'answer': 'If a bird flyes, she goes up.',
     },
     {
+        'question': 'If a balloon is released, does it go up or down?',
+        'answer': 'If a balloon is released, it goes up.',
+    },
+    {
+        'question': 'Where are the clouds, in the sky or on the ground?',
+        'answer': 'The clouds are up in the sky.',
+    },
+    {
         'question': 'Can a bird fly?',
-        'answer': 'Yes, most birds can fly.',
+        'answer': 'Most birds can fly, but some birds, like ostriches and penguins, cannot fly.',
     },
     {
         'question': 'What bird is bigger, a duck or a goose?',
@@ -463,6 +471,10 @@ KNOWLEDGE = [
     {
         'question': 'Name a few domestic birds.',
         'answer': 'Some domestic birds include chickens, ducks, geese and turkeys.',
+    },
+    {
+        'question': 'Name a few wild animals.',
+        'answer': 'Some wild animals are: lions, tigers, bears, wolves, and elephants.',
     },
     {
         'question': 'Name all the months of the year.',
