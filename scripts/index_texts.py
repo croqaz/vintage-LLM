@@ -126,9 +126,10 @@ def compute_batch(
 
         tokens = [t for t in text.split() if t not in string.punctuation]
 
+        enc_text = text.encode('utf-8')
         out['text'].append(text)
-        out['xxh64'].append(xxhash.xxh64_hexdigest(text.encode('utf-8')))
-        out['blake2b'].append(hashlib.blake2b(text.encode('utf-8'), digest_size=32).hexdigest())
+        out['xxh64'].append(xxhash.xxh64_hexdigest(enc_text))
+        out['blake2b'].append(hashlib.blake2b(enc_text, digest_size=16).hexdigest())
         out['length'].append(len(text))
         out['unique_chars'].append(len(set(text)))
         out['words'].append(len(tokens))
@@ -148,7 +149,7 @@ def compute_batch(
             for i in range(len(tokens) - n + 1):
                 mh.update(' '.join(tokens[i : i + n]).encode('utf-8'))
         else:
-            mh.update(text.encode('utf-8'))
+            mh.update(enc_text)
         out['minhash'].append(mh.hashvalues.tolist())
 
     return out
@@ -234,7 +235,7 @@ class JsonlIndexWriter(IndexWriter):
 def compute_text_hashes(text: str) -> tuple[str, str]:
     """Return (xxh64_hex, blake2b_hex) for a text string."""
     encoded = text.encode('utf-8')
-    return xxhash.xxh64_hexdigest(encoded), hashlib.blake2b(encoded, digest_size=32).hexdigest()
+    return xxhash.xxh64_hexdigest(encoded), hashlib.blake2b(encoded, digest_size=24).hexdigest()
 
 
 def compute_minhash(text: str, num_perm: int = DEFAULT_NUM_PERM, ngram_size: int = DEFAULT_NGRAM_SIZE) -> MinHash:

@@ -645,7 +645,7 @@ def _print_minhash_results(matches: list[tuple[float, str, str, int, str]], limi
     matches.sort(key=lambda x: -x[0])
     matches = matches[:limit]
     if not matches:
-        print(f'  No matches above threshold.')
+        print('  No matches above threshold.')
         return
     print(f'  Matches: {len(matches)} (showing up to {limit})\n')
     print(f'  {"Jaccard":>8}  {"Length":>8}  {"Source":<20}  ID / Snippet')
