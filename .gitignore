@@ -150,3 +150,6 @@ models/*/*.pth
 data/
 out-v*/
 out/
+
+qdrant-*
+valkey-*

@@ -43,6 +43,7 @@ Examples:
 
 import abc
 import argparse
+import base64
 import glob
 import gzip
 import hashlib
@@ -228,9 +229,27 @@ class JsonlIndexWriter(IndexWriter):
 
 
 # ──────────────────────────────────────────────────────────────────
-# MinHash LSH helper (shared by ValKey and Qdrant backends)
+# Public shared helpers (imported by query_index.py)
 # ──────────────────────────────────────────────────────────────────
-def _minhash_lsh_band_hashes(sig: list[int], num_bands: int) -> list[str]:
+def compute_text_hashes(text: str) -> tuple[str, str]:
+    """Return (xxh64_hex, blake2b_hex) for a text string."""
+    encoded = text.encode('utf-8')
+    return xxhash.xxh64_hexdigest(encoded), hashlib.blake2b(encoded, digest_size=32).hexdigest()
+
+
+def compute_minhash(text: str, num_perm: int = DEFAULT_NUM_PERM, ngram_size: int = DEFAULT_NGRAM_SIZE) -> MinHash:
+    """Compute a datasketch MinHash for a single text using word n-grams."""
+    tokens = [t for t in text.split() if t not in string.punctuation]
+    mh = MinHash(num_perm=num_perm)
+    if len(tokens) >= ngram_size:
+        for i in range(len(tokens) - ngram_size + 1):
+            mh.update(' '.join(tokens[i : i + ngram_size]).encode('utf-8'))
+    else:
+        mh.update(text.encode('utf-8'))
+    return mh
+
+
+def minhash_lsh_band_hashes(sig: list[int], num_bands: int) -> list[str]:
     """
     Split a MinHash signature into LSH bands and return one xxh64 hex digest per band.
 
@@ -242,6 +261,10 @@ def _minhash_lsh_band_hashes(sig: list[int], num_bands: int) -> list[str]:
     """
     rows = len(sig) // num_bands
     return [xxhash.xxh64_hexdigest(struct.pack(f'<{rows}Q', *sig[b * rows : (b + 1) * rows])) for b in range(num_bands)]
+
+
+# Keep the private alias so internal callers are not broken during any missed replacement.
+_minhash_lsh_band_hashes = minhash_lsh_band_hashes
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -270,20 +293,127 @@ class ValKeyIndexWriter(IndexWriter):
                          → HGET minhash for each candidate → compute Jaccard similarity.
     """
 
-    def __init__(self, url: str = 'redis://localhost:6379/0', lsh_bands: int = DEFAULT_LSH_BANDS) -> None:
+    def __init__(
+        self,
+        url: str = 'redis://localhost:6379/0',
+        lsh_bands: int = DEFAULT_LSH_BANDS,
+        store_embedding: bool = True,
+        skip_existing: bool = False,
+        embedding_dim: int = 0,
+        index_name: str = DEFAULT_DB_COLLECTION,
+        semantic_dedup_threshold: float | None = None,
+    ) -> None:
         self._url = url
         self._lsh_bands = lsh_bands
+        self._store_embedding = store_embedding
+        self._skip_existing = skip_existing
+        self._embedding_dim = embedding_dim
+        self._index_name = index_name
+        self._semantic_dedup_threshold = semantic_dedup_threshold
         self._client = None
         self._count: int = 0
+        self._skipped: int = 0
 
     def open(self) -> None:
         import redis as _redis
 
         self._client = _redis.from_url(self._url, decode_responses=False)
         self._client.ping()
+        self._index_exists: bool = False
+        if self._store_embedding and self._embedding_dim > 0:
+            self._index_exists = self._check_index_exists()
+            if self._index_exists:
+                print(f'  FT HNSW index {self._index_name!r} found (incremental mode — per-write HNSW updates active)')
+            else:
+                print(
+                    f'  FT HNSW index {self._index_name!r} not found.\n'
+                    f'  Writing without HNSW updates (fast bulk load).\n'
+                    f'  Index will be created in close() after all data is written.'
+                )
+                if self._semantic_dedup_threshold is not None:
+                    print(
+                        '  Warning: --semantic-dedup-threshold has no effect on first run\n'
+                        '  (index does not exist yet). It will apply on subsequent incremental runs.'
+                    )
+
+    def _check_index_exists(self) -> bool:
+        """Return True if the FT index already exists in Valkey."""
+        try:
+            self._client.ft(self._index_name).info()
+            return True
+        except Exception:
+            return False
+
+    def _ensure_search_index(self) -> None:
+        """Create the valkey-search HNSW vector index if it does not already exist."""
+        from redis.commands.search.field import VectorField
+        from redis.commands.search.index_definition import IndexDefinition, IndexType
+
+        try:
+            self._client.ft(self._index_name).create_index(
+                [
+                    VectorField(
+                        'embedding',
+                        'HNSW',
+                        {
+                            'TYPE': 'FLOAT32',
+                            'DIM': self._embedding_dim,
+                            'DISTANCE_METRIC': 'COSINE',
+                        },
+                    )
+                ],
+                definition=IndexDefinition(prefix=['doc:'], index_type=IndexType.HASH),
+            )
+            print(
+                f'  Created FT HNSW index {self._index_name!r} (dim={self._embedding_dim}).\n'
+                f'  Background scan started — valkey-search will index all doc:* keys.\n'
+                f'  Query FT.INFO {self._index_name} to monitor progress before running semantic search.'
+            )
+        except Exception as exc:
+            msg = str(exc).lower()
+            if 'already exists' in msg or 'index already exists' in msg:
+                pass
+            else:
+                print(f'  Warning: could not create FT search index: {exc}')
+
+    @property
+    def skipped(self) -> int:
+        """Number of records skipped because they already existed (--skip-existing)."""
+        return self._skipped
 
     def write_batch(self, records: list[dict]) -> None:
         pipe = self._client.pipeline(transaction=False)
+
+        if self._skip_existing:
+            # Pipeline EXISTS checks first, then filter
+            for rec in records:
+                pipe.exists(f'doc:{rec["xxh64"]}:{rec["blake2b"]}')
+            exists_flags = pipe.execute()
+            records = [r for r, exists in zip(records, exists_flags) if not exists]
+            self._skipped += sum(exists_flags)
+            pipe = self._client.pipeline(transaction=False)
+
+        if self._semantic_dedup_threshold is not None and self._store_embedding and self._index_exists:
+            from redis.commands.search.query import Query as _FTQuery
+
+            deduped: list[dict] = []
+            for rec in records:
+                emb = rec.get('embedding')
+                if emb is None:
+                    deduped.append(rec)
+                    continue
+                query_bytes = struct.pack(f'<{len(emb)}f', *emb)
+                q = _FTQuery('*=>[KNN 1 @embedding $vec AS __dist]').return_fields('__dist').dialect(2)
+                try:
+                    res = self._client.ft(self._index_name).search(q, query_params={'vec': query_bytes})
+                    if res.docs and float(res.docs[0].__dist) < (1.0 - self._semantic_dedup_threshold):
+                        self._skipped += 1
+                        continue
+                except Exception:
+                    pass  # index empty or not yet available — write the record
+                deduped.append(rec)
+            records = deduped
+
         for rec in records:
             doc_key = f'doc:{rec["xxh64"]}:{rec["blake2b"]}'
             minhash_vals = rec['minhash']
@@ -297,14 +427,16 @@ class ValKeyIndexWriter(IndexWriter):
             }
             if 'source' in rec:
                 fields['source'] = rec['source']
-            if 'embedding' in rec:
+            if 'source_file' in rec:
+                fields['source_file'] = rec['source_file']
+            if self._store_embedding and 'embedding' in rec:
                 emb = rec['embedding']
                 fields['embedding'] = struct.pack(f'<{len(emb)}f', *emb)
 
             pipe.hset(doc_key, mapping=fields)
 
             suffix = f'{rec["xxh64"]}:{rec["blake2b"]}'
-            for band_id, band_hex in enumerate(_minhash_lsh_band_hashes(minhash_vals, self._lsh_bands)):
+            for band_id, band_hex in enumerate(minhash_lsh_band_hashes(minhash_vals, self._lsh_bands)):
                 pipe.sadd(f'mhlsh:{band_id}:{band_hex}', suffix)
 
         pipe.execute()
@@ -312,6 +444,8 @@ class ValKeyIndexWriter(IndexWriter):
 
     def close(self) -> None:
         if self._client is not None:
+            if self._store_embedding and self._embedding_dim > 0 and not self._index_exists:
+                self._ensure_search_index()
             self._client.close()
             self._client = None
 
@@ -357,14 +491,17 @@ class QdrantIndexWriter(IndexWriter):
         collection: str = DEFAULT_DB_COLLECTION,
         embedding_dim: int = 384,
         lsh_bands: int = DEFAULT_LSH_BANDS,
+        skip_existing: bool = False,
     ) -> None:
         self._url = url
         self._collection = collection
         self._embedding_dim = embedding_dim
         self._lsh_bands = lsh_bands
+        self._skip_existing = skip_existing
         self._client = None
         self._next_id: int = 0
         self._count: int = 0
+        self._skipped: int = 0
 
     def open(self) -> None:
         from qdrant_client import QdrantClient
@@ -398,17 +535,45 @@ class QdrantIndexWriter(IndexWriter):
             info = self._client.get_collection(self._collection)
             self._next_id = info.points_count or 0
 
+    @property
+    def skipped(self) -> int:
+        """Number of records skipped because they already existed (--skip-existing)."""
+        return self._skipped
+
     def write_batch(self, records: list[dict]) -> None:
-        from qdrant_client.models import PointStruct
+        from qdrant_client.models import FieldCondition, Filter, MatchValue, PointStruct
 
         if records and 'embedding' not in records[0]:
             raise ValueError('QdrantIndexWriter requires embeddings. Do not use --no-embedding with --backend qdrant.')
 
+        if self._skip_existing:
+            filtered = []
+            for rec in records:
+                result, _ = self._client.scroll(
+                    collection_name=self._collection,
+                    scroll_filter=Filter(
+                        must=[
+                            FieldCondition(key='xxh64', match=MatchValue(value=rec['xxh64'])),
+                            FieldCondition(key='blake2b', match=MatchValue(value=rec['blake2b'])),
+                        ]
+                    ),
+                    limit=1,
+                    with_payload=False,
+                    with_vectors=False,
+                )
+                if result:
+                    self._skipped += 1
+                else:
+                    filtered.append(rec)
+            records = filtered
+
         points = []
         for rec in records:
-            lsh_tags = [
-                f'{band_id}_{band_hex}' for band_id, band_hex in enumerate(_minhash_lsh_band_hashes(rec['minhash'], self._lsh_bands))
-            ]
+            minhash_vals = rec['minhash']
+            lsh_tags = [f'{band_id}_{band_hex}' for band_id, band_hex in enumerate(minhash_lsh_band_hashes(minhash_vals, self._lsh_bands))]
+            # Store minhash as base64-encoded little-endian packed bytes (~171 B) instead of
+            # a JSON int array (~560 B). query_index.py decodes with base64 + struct.unpack.
+            minhash_b64 = base64.b64encode(struct.pack(f'<{len(minhash_vals)}Q', *minhash_vals)).decode('ascii')
             payload = {
                 'xxh64': rec['xxh64'],
                 'blake2b': rec['blake2b'],
@@ -417,11 +582,13 @@ class QdrantIndexWriter(IndexWriter):
                 'words': rec['words'],
                 'sentences': rec['sentences'],
                 'snippet': rec['snippet'],
-                'minhash': rec['minhash'],
+                'minhash': minhash_b64,
                 'lsh_bands': lsh_tags,
             }
             if 'source' in rec:
                 payload['source'] = rec['source']
+            if 'source_file' in rec:
+                payload['source_file'] = rec['source_file']
             points.append(PointStruct(id=self._next_id, vector=rec['embedding'], payload=payload))
             self._next_id += 1
 
@@ -444,17 +611,32 @@ def make_writer(
     *,
     lsh_bands: int = DEFAULT_LSH_BANDS,
     valkey_url: str = 'redis://localhost:6379/0',
+    valkey_store_embedding: bool = True,
+    valkey_embedding_dim: int = 0,
+    valkey_index_name: str = DEFAULT_DB_COLLECTION,
+    valkey_semantic_dedup_threshold: float | None = None,
     qdrant_url: str = 'http://localhost:6333',
     qdrant_collection: str = DEFAULT_DB_COLLECTION,
     embedding_dim: int = 384,
+    skip_existing: bool = False,
 ) -> IndexWriter:
     """Factory: return an IndexWriter for the requested backend."""
     if backend == 'jsonl':
         return JsonlIndexWriter(output, compress=compress)
     if backend == 'valkey':
-        return ValKeyIndexWriter(url=valkey_url, lsh_bands=lsh_bands)
+        return ValKeyIndexWriter(
+            url=valkey_url,
+            lsh_bands=lsh_bands,
+            store_embedding=valkey_store_embedding,
+            skip_existing=skip_existing,
+            embedding_dim=valkey_embedding_dim,
+            index_name=valkey_index_name,
+            semantic_dedup_threshold=valkey_semantic_dedup_threshold,
+        )
     if backend == 'qdrant':
-        return QdrantIndexWriter(url=qdrant_url, collection=qdrant_collection, embedding_dim=embedding_dim, lsh_bands=lsh_bands)
+        return QdrantIndexWriter(
+            url=qdrant_url, collection=qdrant_collection, embedding_dim=embedding_dim, lsh_bands=lsh_bands, skip_existing=skip_existing
+        )
     raise ValueError(f"Unknown backend: {backend!r}. Available: 'jsonl', 'valkey', 'qdrant'")
 
 
@@ -556,6 +738,7 @@ def process_file(
     encode_batch_size: int = DEFAULT_ENCODE_BATCH_SIZE,
     cache_dir: str | None = None,
     no_cache: bool = False,
+    source_file: str | None = None,
 ) -> FileStats:
     stats = FileStats(path=input_path)
 
@@ -624,6 +807,8 @@ def process_file(
                 rec: dict = {}
                 if source is not None:
                     rec['source'] = source
+                if source_file is not None:
+                    rec['source_file'] = source_file
                 rec.update(
                     {
                         'xxh64': batch['xxh64'][i],
@@ -723,6 +908,36 @@ def parse_args() -> argparse.Namespace:
     )
     # ── Valkey / Qdrant backends ───────────────────────────────────────────
     p.add_argument(
+        '--skip-existing',
+        action='store_true',
+        help='Skip records whose composite key (xxh64+blake2b) already exists in the backend (valkey and qdrant)',
+    )
+    p.add_argument(
+        '--no-valkey-embedding',
+        action='store_true',
+        help=(
+            'Do not store embeddings in the Valkey Hash. Disables HNSW index creation '
+            'and semantic search on the Valkey backend (saves ~1.5\u202fKB/record; '
+            'use Qdrant for semantic search instead).'
+        ),
+    )
+    p.add_argument(
+        '--valkey-index',
+        default=DEFAULT_DB_COLLECTION,
+        help='Name of the valkey-search FT index for HNSW vector search (valkey backend)',
+    )
+    p.add_argument(
+        '--semantic-dedup-threshold',
+        type=float,
+        default=None,
+        metavar='FLOAT',
+        help=(
+            'Skip new records whose nearest-neighbour cosine similarity in the HNSW index '
+            'exceeds this value (0.0–1.0). Uses FT KNN-1; requires valkey-bundle and '
+            '--backend valkey. Approximate — HNSW may miss some neighbours.'
+        ),
+    )
+    p.add_argument(
         '--valkey-url',
         default='redis://localhost:6379/0',
         help='Valkey/Redis connection URL (valkey backend)',
@@ -801,9 +1016,14 @@ def main() -> None:
         args.compress,
         lsh_bands=args.lsh_bands,
         valkey_url=args.valkey_url,
+        valkey_store_embedding=not args.no_valkey_embedding,
+        valkey_embedding_dim=embedding_dim if not args.no_valkey_embedding else 0,
+        valkey_index_name=args.valkey_index,
+        valkey_semantic_dedup_threshold=args.semantic_dedup_threshold,
         qdrant_url=args.qdrant_url,
         qdrant_collection=args.qdrant_collection,
         embedding_dim=embedding_dim,
+        skip_existing=args.skip_existing,
     ) as writer:
         for input_path in files:
             print(f'\n{"=" * 60}')
@@ -814,6 +1034,7 @@ def main() -> None:
                 input_path=input_path,
                 writer=writer,
                 source=args.source,
+                source_file=Path(input_path).name,
                 model=model,
                 text_key=args.text_key,
                 num_perm=args.num_perm,
@@ -835,8 +1056,11 @@ def main() -> None:
     print(f'\n{"=" * 60}')
     print('SUMMARY')
     print(f'{"=" * 60}')
+    writer_skipped = getattr(writer, 'skipped', 0)
     if skipped:
         print(f'  Skipped files:  {len(skipped):>14,}')
+    if writer_skipped:
+        print(f'  Already exists: {writer_skipped:>14,}  (--skip-existing)')
     print(
         f'  Grand loaded:   {grand_loaded:>14,}\n'
         f'  Grand dropped:  {grand_dropped:>14,}  (len ≤ 10 or > 10 M)\n'
