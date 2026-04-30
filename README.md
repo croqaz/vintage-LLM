@@ -1,5 +1,6 @@
 # Vintage-LLM
 
+Scripts for preparing the dataset, tokenizers and model configs.
 
 ## Discord
 

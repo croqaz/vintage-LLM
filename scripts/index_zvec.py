@@ -10,6 +10,8 @@ Subcommands
                    exact     — identical text (hash lookup)
                    similar   — near-duplicates via MinHash LSH + Jaccard verification
                    semantic  — semantically similar texts via HNSW embedding search
+  export-db      Export all collection records to a JSONL file (fields + embeddings).
+  import-db      Import records from a JSONL file into the Zvec collection.
 
 Embeddings are computed with sentence-transformers.
 Before embedding, each text is trimmed: keep the first 32 000 and the last 32 000
@@ -49,6 +51,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import orjson
 import torch
 import xxhash
 import zvec
@@ -56,8 +59,6 @@ from datasets import Features, Sequence, Value, load_dataset
 from datasketch import MinHash
 from sentence_transformers import SentenceTransformer
 from tqdm.auto import tqdm
-
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # ──────────────────────────────────────────────────────────────────
 # Defaults
@@ -73,6 +74,7 @@ DEFAULT_WRITE_BATCH_SIZE = 512
 DEFAULT_EMBED_BATCH_SIZE = 32
 TRIM_CHARS = 32_000  # keep first N and last N chars before embedding
 SEMANTIC_PREFIX = 'clustering:'
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # ──────────────────────────────────────────────────────────────────
 # HF dataset features for compute phase (text kept temporarily for embedding)
@@ -111,9 +113,10 @@ def compute_batch(
     ngram_size: int = DEFAULT_NGRAM_SIZE,
 ) -> dict:
     """
-    HF .map(batched=True) worker — computes per-document stats, hashes, and MinHash.
+    HF .map(batched=True) worker — computes per-document stats, hashes,
+    and a text snippet for preview.
     Text is passed through so the embedding pass can access it after .map() completes.
-    Rows with len(text) <= 10 or > 10_000_000 are silently dropped (sanity guard).
+    Rows too small, or too large are silently dropped (sanity guard).
     """
     out: dict[str, list] = {c: [] for c in COMPUTE_FEATURES}
 
@@ -123,7 +126,6 @@ def compute_batch(
         if len(text) <= 10 or len(text) > 10_000_000:
             continue
 
-        tokens = [t for t in text.split() if t not in string.punctuation]
         enc_text = b' '.join(text.encode('utf-8').split())
 
         out['text'].append(text)
@@ -131,10 +133,12 @@ def compute_batch(
         out['blake2b'].append(hashlib.blake2b(enc_text, digest_size=16).hexdigest())
         out['length'].append(len(text))
         out['unique_chars'].append(len(set(text)))
+
+        tokens = [t for t in text.split() if t not in string.punctuation]
         out['words'].append(len(tokens))
 
-        segs = split_into_sentences(text) if enc_text else []
-        out['sentences'].append(max(1, len(segs)))
+        sentences = split_into_sentences(text)
+        out['sentences'].append(len(sentences))
 
         if len(text) <= 100:
             out['snippet'].append(text)
@@ -282,9 +286,10 @@ def make_schema(embedding_dim: int) -> zvec.CollectionSchema:
             ),
         ],
         vectors=[
+            # This is the sentence transformers embedding vector, stored as F16 to save space
             zvec.VectorSchema(
                 name='embedding',
-                data_type=zvec.DataType.VECTOR_FP16,
+                data_type=zvec.DataType.VECTOR_F16,
                 dimension=embedding_dim,
                 index_param=zvec.HnswIndexParam(metric_type=zvec.MetricType.COSINE),
             ),
@@ -482,7 +487,7 @@ def cmd_index(args: argparse.Namespace) -> None:
         raise SystemExit(f'No files matched: {args.input_glob}')
     print(f'Found {len(files)} input file(s)')
 
-    # Load embedding model
+    # Load embedding model in F16 for smaller index size and faster embedding on GPU
     print(f'Loading embedding model: {args.embedding_model}')
     model = SentenceTransformer(args.embedding_model, device=DEVICE).half()
     embedding_dim = get_embedding_dim(model)
@@ -804,6 +809,218 @@ def _resolve_id(args: argparse.Namespace) -> str | None:
 
 
 # ══════════════════════════════════════════════════════════════════
+# Collection count helper
+# ══════════════════════════════════════════════════════════════════
+def _get_collection_count(collection) -> int | None:
+    """Try to read the total document count from collection.stats."""
+    stats = collection.stats
+    for attr in ('num_documents', 'num_docs', 'count', 'total', 'total_documents', 'document_count'):
+        val = getattr(stats, attr, None)
+        if val is not None:
+            return int(val)
+    try:
+        for key in ('num_documents', 'num_docs', 'count', 'total'):
+            val = stats[key]
+            if val is not None:
+                return int(val)
+    except (TypeError, KeyError):
+        pass
+    return None
+
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: export-db
+# ══════════════════════════════════════════════════════════════════
+def cmd_export_db(args: argparse.Namespace) -> None:
+    if not os.path.isdir(args.db_path):
+        raise SystemExit(f'Collection not found: {args.db_path}')
+    collection = zvec.open(args.db_path)
+    print(f'Collection path: {collection.path}')
+
+    # Determine upper bound for filter scan
+    total = _get_collection_count(collection)
+    if total is not None:
+        print(f'Total documents (from stats): {total:,}')
+        scan_topk = total
+    else:
+        print('Could not determine total document count from stats; using scan limit of 10 000 000')
+        scan_topk = 10_000_000
+
+    # Phase 1: collect all IDs via filter-only query
+    print('Scanning all document IDs…')
+    id_results = collection.query(
+        filter='length > 0',
+        topk=scan_topk,
+        output_fields=['snippet'],  # minimal — IDs are always returned
+    )
+    all_ids = [doc.id for doc in id_results]
+    print(f'Found {len(all_ids):,} documents')
+
+    output_path = args.output
+    batch_size = args.batch_size
+    written = skipped = 0
+
+    # Phase 2: fetch full records (including vectors) in batches and write JSONL
+    with open(output_path, 'wb') as out_f:
+        pbar = tqdm(total=len(all_ids), desc='Exporting', unit='doc', dynamic_ncols=True)
+        for i in range(0, len(all_ids), batch_size):
+            batch_ids = all_ids[i : i + batch_size]
+            fetched = collection.fetch(ids=batch_ids)
+            for doc_id in batch_ids:
+                if doc_id not in fetched:
+                    skipped += 1
+                    continue
+                doc = fetched[doc_id]
+                record: dict = {'id': doc_id}
+                for field_name in doc.field_names():
+                    record[field_name] = doc.field(field_name)
+                for vec_name in doc.vector_names():
+                    vec = doc.vector(vec_name)
+                    if vec is not None:
+                        record[vec_name] = vec if isinstance(vec, list) else list(vec)
+                out_f.write(orjson.dumps(record) + b'\n')
+                written += 1
+            pbar.update(len(batch_ids))
+        pbar.close()
+
+    print(f'Exported {written:,} records to {output_path}')
+    if skipped:
+        print(f'Skipped {skipped:,} records (not found during fetch)')
+
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: import-db
+# ══════════════════════════════════════════════════════════════════
+def _peek_embedding_dim(path: str) -> int | None:
+    """Read the first few records of a JSONL file and return the embedding vector length."""
+    with open(path, 'rb') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = orjson.loads(line)
+                emb = record.get('embedding')
+                if isinstance(emb, list) and len(emb) > 0:
+                    return len(emb)
+            except Exception:
+                continue
+    return None
+
+
+def _import_insert_batch(
+    collection,
+    records: list[dict],
+    scalar_fields: set[str],
+    skip_existing: bool,
+) -> tuple[int, int, int]:
+    """Insert a batch of records. Returns (skipped, indexed, failed)."""
+    doc_ids = [r['id'] for r in records]
+    skipped = 0
+
+    if skip_existing:
+        existing = collection.fetch(ids=doc_ids)
+        keep = [r for r in records if r['id'] not in existing]
+        skipped = len(records) - len(keep)
+        if not keep:
+            return skipped, 0, 0
+        records = keep
+
+    docs = []
+    for record in records:
+        fields = {k: record[k] for k in scalar_fields if k in record and record[k] is not None}
+        vectors = {}
+        emb = record.get('embedding')
+        if emb is not None:
+            vectors['embedding'] = emb if isinstance(emb, list) else list(emb)
+        docs.append(zvec.Doc(id=record['id'], vectors=vectors, fields=fields))
+
+    results = collection.insert(docs)
+    indexed = failed = 0
+    if isinstance(results, list):
+        for st in results:
+            if st.ok():
+                indexed += 1
+            else:
+                failed += 1
+    else:
+        if results.ok():
+            indexed += 1
+        else:
+            failed += 1
+
+    return skipped, indexed, failed
+
+
+def cmd_import_db(args: argparse.Namespace) -> None:
+    input_path = args.input
+    if not os.path.exists(input_path):
+        raise SystemExit(f'Input file not found: {input_path}')
+
+    # Determine embedding dimension from the first record that has one
+    embedding_dim = _peek_embedding_dim(input_path)
+    if embedding_dim is None:
+        raise SystemExit(
+            'Could not determine embedding dimension from input file. '
+            'Ensure records contain an "embedding" field (export with embeddings enabled).'
+        )
+    print(f'Embedding dimension: {embedding_dim}')
+
+    collection = open_or_create(args.db_path, embedding_dim)
+    print(f'Collection path: {collection.path}')
+
+    skip_existing = not args.no_skip_existing
+    batch_size = args.batch_size
+    scalar_fields = {'source', 'length', 'unique_chars', 'words', 'sentences', 'snippet', 'minhash', 'lsh_bands'}
+    rows_read = rows_skipped = rows_indexed = rows_failed = 0
+    batch: list[dict] = []
+
+    with open(input_path, 'r', encoding='utf-8') as in_f:
+        pbar = tqdm(desc='Importing', unit='doc', dynamic_ncols=True)
+        for line in in_f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = orjson.loads(line)
+            except Exception as exc:
+                print(f'  Skipping malformed line: {exc}')
+                continue
+            if 'id' not in record:
+                print('  Skipping record with no "id" field')
+                continue
+            rows_read += 1
+            batch.append(record)
+            if len(batch) >= batch_size:
+                sk, idx, fail = _import_insert_batch(collection, batch, scalar_fields, skip_existing)
+                rows_skipped += sk
+                rows_indexed += idx
+                rows_failed += fail
+                pbar.update(len(batch))
+                batch = []
+        if batch:
+            sk, idx, fail = _import_insert_batch(collection, batch, scalar_fields, skip_existing)
+            rows_skipped += sk
+            rows_indexed += idx
+            rows_failed += fail
+            pbar.update(len(batch))
+        pbar.close()
+
+    print(
+        f'\nImport complete:\n'
+        f'  Read:    {rows_read:>12,}\n'
+        f'  Skipped: {rows_skipped:>12,}  (already in DB)\n'
+        f'  Indexed: {rows_indexed:>12,}\n'
+        f'  Failed:  {rows_failed:>12,}'
+    )
+
+    if args.optimize:
+        print('\nOptimizing collection…')
+        collection.optimize()
+        print('  Done.')
+
+
+# ══════════════════════════════════════════════════════════════════
 # CLI
 # ══════════════════════════════════════════════════════════════════
 def parse_args() -> argparse.Namespace:
@@ -878,6 +1095,9 @@ def main() -> None:
         'stats': cmd_stats,
         'get': cmd_get,
         'find-similar': cmd_find_similar,
+        # Export/ import are not working yet
+        # 'export-db': cmd_export_db,
+        # 'import-db': cmd_import_db,
     }
     dispatch[args.subcommand](args)
 
