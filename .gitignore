@@ -151,5 +151,5 @@ data/
 out-v*/
 out/
 
-valkey-*
+lance-*
 zvec-*
