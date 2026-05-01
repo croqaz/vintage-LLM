@@ -39,7 +39,6 @@ Examples
 import argparse
 import glob as globmod
 import hashlib
-import math
 import os
 import re
 import shutil
@@ -49,7 +48,7 @@ import tempfile
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Literal
 
 import lance
 import numpy as np
@@ -72,10 +71,10 @@ DEFAULT_EMBEDDING_MODEL = 'nomic-ai/nomic-embed-text-v1.5'
 DEFAULT_NUM_PERM = 128
 DEFAULT_NGRAM_SIZE = 5
 DEFAULT_LSH_BANDS = 16
-DEFAULT_COMPUTE_BATCH_SIZE = 1_000
-DEFAULT_WRITE_BATCH_SIZE = 512
+DEFAULT_COMPUTE_BATCH_SIZE = 512
+DEFAULT_WRITE_BATCH_SIZE = 256
 DEFAULT_EMBED_BATCH_SIZE = 32
-TRIM_CHARS = 32_000  # keep first N and last N chars before embedding
+MAX_CHARS = 32_000
 SEMANTIC_PREFIX = 'clustering:'
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -95,12 +94,49 @@ COMPUTE_FEATURES = Features(
     }
 )
 
+PREFILTER_FEATURES = Features(
+    {
+        'id': Value('string'),
+        'text': Value('large_string'),
+    }
+)
+
 SENTENCE_BOUNDARY_REGEX = re.compile(r'((?:[.!?]["\']?)\s+(?=[A-Z"\'])|(?:[\n\r]{2,}\s*(?=[a-zA-Z"\'])))')
 
 
 def split_into_sentences(text: str) -> list[str]:
+    """Split text into sentences using a regex."""
     parts = SENTENCE_BOUNDARY_REGEX.split(text)
     return [parts[i] + (parts[i + 1] if i + 1 < len(parts) else '') for i in range(0, len(parts), 2)]
+
+
+# ──────────────────────────────────────────────────────────────────
+# Pre-filter batch (cheap pass: length guard + composite ID only)
+# Pickle-safe: no closures, all config via fn_kwargs.
+# ──────────────────────────────────────────────────────────────────
+def prefilter_batch(
+    batch: dict[str, list[str]],
+    text_key: str = DEFAULT_TEXT_KEY,
+) -> dict[str, list]:
+    """
+    HF .map(batched=True) worker — cheap pre-filter pass.
+    Drops texts that are too short or too long, then computes only the
+    composite xxh64+blake2b ID (no MinHash / LSH / stats).
+    Returns {id, text} for surviving rows only.
+    """
+    out: dict[str, list] = {'id': [], 'text': []}
+    for text in batch[text_key]:
+        if not text:
+            text = ''
+        if len(text) <= 10 or len(text) > MAX_CHARS:
+            continue
+        enc_text = b' '.join(text.encode('utf-8').split())
+        xxh64_hex = xxhash.xxh3_64_hexdigest(enc_text)
+        blake2b_hex = hashlib.blake2b(enc_text, digest_size=16).hexdigest()
+        # ID length = 16 + 32 = 48 characters
+        out['id'].append(f'{xxh64_hex}{blake2b_hex}')
+        out['text'].append(text)
+    return out
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -108,12 +144,12 @@ def split_into_sentences(text: str) -> list[str]:
 # Pickle-safe: no closures, all config via fn_kwargs.
 # ──────────────────────────────────────────────────────────────────
 def compute_batch(
-    batch: dict,
+    batch: dict[str, list[str]],
     text_key: str = DEFAULT_TEXT_KEY,
     num_perm: int = DEFAULT_NUM_PERM,
     ngram_size: int = DEFAULT_NGRAM_SIZE,
     lsh_bands: int = DEFAULT_LSH_BANDS,
-) -> dict:
+) -> dict[str, list]:
     """
     HF .map(batched=True) worker — computes per-document stats, hashes,
     and composite ID.  Text is passed through for storage + embedding.
@@ -121,19 +157,11 @@ def compute_batch(
     """
     out: dict[str, list] = {c: [] for c in COMPUTE_FEATURES}
 
-    for text in batch[text_key]:
-        if text is None:
-            text = ''
-        if len(text) <= 10 or len(text) > 10_000:
-            continue
-
+    for i, text in enumerate(batch[text_key]):
         enc_text = b' '.join(text.encode('utf-8').split())
 
-        xxh64_hex = xxhash.xxh64_hexdigest(enc_text)
-        blake2b_hex = hashlib.blake2b(enc_text, digest_size=16).hexdigest()
-
         out['text'].append(text)
-        out['id'].append(f'{xxh64_hex}_{blake2b_hex}')
+        out['id'].append(batch['id'][i])
         out['length'].append(len(text))
         out['unique_chars'].append(len(set(text)))
 
@@ -162,12 +190,6 @@ def compute_batch(
 # ──────────────────────────────────────────────────────────────────
 # Hashing / MinHash helpers
 # ──────────────────────────────────────────────────────────────────
-def compute_text_hashes(text: str) -> tuple[str, str]:
-    """Return (xxh64_hex, blake2b_hex) for a text string."""
-    encoded = text.encode('utf-8')
-    return xxhash.xxh64_hexdigest(encoded), hashlib.blake2b(encoded, digest_size=16).hexdigest()
-
-
 def compute_minhash(text: str, num_perm: int = DEFAULT_NUM_PERM, ngram_size: int = DEFAULT_NGRAM_SIZE) -> MinHash:
     """Compute a datasketch MinHash for a single text using word n-grams."""
     tokens = [t for t in text.split() if t not in string.punctuation]
@@ -198,15 +220,10 @@ def minhash_lsh_band_hashes(sig: list[int], num_bands: int) -> list[str]:
 # Embedding helpers
 # ──────────────────────────────────────────────────────────────────
 def trim_for_embedding(text: str) -> str:
-    """Keep the first TRIM_CHARS and the last TRIM_CHARS characters."""
-    if len(text) <= TRIM_CHARS * 2:
+    """Keep the first MAX_CHARS and the last MAX_CHARS characters."""
+    if len(text) <= MAX_CHARS * 2:
         return text
-    return text[:TRIM_CHARS] + text[-TRIM_CHARS:]
-
-
-def get_embedding_dim(model) -> int:
-    """Return the embedding dimension from the model."""
-    return model.get_embedding_dimension()
+    return text[:MAX_CHARS] + text[-MAX_CHARS:]
 
 
 def _adaptive_encode_batch_size(texts: list[str], base_batch_size: int) -> int:
@@ -270,7 +287,7 @@ def make_arrow_schema(embedding_dim: int, num_perm: int = DEFAULT_NUM_PERM) -> p
             pa.field('id', pa.string(), nullable=False),
             pa.field('text', pa.large_string(), nullable=False),
             pa.field('source', pa.string(), nullable=True),
-            pa.field('length', pa.uint64(), nullable=False),
+            pa.field('length', pa.uint32(), nullable=False),
             pa.field('unique_chars', pa.uint32(), nullable=False),
             pa.field('words', pa.uint32(), nullable=False),
             pa.field('sentences', pa.uint32(), nullable=False),
@@ -285,53 +302,73 @@ def open_or_create(db_path: str, embedding_dim: int, num_perm: int = DEFAULT_NUM
     """Open existing Lance dataset or create a new empty one."""
     if os.path.isdir(db_path):
         return lance.dataset(db_path)
+
     schema = make_arrow_schema(embedding_dim, num_perm)
     empty = pa.table({f.name: pa.array([], type=f.type) for f in schema}, schema=schema)
-    os.makedirs(Path(db_path).parent, exist_ok=True)
-    return lance.write_dataset(empty, db_path)
+    ds = lance.write_dataset(empty, db_path)
 
-
-def ensure_indexes(ds: lance.LanceDataset) -> None:
-    """Create Lance indexes if they don't already exist."""
-    existing = {idx['name'] if isinstance(idx, dict) else getattr(idx, 'name', '') for idx in ds.list_indices()}
-
-    # Scalar indexes
+    print('\nCreating indexes…')
+    # Ensure scalar indexes exist before ingestion
     scalar_indexes: list[tuple[str, Literal['BTREE', 'LABEL_LIST']]] = [
         ('id', 'BTREE'),
         ('length', 'BTREE'),
         ('lsh_bands', 'LABEL_LIST'),
     ]
     for col, idx_type in scalar_indexes:
-        name = f'{col}_idx'
-        if name not in existing:
-            try:
-                ds.create_scalar_index(col, index_type=idx_type, replace=False)
-                print(f'  Created {idx_type} index on "{col}"')
-            except Exception as exc:
-                print(f'  Skipped {idx_type} index on "{col}": {exc}')
-
-    # Vector index for sentence-transformer embeddings
-    if 'embed1_idx' not in existing:
-        # Detect embedding size from schema
-        embed_field = ds.schema.field('embed1')
-        dim = embed_field.type.list_size
-        num_sub = max(1, dim // 16)
-        # Ensure SIMD alignment: (dim / num_sub) % 8 == 0
-        while num_sub > 1 and (dim // num_sub) % 8 != 0:
-            num_sub -= 1
         try:
-            ds.create_index(
-                'embed1',
-                index_type='IVF_PQ',
-                metric='cosine',
-                num_partitions=256,
-                num_sub_vectors=num_sub,
-                replace=False,
-            )
-            # Created IVF_PQ index on "embed1" (sub_vectors=48)
-            print(f'  Created IVF_PQ index on "embed1" (sub_vectors={num_sub})')
+            ds.create_scalar_index(col, index_type=idx_type, replace=False)
+            print(f'  Created {idx_type} index on "{col}"')
         except Exception as exc:
-            print(f'  Skipped IVF_PQ index on "embed1": {exc}')
+            print(f'  Skipped {idx_type} index on "{col}": {exc}')
+
+    # Detect embedding size from schema
+    dim = schema.field('embed1').type.list_size
+    num_sub = max(1, dim // 16)
+    # Ensure SIMD alignment: (dim / num_sub) % 8 == 0
+    while num_sub > 1 and (dim // num_sub) % 8 != 0:
+        num_sub -= 1
+    # Ensure vector index for sentence-transformer embeddings exists
+    try:
+        ds.create_index(
+            'embed1',
+            index_type='IVF_PQ',
+            metric='cosine',
+            num_partitions=256,
+            num_sub_vectors=num_sub,
+            replace=False,
+        )
+        # Created IVF_PQ index on "embed1" (sub_vectors=48)
+        print(f'  Created IVF_PQ index on "embed1" (sub_vectors={num_sub})')
+    except Exception as exc:
+        print(f'  Skipped IVF_PQ index on "embed1": {exc}')
+    print('  Done.')
+
+    return ds
+
+
+def ensure_indexes(ds: lance.LanceDataset) -> None:
+    """Create Vector indexes if they don't already exist."""
+
+    # Detect embedding size from schema
+    dim = ds.schema.field('embed1').type.list_size
+    num_sub = max(1, dim // 16)
+    # Ensure SIMD alignment: (dim / num_sub) % 8 == 0
+    while num_sub > 1 and (dim // num_sub) % 8 != 0:
+        num_sub -= 1
+    # Ensure vector index for sentence-transformer embeddings exists
+    try:
+        ds.create_index(
+            'embed1',
+            index_type='IVF_PQ',
+            metric='cosine',
+            num_partitions=256,
+            num_sub_vectors=num_sub,
+            replace=False,
+        )
+        # Created IVF_PQ index on "embed1" (sub_vectors=48)
+        print(f'  Created IVF_PQ index on "embed1" (sub_vectors={num_sub})')
+    except Exception as exc:
+        print(f'  Skipped IVF_PQ index on "embed1": {exc}')
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -341,15 +378,15 @@ def ensure_indexes(ds: lance.LanceDataset) -> None:
 class FileStats:
     path: str
     rows_loaded: int = 0
-    rows_dropped: int = 0
-    rows_skipped: int = 0  # already in DB
+    rows_dropped: int = 0  # Due to length filter
+    rows_duplicate: int = 0  # Already in DB
     rows_indexed: int = 0
 
     def print_summary(self) -> None:
         print(
             f'  Loaded:      {self.rows_loaded:>12,}\n'
-            f'  Dropped:     {self.rows_dropped:>12,}  (len ≤ 10 or > 10K)\n'
-            f'  Skipped:     {self.rows_skipped:>12,}  (already in DB)\n'
+            f'  Dropped:     {self.rows_dropped:>12,}  (len ≤ 10 or > 32K)\n'
+            f'  Duplicates:  {self.rows_duplicate:>12,}  (already indexed)\n'
             f'  Indexed:     {self.rows_indexed:>12,}'
         )
 
@@ -369,116 +406,119 @@ def _infer_dataset_format(path: str) -> str:
 # ──────────────────────────────────────────────────────────────────
 def process_file(
     input_path: str,
-    db_path: str,
-    source: str | None,
-    model,
-    embedding_dim: int,
-    text_key: str,
-    num_perm: int,
-    ngram_size: int,
-    lsh_bands: int,
-    num_proc: int,
-    compute_batch_size: int,
-    write_batch_size: int,
-    embed_batch_size: int,
-    skip_existing: bool,
-    cache_dir: str | None = None,
-    no_cache: bool = False,
+    model: SentenceTransformer,
+    args: argparse.Namespace,
 ) -> FileStats:
     stats = FileStats(path=input_path)
-
-    ds = lance.dataset(db_path) if os.path.isdir(db_path) else None
 
     # ── 1. Load ────────────────────────────────────────────────────
     fmt = _infer_dataset_format(input_path)
     _tmp_cache: str | None = None
-    if no_cache:
+    if args.no_cache:
         _tmp_cache = tempfile.mkdtemp(prefix='index_lance_')
         effective_cache = _tmp_cache
     else:
-        effective_cache = cache_dir
+        effective_cache = args.cache_dir
 
-    arrow_schema = make_arrow_schema(embedding_dim, num_perm)
+    embedding_dim = model.get_embedding_dimension()
+    arrow_schema = make_arrow_schema(embedding_dim, args.num_perm)
 
     try:
         hf_ds = load_dataset(fmt, split='train', data_files=input_path, cache_dir=effective_cache)
-        if text_key not in hf_ds.column_names:
-            raise ValueError(f"Field '{text_key}' not found in {input_path}. Available columns: {hf_ds.column_names}")
+        if args.text_key not in hf_ds.column_names:
+            raise ValueError(f"Field '{args.text_key}' not found in {input_path}. Available columns: {hf_ds.column_names}")
         stats.rows_loaded = len(hf_ds)
         print(f'  Loaded:   {stats.rows_loaded:,} rows')
 
-        # ── 2. Skip records already in the DB ────────────────────────
-        if skip_existing and ds is not None:
-            if ds.count_rows() > 0:
-                existing_ids = set(ds.to_table(columns=['id']).column('id').to_pylist())
-                before = len(hf_ds)
+        # ── 2. Pre-filter: length guard + composite ID (cheap, CPU multiproc) ─
+        hf_ds = hf_ds.map(
+            prefilter_batch,
+            batched=True,
+            batch_size=args.compute_batch_size,
+            writer_batch_size=args.compute_batch_size,
+            num_proc=args.num_proc,
+            remove_columns=hf_ds.column_names,
+            features=PREFILTER_FEATURES,
+            fn_kwargs={'text_key': args.text_key},
+            desc='  Pre-filtering (length + IDs)',
+        )
+        stats.rows_dropped = stats.rows_loaded - len(hf_ds)
+        print(f'  Pre-filtered: {len(hf_ds):,} rows' + (f'  ({stats.rows_dropped:,} dropped by length)' if stats.rows_dropped else ''))
 
-                def _not_in_db(batch: dict, *, _existing: set = existing_ids, _text_key: str = text_key) -> list[bool]:
-                    keep = []
-                    for text in batch[_text_key]:
-                        if text is None or len(text) <= 10 or len(text) > 10_000:
-                            keep.append(False)
-                            continue
-                        enc = b' '.join(text.encode('utf-8').split())
-                        doc_id = f'{xxhash.xxh64_hexdigest(enc)}_{hashlib.blake2b(enc, digest_size=16).hexdigest()}'
-                        keep.append(doc_id not in _existing)
-                    return keep
+        # ── 3. Deduplicate: within-file + Lance DB (batch ID lookup) ──────────
+        ds_lance = lance.dataset(args.db_path)
+        db_has_rows = ds_lance.count_rows() > 0
+        seen_ids: set[str] = set()
+        keep_ids: set[str] = set()
+        prefiltered_count = len(hf_ds)
 
-                hf_ds = hf_ds.filter(
-                    _not_in_db,
-                    batched=True,
-                    batch_size=compute_batch_size,
-                    desc='  Filtering existing IDs',
-                )
-                stats.rows_skipped = before - len(hf_ds)
-                del existing_ids
-                print(f'  Filtered: {len(hf_ds):,} new rows  ({stats.rows_skipped:,} already in DB)')
+        for dedup_batch in hf_ds.iter(batch_size=args.compute_batch_size):
+            batch_ids: list[str] = dedup_batch['id']
+            novel_ids = [bid for bid in batch_ids if bid not in seen_ids]
+            seen_ids.update(batch_ids)
+            if db_has_rows and novel_ids:
+                quoted = ', '.join(f"'{bid}'" for bid in novel_ids)
+                existing = set(ds_lance.to_table(filter=f'id IN ({quoted})', columns=['id']).column('id').to_pylist())
+                keep_ids.update(bid for bid in novel_ids if bid not in existing)
+            else:
+                keep_ids.update(novel_ids)
 
-                if len(hf_ds) == 0:
-                    print('  Nothing new to index!')
-                    return stats
+        stats.rows_duplicate = prefiltered_count - len(keep_ids)
+        print(
+            f'  Unique new rows: {len(keep_ids):,}' + (f'  ({stats.rows_duplicate:,} duplicates skipped)' if stats.rows_duplicate else '')
+        )
 
-        # ── 3. Compute stats + hashes + MinHash (CPU multiproc) ───────
+        if not keep_ids:
+            print('  Nothing new to index.')
+            return stats
+
+        # ── 4. Filter dataset to new rows only ────────────────────────────────
+        hf_ds = hf_ds.filter(
+            lambda batch: [bid in keep_ids for bid in batch['id']],
+            batched=True,
+            batch_size=args.compute_batch_size,
+            desc='  Filtering duplicates',
+        )
+
+        # ── 5. Compute stats + hashes + MinHash (CPU multiproc) ───────────────
         hf_ds = hf_ds.map(
             compute_batch,
             batched=True,
-            batch_size=compute_batch_size,
-            writer_batch_size=compute_batch_size,
-            num_proc=num_proc,
+            batch_size=args.compute_batch_size,
+            writer_batch_size=args.compute_batch_size,
+            num_proc=args.num_proc,
             remove_columns=hf_ds.column_names,
             features=COMPUTE_FEATURES,
-            fn_kwargs={'text_key': text_key, 'num_perm': num_perm, 'ngram_size': ngram_size, 'lsh_bands': lsh_bands},
+            fn_kwargs={'text_key': args.text_key, 'num_perm': args.num_perm, 'ngram_size': args.ngram_size, 'lsh_bands': args.lsh_bands},
             desc='  Computing stats & hashes',
         )
-        stats.rows_dropped = stats.rows_loaded - len(hf_ds)
-        print(f'  After compute: {len(hf_ds):,} rows' + (f'  ({stats.rows_dropped:,} dropped)' if stats.rows_dropped else ''))
+        print(f'  After map: {len(hf_ds):,} rows')
 
-        # ── 4. Batch: dedupe within file → embed → build Arrow table → append ──
+        # ── 6. Embed → build Arrow table → append ─────────────────────────────
         pbar = tqdm(total=len(hf_ds), desc='  Writing index', unit='doc', dynamic_ncols=True)
-        for batch in hf_ds.iter(batch_size=write_batch_size):
+        for batch in hf_ds.iter(batch_size=args.write_batch_size):
             texts = batch['text']
+            doc_ids = batch['id']
             n = len(texts)
 
-            doc_ids = batch['id']
-            batch_lsh_bands = batch['lsh_bands']
-
-            # Embed
-            embed_f16 = embed_texts(model, texts, batch_size=embed_batch_size)
+            # Run embedding in a separate loop to isolate OOM risk and ensure it doesn't
+            # affect the filter and compute batch
+            embed_f16 = embed_texts(model, texts, batch_size=args.embed_batch_size)
 
             tbl = pa.table(
                 {
                     'id': pa.array(doc_ids, type=pa.string()),
                     'text': pa.array(texts, type=pa.large_string()),
-                    'source': pa.array([source] * n if source else [None] * n, type=pa.string()),
-                    'length': pa.array(batch['length'], type=pa.uint64()),
-                    'unique_chars': pa.array(batch['unique_chars'], type=pa.uint32()),
-                    'words': pa.array(batch['words'], type=pa.uint32()),
-                    'sentences': pa.array(batch['sentences'], type=pa.uint32()),
+                    'source': pa.array([args.source] * n if args.source else [None] * n, type=pa.string()),
+                    'length': pa.array([batch['length'][i] for i in range(n)], type=pa.uint64()),
+                    'unique_chars': pa.array([batch['unique_chars'][i] for i in range(n)], type=pa.uint32()),
+                    'words': pa.array([batch['words'][i] for i in range(n)], type=pa.uint32()),
+                    'sentences': pa.array([batch['sentences'][i] for i in range(n)], type=pa.uint32()),
                     'minhash': pa.FixedSizeListArray.from_arrays(
-                        pa.array([v for mh in batch['minhash'] for v in mh], type=pa.uint64()),
-                        list_size=num_perm,
+                        pa.array([v for i in range(n) for v in batch['minhash'][i]], type=pa.uint64()),
+                        list_size=args.num_perm,
                     ),
-                    'lsh_bands': pa.array(batch_lsh_bands, type=pa.list_(pa.string())),
+                    'lsh_bands': pa.array([batch['lsh_bands'][i] for i in range(n)], type=pa.list_(pa.string())),
                     'embed1': pa.FixedSizeListArray.from_arrays(
                         pa.array([v for e in embed_f16 for v in e], type=pa.float16()),
                         list_size=embedding_dim,
@@ -487,23 +527,8 @@ def process_file(
                 schema=arrow_schema,
             )
 
-            # Write to Lance with dedup
-            if skip_existing and ds is not None:
-                if ds.count_rows() > 0:
-                    before_count = ds.count_rows()
-                    ds.merge_insert('id').when_not_matched_insert_all().execute(tbl)
-                    ds = lance.dataset(db_path)
-                    after_count = ds.count_rows()
-                    inserted = after_count - before_count
-                    skipped = n - inserted
-                    stats.rows_indexed += inserted
-                    stats.rows_skipped += skipped
-                else:
-                    lance.write_dataset(tbl, db_path, mode='append' if os.path.isdir(db_path) else 'create')
-                    stats.rows_indexed += n
-            else:
-                lance.write_dataset(tbl, db_path, mode='append' if os.path.isdir(db_path) else 'create')
-                stats.rows_indexed += n
+            lance.write_dataset(tbl, args.db_path, mode='append')
+            stats.rows_indexed += n
 
             pbar.update(n)
 
@@ -527,7 +552,7 @@ def cmd_index(args: argparse.Namespace) -> None:
     # Load embedding model in F16 for smaller index size and faster embedding on GPU
     print(f'Loading embedding model: {args.embedding_model}')
     model = SentenceTransformer(args.embedding_model, device=DEVICE).half()
-    embedding_dim = get_embedding_dim(model)
+    embedding_dim = model.get_embedding_dimension()
     print(f'Embedding dimension: {embedding_dim}')
 
     # Open or create dataset
@@ -536,7 +561,7 @@ def cmd_index(args: argparse.Namespace) -> None:
 
     grand_loaded = 0
     grand_dropped = 0
-    grand_skipped = 0
+    grand_duplicate = 0
     grand_indexed = 0
 
     for input_path in files:
@@ -546,35 +571,24 @@ def cmd_index(args: argparse.Namespace) -> None:
 
         fstats = process_file(
             input_path=input_path,
-            db_path=args.db_path,
-            source=args.source,
             model=model,
-            embedding_dim=embedding_dim,
-            text_key=args.text_key,
-            num_perm=args.num_perm,
-            ngram_size=args.ngram_size,
-            lsh_bands=args.lsh_bands,
-            num_proc=args.num_proc,
-            compute_batch_size=args.compute_batch_size,
-            write_batch_size=args.write_batch_size,
-            embed_batch_size=args.embed_batch_size,
-            skip_existing=not args.no_skip_existing,
-            cache_dir=args.cache_dir,
-            no_cache=args.no_cache,
+            args=args,
         )
         fstats.print_summary()
 
         grand_loaded += fstats.rows_loaded
         grand_dropped += fstats.rows_dropped
-        grand_skipped += fstats.rows_skipped
+        grand_duplicate += fstats.rows_duplicate
         grand_indexed += fstats.rows_indexed
 
     ds = lance.dataset(args.db_path)
 
     if args.optimize:
+        # NOOP: Lance optimize is currently broken!
         print('\nCompacting dataset…')
-        ds.optimize.compact_files(target_rows_per_fragment=8_388_608)  # 8M rows
-        ds = lance.dataset(args.db_path)
+        # ds.optimize.compact_files(target_rows_per_fragment=8_388_608)  # 8M rows
+        # ds.optimize.optimize_indices()
+        # ds = lance.dataset(args.db_path)
         print('  Done.')
 
     print('\nChecking indexes…')
@@ -587,8 +601,8 @@ def cmd_index(args: argparse.Namespace) -> None:
     print(f'{"=" * 60}')
     print(
         f'  Grand loaded:     {grand_loaded:>12,}\n'
-        f'  Grand dropped:    {grand_dropped:>12,}  (len ≤ 10 or > 10K)\n'
-        f'  Grand skipped:    {grand_skipped:>12,}  (already in DB)\n'
+        f'  Grand dropped:    {grand_dropped:>12,}  (len ≤ 10 or > 32K)\n'
+        f'  Grand duplicates: {grand_duplicate:>12,}  (already indexed)\n'
         f'  Grand indexed:    {grand_indexed:>12,}'
     )
     print(f'  Dataset:          {args.db_path}')
@@ -644,14 +658,17 @@ def _print_doc_row(row: dict, indent: int = 2) -> None:
 # ID resolution helper
 # ══════════════════════════════════════════════════════════════════
 def _resolve_id(args: argparse.Namespace) -> str | None:
-    """Return the composite xxh64_blake2b id from --id or by hashing --text."""
+    """Return the composite xxh64-blake2b id from --id or by hashing --text."""
     if args.id:
-        if '_' not in args.id:
-            raise SystemExit(f'--id must be in xxh64_blake2b format, got: {args.id!r}')
+        if len(args.id) != 48 or not re.match(r'^[0-9a-f]{16}[0-9a-f]{32}$', args.id):
+            raise SystemExit(f'--id must be in xxh64-blake2b format, got: {args.id!r}')
         return args.id
     if getattr(args, 'text', None):
-        xxh, bl = compute_text_hashes(args.text)
-        return f'{xxh}_{bl}'
+        enc_text = b' '.join(args.text.encode('utf-8').split())
+        xxh64_hex = xxhash.xxh3_64_hexdigest(enc_text)
+        blake2b_hex = hashlib.blake2b(enc_text, digest_size=16).hexdigest()
+        # ID length = 16 + 32 = 48 characters
+        return f'{xxh64_hex}{blake2b_hex}'
     return None
 
 
@@ -661,7 +678,7 @@ def _resolve_id(args: argparse.Namespace) -> str | None:
 def cmd_get(args: argparse.Namespace) -> None:
     doc_id = _resolve_id(args)
     if doc_id is None:
-        raise SystemExit('Provide --id xxh64_blake2b or --text "some text"')
+        raise SystemExit('Provide --id xxh64-blake2b or --text "some text"')
 
     if not os.path.isdir(args.db_path):
         raise SystemExit(f'Dataset not found: {args.db_path}')
@@ -826,7 +843,7 @@ def _find_semantic(args: argparse.Namespace) -> None:
 
     matches: list[tuple[float, str, str, int, str]] = []
     for row in results.to_pylist():
-        # Lance returns _distance for nearest queries (L2 or cosine distance);
+        # Lance returns _distance for nearest queries;
         # for cosine distance: similarity = 1 - distance
         score = 1.0 - (row.get('_distance', 1.0))
         if score < args.threshold:
@@ -884,9 +901,8 @@ def parse_args() -> argparse.Namespace:
     p_index.add_argument('--compute-batch-size', type=int, default=DEFAULT_COMPUTE_BATCH_SIZE, help='HF datasets.map() batch size')
     p_index.add_argument('--write-batch-size', type=int, default=DEFAULT_WRITE_BATCH_SIZE, help='Iteration batch size for write phase')
     p_index.add_argument('--embed-batch-size', type=int, default=DEFAULT_EMBED_BATCH_SIZE, help='Batch size for model.encode()')
-    p_index.add_argument('--zvec-path', default='zvec-server/zvec-data/text_index', help='Path to Zvec index for precalculated embeddings')
-    p_index.add_argument('--no-skip-existing', action='store_true', help='Do not check for existing docs (re-insert all)')
-    p_index.add_argument('--optimize', action='store_true', help='Compact files and build indexes after ingestion')
+    p_index.add_argument('--overwrite', action='store_true', help='Overwrite existing dataset (if not set, identical records are skipped)')
+    p_index.add_argument('--optimize', action='store_true', help='Compact files and optimize indexes after ingestion')
     cache_group = p_index.add_mutually_exclusive_group()
     cache_group.add_argument('--cache-dir', default=None, help='HF datasets cache directory')
     cache_group.add_argument('--no-cache', action='store_true', help='Use a temporary cache dir per file')
@@ -897,7 +913,7 @@ def parse_args() -> argparse.Namespace:
     # ── get ────────────────────────────────────────────────────────
     p_get = sub.add_parser('get', help='Retrieve a single record by composite ID or raw text')
     id_group = p_get.add_mutually_exclusive_group(required=True)
-    id_group.add_argument('--id', help='Composite ID in xxh64_blake2b format')
+    id_group.add_argument('--id', help='Composite ID in xxh64-blake2b format')
     id_group.add_argument('--text', help='Raw text to hash and look up')
 
     # ── find-similar ───────────────────────────────────────────────
@@ -926,7 +942,6 @@ def main() -> None:
     args = parse_args()
     if args.num_perm % args.lsh_bands != 0:
         raise SystemExit(f'--lsh-bands {args.lsh_bands} must evenly divide --num-perm {args.num_perm}')
-
     dispatch = {
         'index': cmd_index,
         'stats': cmd_stats,
