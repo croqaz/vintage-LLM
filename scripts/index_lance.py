@@ -49,6 +49,7 @@ import tempfile
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Literal, cast
 
 import lance
 import numpy as np
@@ -254,6 +255,7 @@ def embed_texts(model, texts: list[str], batch_size: int = DEFAULT_EMBED_BATCH_S
     emb_list = [[0.0]] * len(trimmed)
     for sorted_i, orig_i in enumerate(order):
         emb = raw_sorted[sorted_i]
+        # emb.dtype=torch.float16 ; emb.shape=torch.Size([embed_dim])
         emb_list[orig_i] = (emb / emb.norm(dim=-1, keepdim=True)).cpu().numpy().tolist()
     return emb_list
 
@@ -294,7 +296,7 @@ def ensure_indexes(ds: lance.LanceDataset) -> None:
     existing = {idx['name'] if isinstance(idx, dict) else getattr(idx, 'name', '') for idx in ds.list_indices()}
 
     # Scalar indexes
-    scalar_indexes = [
+    scalar_indexes: list[tuple[str, Literal['BTREE', 'LABEL_LIST']]] = [
         ('id', 'BTREE'),
         ('length', 'BTREE'),
         ('lsh_bands', 'LABEL_LIST'),
@@ -308,11 +310,9 @@ def ensure_indexes(ds: lance.LanceDataset) -> None:
             except Exception as exc:
                 print(f'  Skipped {idx_type} index on "{col}": {exc}')
 
-    # Vector index — only if enough rows
-    n = ds.count_rows()
-    if n >= 256 and 'embed1_idx' not in existing:
-        num_partitions = max(4, int(math.sqrt(n)))
-        # Detect embedding dim from schema
+    # Vector index for sentence-transformer embeddings
+    if 'embed1_idx' not in existing:
+        # Detect embedding size from schema
         embed_field = ds.schema.field('embed1')
         dim = embed_field.type.list_size
         num_sub = max(1, dim // 16)
@@ -324,11 +324,12 @@ def ensure_indexes(ds: lance.LanceDataset) -> None:
                 'embed1',
                 index_type='IVF_PQ',
                 metric='cosine',
-                num_partitions=num_partitions,
+                num_partitions=256,
                 num_sub_vectors=num_sub,
                 replace=False,
             )
-            print(f'  Created IVF_PQ index on "embed1" (partitions={num_partitions}, sub_vectors={num_sub})')
+            # Created IVF_PQ index on "embed1" (sub_vectors=48)
+            print(f'  Created IVF_PQ index on "embed1" (sub_vectors={num_sub})')
         except Exception as exc:
             print(f'  Skipped IVF_PQ index on "embed1": {exc}')
 
@@ -341,7 +342,7 @@ class FileStats:
     path: str
     rows_loaded: int = 0
     rows_dropped: int = 0
-    rows_skipped: int = 0  # already in DB (merge_insert skipped)
+    rows_skipped: int = 0  # already in DB
     rows_indexed: int = 0
 
     def print_summary(self) -> None:
@@ -415,7 +416,7 @@ def process_file(
                 def _not_in_db(batch: dict, *, _existing: set = existing_ids, _text_key: str = text_key) -> list[bool]:
                     keep = []
                     for text in batch[_text_key]:
-                        if text is None or len(text) <= 10 or len(text) > 10_000_000:
+                        if text is None or len(text) <= 10 or len(text) > 10_000:
                             keep.append(False)
                             continue
                         enc = b' '.join(text.encode('utf-8').split())
@@ -452,7 +453,7 @@ def process_file(
         stats.rows_dropped = stats.rows_loaded - len(hf_ds)
         print(f'  After compute: {len(hf_ds):,} rows' + (f'  ({stats.rows_dropped:,} dropped)' if stats.rows_dropped else ''))
 
-        # ── 4. Batch: embed → build Arrow table → merge_insert ────────
+        # ── 4. Batch: dedupe within file → embed → build Arrow table → append ──
         pbar = tqdm(total=len(hf_ds), desc='  Writing index', unit='doc', dynamic_ncols=True)
         for batch in hf_ds.iter(batch_size=write_batch_size):
             texts = batch['text']
@@ -462,11 +463,7 @@ def process_file(
             batch_lsh_bands = batch['lsh_bands']
 
             # Embed
-            embeddings = embed_texts(model, texts, batch_size=embed_batch_size)
-
-            # Build Arrow table for this batch
-            # Convert embeddings to float16 numpy arrays
-            embed_f16 = [np.array(e, dtype=np.float16).tolist() for e in embeddings]
+            embed_f16 = embed_texts(model, texts, batch_size=embed_batch_size)
 
             tbl = pa.table(
                 {
@@ -576,7 +573,7 @@ def cmd_index(args: argparse.Namespace) -> None:
 
     if args.optimize:
         print('\nCompacting dataset…')
-        ds.optimize.compact_files(target_rows_per_fragment=1_048_576)
+        ds.optimize.compact_files(target_rows_per_fragment=8_388_608)  # 8M rows
         ds = lance.dataset(args.db_path)
         print('  Done.')
 
@@ -887,6 +884,7 @@ def parse_args() -> argparse.Namespace:
     p_index.add_argument('--compute-batch-size', type=int, default=DEFAULT_COMPUTE_BATCH_SIZE, help='HF datasets.map() batch size')
     p_index.add_argument('--write-batch-size', type=int, default=DEFAULT_WRITE_BATCH_SIZE, help='Iteration batch size for write phase')
     p_index.add_argument('--embed-batch-size', type=int, default=DEFAULT_EMBED_BATCH_SIZE, help='Batch size for model.encode()')
+    p_index.add_argument('--zvec-path', default='zvec-server/zvec-data/text_index', help='Path to Zvec index for precalculated embeddings')
     p_index.add_argument('--no-skip-existing', action='store_true', help='Do not check for existing docs (re-insert all)')
     p_index.add_argument('--optimize', action='store_true', help='Compact files and build indexes after ingestion')
     cache_group = p_index.add_mutually_exclusive_group()

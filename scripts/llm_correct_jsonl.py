@@ -8,6 +8,7 @@ import argparse
 import itertools
 import json
 import os
+import random
 import time
 
 import requests
@@ -30,6 +31,11 @@ Printed publications attacking private character, is considered with great reaso
 
 def correct_text_batch(chunk, url, api_key=None, model=None, delay=0):
     if delay:
+        if delay > 1:
+            sign = random.choice([-1, 1])
+            jitt = random.uniform(0, delay * 0.1)
+            delay += sign * jitt
+            print(f'  Waiting {delay:.2f}s before API call...')
         time.sleep(delay)
     if api_key:
         headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
@@ -156,7 +162,7 @@ def main():
 
             original_text = entry['text']
             orig_words = original_text.split()
-            print(f'Processing entry {line_num} ({len(original_text)} chars, {len(orig_words)} words) ...')
+            print(f'Will process entry {line_num} ({len(original_text)} chars, {len(orig_words)} words) ...')
             print(
                 f'  Input  first/last word: {repr(orig_words[0]) if orig_words else "(empty)"} / {repr(orig_words[-1]) if orig_words else "(empty)"}'
             )
