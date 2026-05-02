@@ -306,8 +306,15 @@ def open_or_create(db_path: str, embedding_dim: int, num_perm: int = DEFAULT_NUM
     schema = make_arrow_schema(embedding_dim, num_perm)
     empty = pa.table({f.name: pa.array([], type=f.type) for f in schema}, schema=schema)
     ds = lance.write_dataset(empty, db_path)
+    try:
+        ds.create_scalar_index('id', index_type='BTREE', replace=False)
+    except Exception as exc:
+        print(f'  Warning: Failed to create initial index on "id": {exc}')
+    return ds
 
-    print('\nCreating indexes…')
+
+def ensure_indexes(ds: lance.LanceDataset, replace=False) -> None:
+    """Create Vector indexes if they don't already exist."""
     # Ensure scalar indexes exist before ingestion
     scalar_indexes: list[tuple[str, Literal['BTREE', 'LABEL_LIST']]] = [
         ('id', 'BTREE'),
@@ -316,38 +323,10 @@ def open_or_create(db_path: str, embedding_dim: int, num_perm: int = DEFAULT_NUM
     ]
     for col, idx_type in scalar_indexes:
         try:
-            ds.create_scalar_index(col, index_type=idx_type, replace=False)
+            ds.create_scalar_index(col, index_type=idx_type, replace=replace)
             print(f'  Created {idx_type} index on "{col}"')
         except Exception as exc:
             print(f'  Skipped {idx_type} index on "{col}": {exc}')
-
-    # Detect embedding size from schema
-    dim = schema.field('embed1').type.list_size
-    num_sub = max(1, dim // 16)
-    # Ensure SIMD alignment: (dim / num_sub) % 8 == 0
-    while num_sub > 1 and (dim // num_sub) % 8 != 0:
-        num_sub -= 1
-    # Ensure vector index for sentence-transformer embeddings exists
-    try:
-        ds.create_index(
-            'embed1',
-            index_type='IVF_PQ',
-            metric='cosine',
-            num_partitions=256,
-            num_sub_vectors=num_sub,
-            replace=False,
-        )
-        # Created IVF_PQ index on "embed1" (sub_vectors=48)
-        print(f'  Created IVF_PQ index on "embed1" (sub_vectors={num_sub})')
-    except Exception as exc:
-        print(f'  Skipped IVF_PQ index on "embed1": {exc}')
-    print('  Done.')
-
-    return ds
-
-
-def ensure_indexes(ds: lance.LanceDataset) -> None:
-    """Create Vector indexes if they don't already exist."""
 
     # Detect embedding size from schema
     dim = ds.schema.field('embed1').type.list_size
@@ -363,7 +342,7 @@ def ensure_indexes(ds: lance.LanceDataset) -> None:
             metric='cosine',
             num_partitions=256,
             num_sub_vectors=num_sub,
-            replace=False,
+            replace=replace,
         )
         # Created IVF_PQ index on "embed1" (sub_vectors=48)
         print(f'  Created IVF_PQ index on "embed1" (sub_vectors={num_sub})')
@@ -586,14 +565,14 @@ def cmd_index(args: argparse.Namespace) -> None:
     if args.optimize:
         # NOOP: Lance optimize is currently broken!
         print('\nCompacting dataset…')
-        # ds.optimize.compact_files(target_rows_per_fragment=8_388_608)  # 8M rows
+        # ds.optimize.compact_files(target_rows_per_fragment=2_097_152)  # 2M rows
         # ds.optimize.optimize_indices()
         # ds = lance.dataset(args.db_path)
         print('  Done.')
 
-    print('\nChecking indexes…')
-    ensure_indexes(ds)
-    print('  Done.')
+        print('\nChecking indexes…')
+        ensure_indexes(ds)
+        print('  Done.')
 
     # ── Final summary ──────────────────────────────────────────────
     print(f'\n{"=" * 60}')
