@@ -15,14 +15,11 @@ dependencies = [
     "datasets>=4.8.0",
     "datasketch>=1.10",
     "huggingface-hub>=1.10",
-    "litdata>=0.2",
-    "litgpt",
     "orjson>=3.11",
     "sentence-transformers>=5.4",
     "tokenizers>=0.22",
     "torch>=2.10",
     "transformers>=5.5",
-    "zvec>=0.3",
 ]
 
 [project.urls]
