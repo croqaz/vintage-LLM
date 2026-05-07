@@ -7,16 +7,20 @@ TOK_VERSION = 't-v3'
 KNOWLEDGE_PATH = 'base_knowledge.jsonl'
 
 
-def main(knowledge: list[dict[str, str]]):
-    tokenizer = AutoTokenizer.from_pretrained(f'tokenizers/{TOK_VERSION}')
+def main(knowledge: list[dict[str, str]], chat_template=True) -> list[str]:
     strings = []
-    for qa in knowledge:
-        strings.append(
-            tokenizer.apply_chat_template(
-                [{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}],
-                tokenize=False,
+    if chat_template:
+        tokenizer = AutoTokenizer.from_pretrained(f'tokenizers/{TOK_VERSION}')
+        for qa in knowledge:
+            strings.append(
+                tokenizer.apply_chat_template(
+                    [{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}],
+                    tokenize=False,
+                )
             )
-        )
+    else:
+        for qa in knowledge:
+            strings.append(f'Question: {qa["question"]}\nAnswer: {qa["answer"]}')
     return strings
 
 

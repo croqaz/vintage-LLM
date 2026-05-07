@@ -16,30 +16,28 @@ def checkpoint_step(path: Path) -> int:
     if state_path.exists():
         state = json.loads(state_path.read_text(encoding='utf-8'))
         return int(state.get('step', 0) or 0)
-
     match = re.fullmatch(r'checkpoint-(\d+)', path.name)
     if match is not None:
         return int(match.group(1))
-
     if path.name == 'final':
         return 10**18
-
     return -1
 
 
 def find_latest_checkpoint(checkpoints_dir: Path) -> Path:
     if not checkpoints_dir.exists():
-        raise FileNotFoundError(f'checkpoint directory does not exist: {checkpoints_dir}')
-
-    candidates = [
+        raise FileNotFoundError(f'Checkpoint directory does not exist: {checkpoints_dir}')
+    numbered = [
         path
         for path in checkpoints_dir.iterdir()
-        if path.is_dir() and (path / 'config.json').exists() and (path.name == 'final' or path.name.startswith('checkpoint-'))
+        if path.is_dir() and (path / 'config.json').exists() and path.name.startswith('checkpoint-')
     ]
-    if not candidates:
-        raise FileNotFoundError(f'no model checkpoints found in {checkpoints_dir}')
-
-    return max(candidates, key=checkpoint_step)
+    if numbered:
+        return max(numbered, key=lambda p: int(p.name.split('-')[1]))
+    final = checkpoints_dir / 'final'
+    if final.is_dir() and (final / 'config.json').exists():
+        return final
+    raise FileNotFoundError(f'No model checkpoints found in {checkpoints_dir}')
 
 
 def select_device(name: str) -> torch.device:
@@ -65,11 +63,10 @@ def select_dtype(name: str, device: torch.device) -> torch.dtype:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Generate text from the latest tiny GPT-NeoX checkpoint.')
+    parser = argparse.ArgumentParser(description='Generate text from the latest checkpoint.')
     parser.add_argument('prompt', nargs='?', help='Text prompt to continue.')
     parser.add_argument('--checkpoint', type=Path, help='Specific checkpoint directory to load.')
     parser.add_argument('--checkpoints-dir', type=Path, default=PROJECT_DIR / 'checkpoints')
-    parser.add_argument('--tokenizer', type=Path, default=PROJECT_DIR / 'pythia-14m')
     parser.add_argument('--tokens', type=int, default=100, help='Number of new tokens to generate.')
     parser.add_argument('--temperature', type=float, default=0.8)
     parser.add_argument('--top-p', type=float, default=0.95)
@@ -99,13 +96,12 @@ def main() -> None:
     device = select_device(args.device)
     dtype = select_dtype(args.dtype, device)
 
-    tokenizer_source = checkpoint_dir if (checkpoint_dir / 'tokenizer.json').exists() else args.tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_source, use_fast=True)
     model = AutoModelForCausalLM.from_pretrained(checkpoint_dir, dtype=dtype)
     model.config.use_cache = True
     model.to(device)
     model.eval()
 
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir, use_fast=True)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
 

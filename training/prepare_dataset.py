@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 from transformers import AutoTokenizer
 
-DEFAULT_TOKENIZER = 'EleutherAI/pythia-14m'
+DEFAULT_TOKENIZER = './tokenizers/t-v3/'
 
 
 def parse_args() -> argparse.Namespace:

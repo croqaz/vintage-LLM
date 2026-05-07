@@ -13,7 +13,8 @@ tokenizer.decoder = ByteLevelDecoder()
 trainer = BpeTrainer(
     vocab_size=32752,
     min_frequency=5,
-    special_tokens=['<|pad|>', '<|unk|>', '<|mask|>', '<|bos|>', '<|eos|>', '<|system|>', '<|user|>', '<|assistant|>'] + [f'<|future{i}|>' for i in range(1, 9)],
+    special_tokens=['<|pad|>', '<|unk|>', '<|mask|>', '<|bos|>', '<|eos|>', '<|system|>', '<|user|>', '<|assistant|>']
+    + [f'<|future{i}|>' for i in range(1, 9)],
 )
 
 # dataset texts are created from joining all Guttenberg books, some Library of Congress Public Domain Books,
