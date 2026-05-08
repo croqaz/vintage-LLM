@@ -18,6 +18,7 @@ import numpy as np
 import torch
 from accelerate import Accelerator
 from torch.utils.data import Dataset
+from transformers import PrinterCallback
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
@@ -270,12 +271,12 @@ def validate_config(cfg: Dict, accelerator: Accelerator):
 
     # Check precision settings
     if cfg['training']['bf16'] and not torch.cuda.is_bf16_supported():
-        accelerator.print('⚠️  WARNING: bf16 requested but not supported on this GPU')
+        accelerator.print('⚠️ WARNING: bf16 requested but not supported on this GPU')
         accelerator.print('   Consider setting bf16=false and fp16=true in config.toml')
 
     # Check if CUDA is available for GPU training
     if not torch.cuda.is_available():
-        accelerator.print('⚠️  WARNING: CUDA not available, training on CPU will be slow')
+        accelerator.print('⚠️ WARNING: CUDA not available, training on CPU will be slow')
 
     accelerator.print('✓ Configuration validated')
     accelerator.print('=' * 80 + '\n')
@@ -370,9 +371,7 @@ def main():
 
     # Verify vocab size matches tokenizer
     if model_config.vocab_size != len(tokenizer):
-        accelerator.print(f'⚠️  WARNING: Model vocab_size ({model_config.vocab_size}) != tokenizer vocab_size ({len(tokenizer)})')
-        # accelerator.print('   Adjusting model vocab_size to match tokenizer...')
-        # model_config.vocab_size = len(tokenizer)
+        accelerator.print(f'⚠️ WARNING: Model vocab_size ({model_config.vocab_size}) != tokenizer vocab_size ({len(tokenizer)})')
 
     # Initialize model with AutoModelForCausalLM
     model = AutoModelForCausalLM.from_config(model_config)
@@ -501,6 +500,8 @@ def main():
             DetailedEvaluationCallback(),
         ],
     )
+    # Remove default print for clean logging
+    trainer.remove_callback(PrinterCallback)
 
     accelerator.print('✓ Trainer created with custom callbacks\n')
 
@@ -562,7 +563,7 @@ def main():
     training_time = time.time() - start_time
 
     # ========================================================================
-    # 12. Save final model
+    # Save final model
     # ========================================================================
 
     accelerator.print('\n' + '=' * 80)
@@ -579,6 +580,7 @@ def main():
 
         # Save model and tokenizer
         trainer.save_model(final_model_dir)
+        trainer.save_state()
         tokenizer.save_pretrained(final_model_dir)
         # Remove training_args.bin which is not needed and can cause confusion
         os.remove(os.path.join(final_model_dir, 'training_args.bin'))

@@ -93,9 +93,9 @@ def count_output_chunks(output_path: Path) -> dict:
 
     # Measure .bin file sizes
     for bin_file in sorted(output_path.glob('*.bin')):
-        size = bin_file.stat().st_size
-        stats['chunk_files'].append({'name': bin_file.name, 'size_bytes': size})
-        stats['total_size_bytes'] += size
+        st_size = bin_file.stat().st_size
+        stats['chunk_files'].append({'name': bin_file.name, 'size_bytes': st_size})
+        stats['total_size_bytes'] += st_size
 
     return stats
 

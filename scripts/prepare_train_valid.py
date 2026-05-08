@@ -68,10 +68,11 @@ def process_text(input_file: str, output_dir: str, remove_original: bool) -> Non
         print(f'Error: The file {input_file} is empty. Skipping...')
         return
 
-    if len(text) > 50000 and not text.startswith(BOS_TOKEN):
-        text = BOS_TOKEN + '\n' + text
-    if len(text) > 50000 and not text.endswith(EOS_TOKEN):
-        text = text + '\n' + EOS_TOKEN
+    strip_text = text.strip()
+    if len(strip_text) > 10_000 and not strip_text.startswith(BOS_TOKEN):
+        text = BOS_TOKEN + '\n' + strip_text
+    if len(strip_text) > 10_000 and not strip_text.endswith(EOS_TOKEN):
+        text = strip_text + '\n' + EOS_TOKEN
 
     target_val_start = int(total_len * 0.45)
     target_val_end = int(total_len * 0.55)
@@ -121,11 +122,12 @@ def process_jsonl(input_file: str, output_dir: str, remove_original: bool) -> No
 
     for record in records:
         text = record.get('text', '')
-        if len(text) > 50000:
-            if not text.startswith(BOS_TOKEN):
-                text = BOS_TOKEN + '\n' + text
-            if not text.endswith(EOS_TOKEN):
-                text = text + '\n' + EOS_TOKEN
+        strip_text = text.strip()
+        if len(strip_text) > 10_000:
+            if not strip_text.startswith(BOS_TOKEN):
+                text = BOS_TOKEN + '\n' + strip_text
+            if not strip_text.endswith(EOS_TOKEN):
+                text = strip_text + '\n' + EOS_TOKEN
             record['text'] = text
 
     val_start = int(total * 0.45)

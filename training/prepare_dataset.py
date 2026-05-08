@@ -9,16 +9,20 @@ DEFAULT_TOKENIZER = './tokenizers/t-v3/'
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Tokenize text file into train.bin and valid.bin.')
+    parser.add_argument('--tokenizer', default=DEFAULT_TOKENIZER)
     parser.add_argument('--input', type=Path, default=Path(__file__).with_name('tiny-shakespeare.txt'))
     parser.add_argument('--train-input', type=Path, help='Pre-split training text file. Requires --valid-input.')
     parser.add_argument('--valid-input', type=Path, help='Pre-split validation text file. Requires --train-input.')
     parser.add_argument('--output-dir', type=Path, default=Path(__file__).parent)
-    parser.add_argument('--tokenizer', default=DEFAULT_TOKENIZER)
-    parser.add_argument('--train-fraction', type=float, default=0.9)
+    parser.add_argument('--train-fraction', type=float, default=0.95)
     return parser.parse_args()
 
 
 def encode_text(tokenizer, text: str) -> list[int]:
+    if not text.lstrip().startswith(tokenizer.bos_token):
+        text = tokenizer.bos_token + text.lstrip()
+    if not text.rstrip().endswith(tokenizer.eos_token):
+        text = text.rstrip() + tokenizer.eos_token
     return tokenizer.encode(text, add_special_tokens=False)
 
 

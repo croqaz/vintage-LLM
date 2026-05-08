@@ -2365,6 +2365,26 @@ for i in range(-2, 13):
             }
         )
 
+COUNTRIES = [
+    'Austria',
+    'Belgium',
+    'China',
+    'Denmark',
+    'Finland',
+    'France',
+    'Germany',
+    'Greece',
+    'India',
+    'Ireland',
+    'Italy',
+    'Japan',
+    'Netherlands',
+    'Romania',
+    'Russia',
+    'Spain',
+    'United Kingdom',
+]
+
 with open('base_knowledge.jsonl', 'w') as fd:
     for item in KNOWLEDGE:
         fd.write(json.dumps(item) + '\n')

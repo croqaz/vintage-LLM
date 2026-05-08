@@ -61,11 +61,18 @@ def correct_text_chunk(chunk, url, api_key=None, model=None):
     try:
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
+    except Exception as e:
+        print(f'Error calling LLM: {e}')
+        try:
+            print(f'Response status: {response.status_code}')
+            print(f'Response body: {response.text[:500]}')
+        except Exception:
+            pass
+    try:
         result = response.json()
         return result['choices'][0]['message']['content'].strip()
     except Exception as e:
-        print(f'Error calling LLM: {e}')
-        return chunk  # Fallback to original chunk on error
+        print(f'Error parsing LLM response: {e}')
 
 
 def main():
@@ -94,7 +101,8 @@ def main():
         print(f'Processing chunk {i + 1}/{len(chunks)}...')
         if chunk.strip():
             corrected = correct_text_chunk(chunk, args.url, api_key=args.api_key, model=args.model)
-            corrected_chunks.append(corrected)
+            if corrected:
+                corrected_chunks.append(corrected)
         else:
             corrected_chunks.append(chunk)
 

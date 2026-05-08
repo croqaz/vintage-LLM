@@ -55,11 +55,15 @@ def correct_text_batch(chunk, url, api_key=None, model=None, delay=0):
     try:
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
+    except Exception as e:
+        print(f'Error calling LLM: {e}')
+        return
+    try:
         result = response.json()
         return result['choices'][0]['message']['content'].strip()
     except Exception as e:
-        print(f'Error calling LLM: {e}')
-        return chunk  # Fallback to original chunk on error
+        print(f'Error parsing LLM response: {e}')
+        print(f'LLM response: {response.text[:1000]}')
 
 
 def correct_text(text, url, key_cycle, model=None, delay=0):
@@ -168,6 +172,9 @@ def main():
             )
 
             corrected = correct_text(original_text, args.api_url, key_cycle=key_cycle, model=args.model, delay=args.delay)
+            if not corrected:
+                print(f'  No correction returned, skipping entry {line_num}.')
+                continue
 
             corr_words = corrected.split()
             print(
