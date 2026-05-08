@@ -18,12 +18,12 @@ import numpy as np
 import torch
 from accelerate import Accelerator
 from torch.utils.data import Dataset
-from transformers import PrinterCallback
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
     DataCollatorForLanguageModeling,
+    PrinterCallback,
     Trainer,
     TrainerCallback,
     TrainerControl,

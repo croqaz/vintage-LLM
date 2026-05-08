@@ -41,6 +41,13 @@ def chunk_text(text, chunk_size=2000):
     return chunks
 
 
+def _strip_model_tokens(text):
+    """Remove raw model boundary tokens that some APIs leak into responses."""
+    for token in ('<|bos|>', '<|eos|>', '<|endoftext|>', '</s>', '<s>'):
+        text = text.replace(token, '')
+    return text.strip()
+
+
 def correct_text_chunk(chunk, url, api_key=None, model=None):
     if api_key:
         headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
@@ -54,6 +61,8 @@ def correct_text_chunk(chunk, url, api_key=None, model=None):
         ],
         'temperature': 0.1,
         'max_tokens': 4096,
+        'max_completion_tokens': 4096,
+        'frequency_penalty': 1.0,  # strongly penalise token repetition
     }
     if model:
         data['model'] = model
@@ -68,11 +77,27 @@ def correct_text_chunk(chunk, url, api_key=None, model=None):
             print(f'Response body: {response.text[:500]}')
         except Exception:
             pass
+        return None
     try:
         result = response.json()
-        return result['choices'][0]['message']['content'].strip()
+        choice = result['choices'][0]
+
+        finish_reason = choice.get('finish_reason', 'unknown')
+        if finish_reason not in ('stop', 'eos'):
+            print(f'  Warning: finish_reason={finish_reason!r} — model may not have stopped cleanly.')
+
+        text = choice['message']['content'].strip()
+        text = _strip_model_tokens(text)
+
+        # Sanity-check 1: response must not be much larger than the input.
+        if len(text) > max(len(chunk) * 4, 10_000):
+            print(f'  Warning: response ({len(text):,} chars) is suspiciously large vs input ({len(chunk):,} chars). Discarding.')
+            return None
+
+        return text
     except Exception as e:
         print(f'Error parsing LLM response: {e}')
+        return None
 
 
 def main():
@@ -97,14 +122,21 @@ def main():
     print(f'Split text into {len(chunks)} chunks.')
 
     corrected_chunks = []
+    skipped = 0
     for i, chunk in enumerate(chunks):
         print(f'Processing chunk {i + 1}/{len(chunks)}...')
         if chunk.strip():
             corrected = correct_text_chunk(chunk, args.url, api_key=args.api_key, model=args.model)
             if corrected:
                 corrected_chunks.append(corrected)
+            else:
+                print(f'  Chunk {i + 1} discarded — keeping original.')
+                corrected_chunks.append(chunk)
+                skipped += 1
         else:
             corrected_chunks.append(chunk)
+    if skipped:
+        print(f'Warning: {skipped}/{len(chunks)} chunks were discarded and replaced with originals.')
 
     output_file = args.output_file or f'{args.input_file}.corrected.txt'
     with open(output_file, 'w', encoding='utf-8') as f:
