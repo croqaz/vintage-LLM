@@ -14,6 +14,8 @@ import tomllib
 from pathlib import Path
 from typing import Dict, List, Union
 
+from tqdm.auto import tqdm
+
 import numpy as np
 import torch
 from accelerate import Accelerator
@@ -22,13 +24,13 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    DataCollatorForLanguageModeling,
-    PrinterCallback,
+    ProgressCallback,
     Trainer,
     TrainerCallback,
     TrainerControl,
     TrainerState,
     TrainingArguments,
+    default_data_collator,
     set_seed,
 )
 
@@ -41,18 +43,21 @@ class BinaryTokenDataset(Dataset):
     """
     Dataset for pre-tokenized binary data.
     Each sample is a fixed-length sequence of token IDs.
+    Uses memmap directly to avoid loading entire files into RAM.
+    Supports a per-epoch random offset so chunk boundaries vary across epochs.
     """
 
-    def __init__(self, data_array: np.ndarray, seq_length: int):
+    def __init__(self, data: np.ndarray, seq_length: int):
         """
         Args:
-            data_array: numpy array of tokens (uint16 or int64)
+            data: numpy memmap (or array) of tokens (uint16)
             seq_length: sequence length for each sample
         """
-        self.data = data_array
+        self.data = data
         self.seq_length = seq_length
+        self.offset = 0  # random offset applied per epoch
 
-        # Calculate number of complete sequences
+        # Calculate number of complete sequences (with no offset)
         self.num_sequences = len(self.data) // seq_length
 
         if self.num_sequences == 0:
@@ -60,18 +65,24 @@ class BinaryTokenDataset(Dataset):
 
         print(f'  → Created dataset: {self.num_sequences:,} sequences of length {seq_length}')
 
+    def set_epoch(self, epoch: int):
+        """Set a per-epoch random offset so chunk boundaries differ each epoch."""
+        # If we switch to persistent_workers, the per-epoch offset
+        # will stay at whatever workers were spawned with.
+        rng = np.random.RandomState(seed=epoch)
+        self.offset = rng.randint(0, self.seq_length)
+        self.num_sequences = (len(self.data) - self.offset) // self.seq_length
+
     def __len__(self) -> int:
         return self.num_sequences
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        start = idx * self.seq_length
+        start = self.offset + idx * self.seq_length
         end = start + self.seq_length
 
-        # Convert to int64 for PyTorch compatibility
+        # Read from memmap and convert to int64 for PyTorch
         tokens = torch.from_numpy(self.data[start:end].astype(np.int64))
 
-        # For causal LM: labels = input_ids
-        # DataCollatorForLanguageModeling will handle shifting
         return {
             'input_ids': tokens,
             'labels': tokens,
@@ -117,28 +128,32 @@ def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int) -> B
     for f in files:
         print(f'  → {f}')
 
-    # Load and concatenate all files
-    data_arrays = []
+    # Memory-map all files
+    memmaps = []
     total_tokens = 0
 
     for f in files:
         if not Path(f).exists():
             raise FileNotFoundError(f'File not found: {f}')
 
-        # Memory-map the file
         arr = np.memmap(f, dtype=np.uint16, mode='r')
         file_tokens = len(arr)
         total_tokens += file_tokens
+        memmaps.append(arr)
+        print(f'  → Mapped {file_tokens:,} tokens from {Path(f).name}')
 
-        # Load into memory (for small files; for large files, consider streaming)
-        data_arrays.append(arr[:])
-        print(f'  → Loaded {file_tokens:,} tokens from {Path(f).name}')
+    # For a single file, use the memmap directly (zero-copy)
+    # For multiple files, we must concatenate (copies into RAM)
+    if len(memmaps) == 1:
+        data = memmaps[0]
+    else:
+        # If we switch to multiple shards, replace np.concatenate
+        # with a virtual concatenation that reads from the correct memmap
+        data = np.concatenate(memmaps)
 
-    # Concatenate all arrays
-    full_data = np.concatenate(data_arrays)
-    print(f'Total tokens loaded: {total_tokens:,}')
+    print(f'Total tokens: {total_tokens:,}')
 
-    return BinaryTokenDataset(full_data, seq_length)
+    return BinaryTokenDataset(data, seq_length)
 
 
 # ============================================================================
@@ -148,6 +163,44 @@ def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int) -> B
 
 class DetailedLoggingCallback(TrainerCallback):
     """Log detailed training metrics per batch."""
+
+    def __init__(self):
+        self.training_bar = None
+        self.prediction_bar = None
+        self.current_step = 0
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        if state.is_world_process_zero:
+            self.training_bar = tqdm(total=state.max_steps, dynamic_ncols=True)
+            self.current_step = 0
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.is_world_process_zero:
+            self.training_bar.update(state.global_step - self.current_step)
+            self.current_step = state.global_step
+
+    def on_train_end(self, args, state, control, **kwargs):
+        if state.is_world_process_zero:
+            self.training_bar.close()
+            self.training_bar = None
+
+    def on_prediction_step(self, args, state, control, eval_dataloader=None, **kwargs):
+        if state.is_world_process_zero and len(eval_dataloader):
+            if self.prediction_bar is None:
+                self.prediction_bar = tqdm(total=len(eval_dataloader), leave=self.training_bar is None, dynamic_ncols=True)
+            self.prediction_bar.update(1)
+
+    def on_evaluate(self, args, state, control, **kwargs):
+        if state.is_world_process_zero:
+            if self.prediction_bar is not None:
+                self.prediction_bar.close()
+            self.prediction_bar = None
+
+    def on_predict(self, args, state, control, **kwargs):
+        if state.is_world_process_zero:
+            if self.prediction_bar is not None:
+                self.prediction_bar.close()
+            self.prediction_bar = None
 
     def on_log(
         self,
@@ -237,6 +290,25 @@ class DetailedEvaluationCallback(TrainerCallback):
                     print(f'  {key}: {value}')
 
             print('=' * 80 + '\n')
+
+
+class EpochOffsetCallback(TrainerCallback):
+    """Apply a random chunk offset at the start of each epoch so boundaries vary."""
+
+    def __init__(self, dataset: 'BinaryTokenDataset'):
+        self.dataset = dataset
+
+    def on_epoch_begin(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ):
+        epoch = int(state.epoch) if state.epoch is not None else 0
+        self.dataset.set_epoch(epoch)
+        if state.is_world_process_zero:
+            print(f'[OFFSET] Epoch {epoch}: chunk offset = {self.dataset.offset}')
 
 
 # ============================================================================
@@ -406,19 +478,6 @@ def main():
     accelerator.print()
 
     # ========================================================================
-    # Create data collator
-    # ========================================================================
-
-    # For causal LM, we use DataCollatorForLanguageModeling with mlm=False
-    # This handles padding and creates labels by shifting input_ids
-    data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        mlm=False,  # No masking for causal LM
-    )
-
-    accelerator.print('✓ Data collator created (causal LM, no masking)\n')
-
-    # ========================================================================
     # Setup TrainingArguments
     # ========================================================================
 
@@ -466,7 +525,6 @@ def main():
         # Performance
         dataloader_num_workers=cfg['training'].get('dataloader_num_workers', 2),
         dataloader_pin_memory=cfg['training'].get('dataloader_pin_memory', True),
-        remove_unused_columns=cfg['training'].get('remove_unused_columns', True),
         # Reproducibility
         seed=seed,
         data_seed=seed,
@@ -494,14 +552,15 @@ def main():
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         processing_class=tokenizer,
-        data_collator=data_collator,
+        data_collator=default_data_collator,
         callbacks=[
             DetailedLoggingCallback(),
             DetailedEvaluationCallback(),
+            EpochOffsetCallback(train_dataset),
         ],
     )
     # Remove default print for clean logging
-    trainer.remove_callback(PrinterCallback)
+    trainer.remove_callback(ProgressCallback)
 
     accelerator.print('✓ Trainer created with custom callbacks\n')
 

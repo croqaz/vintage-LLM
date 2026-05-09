@@ -14,7 +14,7 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    DataCollatorForLanguageModeling,
+    default_data_collator,
 )
 
 
@@ -41,7 +41,7 @@ def test_setup():
         f'{cfg["model"]["num_attention_heads"]} heads'
     )
 
-    # 2. Test tokenizer
+    # Test tokenizer
     print('\n[2/6] Testing tokenizer...')
     tokenizer = AutoTokenizer.from_pretrained(cfg['data']['tokenizer'], use_fast=True)
     # Ensure tokenizer has a pad token (required for DataCollator)
@@ -56,7 +56,7 @@ def test_setup():
     decoded = tokenizer.decode(encoded['input_ids'], clean_up_tokenization_spaces=False)
     print(f'  Test decoding: {decoded}')
 
-    # 3. Test model creation
+    # Test model creation
     print('\n[3/6] Testing model creation...')
     model_config = AutoConfig.for_model(
         model_type=cfg['model']['model_type'],
@@ -77,7 +77,7 @@ def test_setup():
     print(f'  Architecture: {model_config.model_type}')
     print(f'  Parameters: {num_params:,} ({num_params / 1e6:.2f}M)')
 
-    # 4. Test data loading
+    # Test data loading
     print('\n[4/6] Testing data loading...')
     train_files = cfg['data']['train_files']
 
@@ -96,18 +96,14 @@ def test_setup():
     print('✓ Training data loaded')
     print(f'  Sequences: {len(train_dataset):,}')
 
-    # 5. Test data collator
+    # Test data collator
     print('\n[5/6] Testing data collator...')
-    data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        mlm=False,
-    )
-    print('✓ Data collator creation successful')
-
-    # 6. Test forward pass
-    print('\n[6/6] Testing forward pass...')
     batch = [train_dataset[i] for i in range(2)]
-    collated = data_collator(batch)
+    collated = default_data_collator(batch)
+    print('✓ Data collator (default) successful')
+
+    # Test forward pass
+    print('\n[6/6] Testing forward pass...')
 
     with torch.no_grad():
         outputs = model(**collated)
