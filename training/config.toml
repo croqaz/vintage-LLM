@@ -27,7 +27,7 @@ tokenizer = "./tokenizers/t-v3/"
 
 [training]
 # Training duration
-num_train_epochs = 4
+num_train_epochs = 6
 
 # Output directories
 output_dir = "training/checkpoints"
@@ -50,8 +50,9 @@ adam_beta2 = 0.95
 max_grad_norm = 1.0
 
 # Learning rate scheduler
-lr_scheduler_type = "cosine"       # cosine decay
-warmup_steps = 100                 # exact warmup steps
+lr_scheduler_type = "cosine_with_min_lr"  # cosine decay with non-zero floor
+lr_scheduler_kwargs = { min_lr_rate = 0.05 }  # final LR = 5% of peak (avoids wasting final iterations at ~0 LR)
+warmup_steps = 100                        # exact warmup steps
 
 # Precision (choose based on your GPU)
 bf16 = true                        # bfloat16 for Ampere+ GPUs (RTX 3090, A100, etc.)
@@ -74,7 +75,6 @@ eval_steps = 100                   # evaluate every X steps
 logging_strategy = "steps"
 logging_steps = 10                 # log every 10 steps
 logging_first_step = true          # log the first step
-report_to = "trackio"              # trackio (wandb-compatible) logging
 
 # Performance
 dataloader_num_workers = 4         # number of data loading threads

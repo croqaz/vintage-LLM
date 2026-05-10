@@ -34,78 +34,205 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint
 
+os.environ['PYTORCH_ALLOC_CONF'] = 'expandable_segments:True'
+
+BF16_SUPPORTED = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+
 # ============================================================================
 # Binary Dataset Loader
 # ============================================================================
 
 
+class ConcatMemmap:
+    """Virtual concatenation of multiple memmaps without copying into RAM."""
+
+    def __init__(self, arrs):
+        self.arrs = arrs
+        self.lens = np.array([len(a) for a in arrs])
+        self.offsets = np.concatenate([[0], np.cumsum(self.lens)])
+        self._total = int(self.offsets[-1])
+
+    def __len__(self):
+        return self._total
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            start, stop, step = key.indices(self._total)
+            if step != 1:
+                return np.concatenate([self.arrs[0]])[key]  # fallback
+            parts = []
+            while start < stop:
+                i = int(np.searchsorted(self.offsets, start, side='right')) - 1
+                local_start = start - int(self.offsets[i])
+                local_stop = min(int(self.lens[i]), stop - int(self.offsets[i]))
+                parts.append(self.arrs[i][local_start:local_stop])
+                start = int(self.offsets[i]) + local_stop
+            return np.concatenate(parts) if parts else np.array([], dtype=self.arrs[0].dtype)
+        else:
+            if key < 0:
+                key += self._total
+            i = int(np.searchsorted(self.offsets, key, side='right')) - 1
+            return self.arrs[i][key - int(self.offsets[i])]
+
+
 class BinaryTokenDataset(Dataset):
     """
-    Dataset for pre-tokenized binary data.
-    Each sample is a fixed-length sequence of token IDs.
-    Uses memmap directly to avoid loading entire files into RAM.
-    Supports a per-epoch random offset so chunk boundaries vary across epochs.
+    Document-aware dataset for pre-tokenized binary data.
+
+    Instead of slicing the token stream into fixed-length chunks (which would
+    let the model attend across unrelated document boundaries), this dataset
+    respects document boundaries marked by EOS tokens in the binary data.
+
+    Each sequence is guaranteed to come from a single document.  Sequences at
+    document boundaries are shorter than seq_length and get padded: input_ids
+    is padded with pad_token_id and labels is padded with -1 (ignored by
+    cross-entropy loss).
+
+    Per-epoch, chunk offsets within each document are randomised so the model
+    sees different windows across epochs.
     """
 
-    def __init__(self, data: np.ndarray, seq_length: int):
-        """
-        Args:
-            data: numpy memmap (or array) of tokens (uint16)
-            seq_length: sequence length for each sample
-        """
+    def __init__(
+        self,
+        data: np.ndarray,
+        seq_length: int,
+        eos_token_id: int,
+        pad_token_id: int,
+        base_seed: int = 42,
+    ):
         self.data = data
         self.seq_length = seq_length
-        self.offset = 0  # random offset applied per epoch
+        self.eos_token_id = eos_token_id
+        self.pad_token_id = pad_token_id
+        self.base_seed = base_seed
 
-        # Calculate number of complete sequences (with no offset)
-        self.num_sequences = len(self.data) // seq_length
+        # Build document boundary index by finding all EOS positions.
+        # Each document spans [doc_start, doc_end) where doc_end is one past EOS.
+        print(f'  → Scanning for document boundaries (EOS id={eos_token_id})...')
+        eos_positions = (
+            np.where(np.frombuffer(data, dtype=np.uint16) == eos_token_id)[0]
+            if isinstance(data, np.memmap)
+            else np.where(np.array(data[:], dtype=np.uint16) == eos_token_id)[0]
+        )
 
-        if self.num_sequences == 0:
-            raise ValueError(f'Data too short: {len(self.data)} tokens < {seq_length} seq_length')
+        if len(eos_positions) == 0:
+            # Fallback: treat entire data as one document
+            print('  → WARNING: No EOS tokens found, treating all data as one document')
+            self.doc_starts = np.array([0], dtype=np.int64)
+            self.doc_ends = np.array([len(data)], dtype=np.int64)
+        else:
+            starts = np.concatenate([[0], eos_positions[:-1] + 1]).astype(np.int64)
+            ends = (eos_positions + 1).astype(np.int64)
+            # Filter out empty documents
+            mask = ends > starts
+            self.doc_starts = starts[mask]
+            self.doc_ends = ends[mask]
 
-        # Identity mapping by default (no shuffle until set_epoch is called)
-        self._index_map = np.arange(self.num_sequences)
+        self.num_docs = len(self.doc_starts)
+        self.doc_lengths = self.doc_ends - self.doc_starts
+        total_doc_tokens = int(self.doc_lengths.sum())
 
-        print(f'  → Created dataset: {self.num_sequences:,} sequences of length {seq_length}')
+        print(f'  → Found {self.num_docs:,} documents ({total_doc_tokens:,} tokens)')
+        print(
+            f'  → Doc lengths: min={int(self.doc_lengths.min()):,}, '
+            f'max={int(self.doc_lengths.max()):,}, '
+            f'median={int(np.median(self.doc_lengths)):,}'
+        )
+
+        # Build the initial chunk index (epoch 0)
+        self._chunks: list[tuple[int, int]] = []  # (start, length) pairs
+        self._build_chunks(epoch=0)
+
+    def _build_chunks(self, epoch: int):
+        """Build list of (start, length) chunks respecting document boundaries.
+
+        Each document is divided into seq_length-sized chunks.  A per-epoch
+        random offset shifts the chunk grid within each document so the model
+        sees different windows across epochs.  The final chunk of each document
+        may be shorter than seq_length (will be padded in __getitem__).
+        """
+        rng = np.random.RandomState(seed=hash((self.base_seed, epoch)) & 0xFFFFFFFF)
+        chunks: list[tuple[int, int]] = []
+
+        for doc_idx in range(self.num_docs):
+            doc_start = int(self.doc_starts[doc_idx])
+            doc_len = int(self.doc_lengths[doc_idx])
+
+            # Random offset within [0, min(seq_length, doc_len) - 1]
+            max_offset = min(self.seq_length, doc_len) - 1
+            offset = rng.randint(0, max_offset + 1) if max_offset > 0 else 0
+
+            pos = offset
+            while pos < doc_len:
+                chunk_len = min(self.seq_length, doc_len - pos)
+                chunks.append((doc_start + pos, chunk_len))
+                pos += self.seq_length
+
+            # Also add the skipped prefix as a chunk if offset > 0 and large enough
+            if offset > 0:
+                chunks.append((doc_start, min(offset, self.seq_length)))
+
+        # Shuffle the chunk order
+        rng.shuffle(chunks)
+        self._chunks = chunks
+        self._num_sequences = len(chunks)
 
     def set_epoch(self, epoch: int):
-        """Set a per-epoch random offset and shuffle index order."""
-        rng = np.random.RandomState(seed=epoch)
-        self.offset = rng.randint(0, self.seq_length)
-        self.num_sequences = (len(self.data) - self.offset) // self.seq_length
-        # Shuffle the order sequences are read so the model sees different
-        # mini-batch compositions each epoch (the Trainer sampler already
-        # shuffles, but this also shuffles the logical-to-physical mapping).
-        self._index_map = rng.permutation(self.num_sequences)
+        """Rebuild chunks with a new random offset and shuffle order."""
+        self._build_chunks(epoch)
 
     def __len__(self) -> int:
-        return self.num_sequences
+        return self._num_sequences
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        physical_idx = self._index_map[idx]
-        start = self.offset + physical_idx * self.seq_length
-        end = start + self.seq_length
+        start, length = self._chunks[idx]
 
-        # Read from memmap and convert to int64 for PyTorch
-        tokens = torch.from_numpy(self.data[start:end].astype(np.int64))
+        # Read tokens from memmap
+        raw = self.data[start : start + length]
+        tokens = np.array(raw, dtype=np.int64)
+
+        if length >= self.seq_length:
+            # Full-length chunk, no padding needed
+            input_ids = torch.from_numpy(tokens)
+            labels = torch.from_numpy(tokens.copy())
+        else:
+            # Partial chunk at document boundary — pad the remainder
+            input_ids = torch.full((self.seq_length,), self.pad_token_id, dtype=torch.long)
+            labels = torch.full((self.seq_length,), -1, dtype=torch.long)
+            input_ids[:length] = torch.from_numpy(tokens)
+            labels[:length] = torch.from_numpy(tokens.copy())
 
         return {
-            'input_ids': tokens,
-            'labels': tokens,
+            'input_ids': input_ids,
+            'labels': labels,
         }
 
 
-def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int) -> BinaryTokenDataset:
+def load_binary_files(
+    file_pattern: Union[str, List[str]],
+    seq_length: int,
+    eos_token_id: int,
+    pad_token_id: int,
+    base_seed: int = 42,
+    _preloaded_data=None,
+) -> BinaryTokenDataset:
     """
     Load binary files from a list of paths or glob pattern.
 
     Args:
         file_pattern: str (glob pattern) or list of str (file paths)
         seq_length: sequence length for each sample
+        eos_token_id: EOS token ID for document boundary detection
+        pad_token_id: pad token ID for padding short sequences
+        base_seed: base seed for random offset per epoch
+        _preloaded_data: if provided, skip file loading and use this data directly
 
     Returns:
-        BinaryTokenDataset instance
+        BinaryTokenDataset instance.
     """
+    if _preloaded_data is not None:
+        return BinaryTokenDataset(_preloaded_data, seq_length, eos_token_id=eos_token_id, pad_token_id=pad_token_id, base_seed=base_seed)
+
     # Resolve file patterns to actual file paths
     if isinstance(file_pattern, str):
         # Single file or glob pattern
@@ -135,7 +262,7 @@ def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int) -> B
         print(f'  → {f}')
 
     # Memory-map all files
-    memmaps = []
+    memmaps: List[np.ndarray] = []
     total_tokens = 0
 
     for f in files:
@@ -153,13 +280,10 @@ def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int) -> B
     if len(memmaps) == 1:
         data = memmaps[0]
     else:
-        # If we switch to multiple shards, replace np.concatenate
-        # with a virtual concatenation that reads from the correct memmap
-        data = np.concatenate(memmaps)
+        data = ConcatMemmap(memmaps)
 
     print(f'Total tokens: {total_tokens:,}')
-
-    return BinaryTokenDataset(data, seq_length)
+    return BinaryTokenDataset(data, seq_length, eos_token_id=eos_token_id, pad_token_id=pad_token_id, base_seed=base_seed)
 
 
 # ============================================================================
@@ -233,12 +357,23 @@ class DetailedLoggingCallback(TrainerCallback):
             if loss is not None and lr is not None:
                 # Calculate progress percentage
                 progress = (step / total_steps * 100) if total_steps > 0 else 0
+                grad_norm = logs.get('grad_norm')
+                grad_str = f'grad_norm={grad_norm:.4f}' if grad_norm is not None else ''
+
+                # GPU memory
+                gpu_mem_str = ''
+                if torch.cuda.is_available():
+                    gpu_gb = torch.cuda.max_memory_allocated() / 1e9
+                    gpu_mem_str = f'GPU={gpu_gb:.1f}GB'
+                    torch.cuda.reset_peak_memory_stats()
 
                 print(
                     f'[TRAIN] Epoch {epoch:.2f}/{args.num_train_epochs} | '
                     f'Step {step}/{total_steps} ({progress:.1f}%) | '
                     f'Loss {loss:.4f} | '
-                    f'LR {lr:.2e}'
+                    f'LR {lr:.2e} | '
+                    f'{grad_str} | '
+                    f'{gpu_mem_str}'
                 )
 
 
@@ -314,7 +449,7 @@ class EpochOffsetCallback(TrainerCallback):
         epoch = int(state.epoch) if state.epoch is not None else 0
         self.dataset.set_epoch(epoch)
         if state.is_world_process_zero:
-            print(f'[OFFSET] Epoch {epoch}: chunk offset = {self.dataset.offset}')
+            print(f'[EPOCH] Epoch {epoch}: rebuilt {len(self.dataset):,} chunks with new random offsets')
 
 
 # ============================================================================
@@ -447,23 +582,21 @@ def main():
     accelerator.print('Initializing model...')
 
     # Create model configuration
-    model_config = AutoConfig.for_model(
-        model_type=cfg['model']['model_type'],
-        vocab_size=cfg['model']['vocab_size'],
-        hidden_size=cfg['model']['hidden_size'],
-        num_hidden_layers=cfg['model']['num_hidden_layers'],
-        num_attention_heads=cfg['model']['num_attention_heads'],
-        intermediate_size=cfg['model']['intermediate_size'],
-        max_position_embeddings=cfg['model']['max_position_embeddings'],
-        rotary_pct=cfg['model']['rotary_pct'],
-        rotary_emb_base=cfg['model']['rotary_emb_base'],
-        use_cache=False,
-    )
+    model_kwargs = dict(cfg['model'])
+    model_type = model_kwargs.pop('model_type')
+    attn_implementation = model_kwargs.pop('attn_implementation', None)
+    model_kwargs['use_cache'] = False
+    model_config = AutoConfig.for_model(model_type=model_type, **model_kwargs)
 
     # Verify vocab size matches tokenizer
     if model_config.vocab_size != len(tokenizer):
         accelerator.print(f'⚠️ WARNING: Model vocab_size ({model_config.vocab_size}) != tokenizer vocab_size ({len(tokenizer)})')
 
+    # Use attn_implementation if specified (e.g. "flash_attention_2", "sdpa")
+    model_init_kwargs = {}
+    if attn_implementation:
+        model_init_kwargs['attn_implementation'] = attn_implementation
+        accelerator.print(f'  Attention implementation: {attn_implementation}')
     # Initialize model with AutoModelForCausalLM
     model = AutoModelForCausalLM.from_config(model_config)
 
@@ -490,10 +623,14 @@ def main():
     seq_length = cfg['data']['max_seq_length']
 
     accelerator.print('\n[TRAINING DATA]')
-    train_dataset = load_binary_files(cfg['data']['train_files'], seq_length)
+    train_dataset = load_binary_files(
+        cfg['data']['train_files'], seq_length, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id, base_seed=seed
+    )
 
     accelerator.print('\n[VALIDATION DATA]')
-    eval_dataset = load_binary_files(cfg['data']['valid_files'], seq_length)
+    eval_dataset = load_binary_files(
+        cfg['data']['valid_files'], seq_length, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id, base_seed=seed
+    )
     accelerator.print()
 
     # ========================================================================
@@ -514,22 +651,23 @@ def main():
         per_device_train_batch_size=cfg['training'].get('per_device_train_batch_size', 8),
         per_device_eval_batch_size=cfg['training'].get('per_device_eval_batch_size', 8),
         gradient_accumulation_steps=cfg['training'].get('gradient_accumulation_steps', 1),
-        # Optimizer
+        # Optimizer with tuned defaults
         optim=cfg['training'].get('optim', 'adamw_torch_fused'),
         learning_rate=cfg['training'].get('learning_rate', 5e-5),
-        weight_decay=cfg['training'].get('weight_decay', 0.0),
+        weight_decay=cfg['training'].get('weight_decay', 0.1),
         adam_beta1=cfg['training'].get('adam_beta1', 0.9),
-        adam_beta2=cfg['training'].get('adam_beta2', 0.999),
+        adam_beta2=cfg['training'].get('adam_beta2', 0.95),
         adam_epsilon=cfg['training'].get('adam_epsilon', 1e-8),
         max_grad_norm=cfg['training'].get('max_grad_norm', 1.0),
         # Learning rate scheduler
-        lr_scheduler_type=cfg['training'].get('lr_scheduler_type', 'linear'),
+        lr_scheduler_type=cfg['training'].get('lr_scheduler_type', 'cosine_with_min_lr'),
+        lr_scheduler_kwargs=cfg['training'].get('lr_scheduler_kwargs', {'min_lr_rate': 0.05}),
         warmup_steps=cfg['training'].get('warmup_steps', 100),
         # Precision
-        bf16=cfg['training'].get('bf16', False),
+        bf16=cfg['training'].get('bf16', BF16_SUPPORTED),
         fp16=cfg['training'].get('fp16', False),
         # Compilation
-        torch_compile=cfg['training'].get('torch_compile', False),
+        torch_compile=cfg['training'].get('torch_compile', True),
         # Gradient checkpointing
         gradient_checkpointing=cfg['training'].get('gradient_checkpointing', False),
         gradient_checkpointing_kwargs={'use_reentrant': False},
@@ -544,11 +682,12 @@ def main():
         logging_strategy=cfg['training'].get('logging_strategy', 'steps'),
         logging_steps=cfg['training'].get('logging_steps', 10),
         logging_first_step=cfg['training'].get('logging_first_step', True),
-        report_to=cfg['training'].get('report_to', 'trackio'),
+        report_to=cfg['training'].get('report_to', ['trackio', 'tensorboard']),
         # Performance
-        dataloader_num_workers=cfg['training'].get('dataloader_num_workers', 2),
+        dataloader_num_workers=cfg['training'].get('dataloader_num_workers', 4),
         dataloader_pin_memory=cfg['training'].get('dataloader_pin_memory', True),
         dataloader_prefetch_factor=cfg['training'].get('dataloader_prefetch_factor', 2),
+        # dataloader_persistent_workers intentionally disabled by default
         # Reproducibility
         seed=seed,
         data_seed=seed,
