@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from base_train import load_binary_files, load_config
+from base_train import BinaryTokenDataset, load_config
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
@@ -106,16 +106,7 @@ def validate_binary_data(data, tokenizer, seq_length, label):
 
     # ── Build dataset and measure padding overhead ──────────────
     print(f'\n  Building dataset (seq_length={seq_length})...')
-    pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else eos_id
-    dataset = load_binary_files(
-        # We already have the data loaded, but load_binary_files needs file paths.
-        # Skip this if we can't re-load — use the dataset from the caller instead.
-        None,
-        seq_length,
-        eos_token_id=eos_id,
-        pad_token_id=pad_token_id,
-        _preloaded_data=data,
-    )
+    dataset = BinaryTokenDataset(data, seq_length)
 
     num_seqs = len(dataset)
     total_positions = num_seqs * seq_length
@@ -219,20 +210,16 @@ def test_setup():
 
     # Test model creation
     print('\n[3/6] Testing model creation...')
-    model_config = AutoConfig.for_model(
-        model_type=cfg['model']['model_type'],
-        vocab_size=cfg['model']['vocab_size'],
-        hidden_size=cfg['model']['hidden_size'],
-        num_hidden_layers=cfg['model']['num_hidden_layers'],
-        num_attention_heads=cfg['model']['num_attention_heads'],
-        intermediate_size=cfg['model']['intermediate_size'],
-        max_position_embeddings=cfg['model']['max_position_embeddings'],
-        rotary_pct=cfg['model']['rotary_pct'],
-        rotary_emb_base=cfg['model']['rotary_emb_base'],
-        use_cache=False,
-    )
+    model_kwargs = dict(cfg['model'])
+    model_type = model_kwargs.pop('model_type')
+    attn_implementation = model_kwargs.pop('attn_implementation', None)
+    model_kwargs['use_cache'] = False
+    model_config = AutoConfig.for_model(model_type=model_type, **model_kwargs)
 
-    model = AutoModelForCausalLM.from_config(model_config)
+    model_init_kwargs = {}
+    if attn_implementation:
+        model_init_kwargs['attn_implementation'] = attn_implementation
+    model = AutoModelForCausalLM.from_config(model_config, **model_init_kwargs)
     num_params = sum(p.numel() for p in model.parameters())
     print(f'✓ Model created: {model.__class__.__name__}')
     print(f'  Architecture: {model_config.model_type}')
@@ -267,13 +254,10 @@ def test_setup():
     train_data_files = _resolve_files(train_files)
     memmaps = [np.memmap(f, dtype=np.uint16, mode='r') for f in train_data_files]
     if len(memmaps) == 1:
-        from base_train import ConcatMemmap
-
         train_data = memmaps[0]
     else:
-        from base_train import ConcatMemmap
-
-        train_data = ConcatMemmap(memmaps)
+        print(f'  Multiple train files detected: {len(memmaps)} files')
+        train_data = np.concatenate(memmaps)
 
     train_ok, train_dataset, train_useful = validate_binary_data(train_data, tokenizer, seq_length, 'TRAIN')
 
@@ -286,7 +270,7 @@ def test_setup():
     if valid_exists:
         valid_data_files = _resolve_files(valid_files)
         vmemmaps = [np.memmap(f, dtype=np.uint16, mode='r') for f in valid_data_files]
-        valid_data = vmemmaps[0] if len(vmemmaps) == 1 else ConcatMemmap(vmemmaps)
+        valid_data = vmemmaps[0] if len(vmemmaps) == 1 else np.concatenate(vmemmaps)
         validate_binary_data(valid_data, tokenizer, seq_length, 'VALID')
     else:
         print(f'\n  ⚠️  Validation data not found: {valid_files}')

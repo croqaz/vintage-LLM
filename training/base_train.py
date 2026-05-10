@@ -43,196 +43,75 @@ BF16_SUPPORTED = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 # ============================================================================
 
 
-class ConcatMemmap:
-    """Virtual concatenation of multiple memmaps without copying into RAM."""
-
-    def __init__(self, arrs):
-        self.arrs = arrs
-        self.lens = np.array([len(a) for a in arrs])
-        self.offsets = np.concatenate([[0], np.cumsum(self.lens)])
-        self._total = int(self.offsets[-1])
-
-    def __len__(self):
-        return self._total
-
-    def __getitem__(self, key):
-        if isinstance(key, slice):
-            start, stop, step = key.indices(self._total)
-            if step != 1:
-                return np.concatenate([self.arrs[0]])[key]  # fallback
-            parts = []
-            while start < stop:
-                i = int(np.searchsorted(self.offsets, start, side='right')) - 1
-                local_start = start - int(self.offsets[i])
-                local_stop = min(int(self.lens[i]), stop - int(self.offsets[i]))
-                parts.append(self.arrs[i][local_start:local_stop])
-                start = int(self.offsets[i]) + local_stop
-            return np.concatenate(parts) if parts else np.array([], dtype=self.arrs[0].dtype)
-        else:
-            if key < 0:
-                key += self._total
-            i = int(np.searchsorted(self.offsets, key, side='right')) - 1
-            return self.arrs[i][key - int(self.offsets[i])]
-
-
 class BinaryTokenDataset(Dataset):
     """
-    Document-aware dataset for pre-tokenized binary data.
-
-    Instead of slicing the token stream into fixed-length chunks (which would
-    let the model attend across unrelated document boundaries), this dataset
-    respects document boundaries marked by EOS tokens in the binary data.
-
-    Each sequence is guaranteed to come from a single document.  Sequences at
-    document boundaries are shorter than seq_length and get padded: input_ids
-    is padded with pad_token_id and labels is padded with -1 (ignored by
-    cross-entropy loss).
-
-    Per-epoch, chunk offsets within each document are randomised so the model
-    sees different windows across epochs.
+    Dataset for pre-tokenized binary data.
+    Each sample is a fixed-length sequence of token IDs.
+    Uses memmap directly to avoid loading entire files into RAM.
+    Supports a per-epoch random offset so chunk boundaries vary across epochs.
     """
 
-    def __init__(
-        self,
-        data: np.ndarray,
-        seq_length: int,
-        eos_token_id: int,
-        pad_token_id: int,
-        base_seed: int = 42,
-    ):
+    def __init__(self, data: np.ndarray, seq_length: int, base_seed: int = 42):
+        """
+        Args:
+            data: numpy memmap (or array) of tokens (uint16)
+            seq_length: sequence length for each sample
+        """
         self.data = data
         self.seq_length = seq_length
-        self.eos_token_id = eos_token_id
-        self.pad_token_id = pad_token_id
         self.base_seed = base_seed
+        self.offset = 0  # random offset applied per epoch
 
-        # Build document boundary index by finding all EOS positions.
-        # Each document spans [doc_start, doc_end) where doc_end is one past EOS.
-        print(f'  → Scanning for document boundaries (EOS id={eos_token_id})...')
-        eos_positions = (
-            np.where(np.frombuffer(data, dtype=np.uint16) == eos_token_id)[0]
-            if isinstance(data, np.memmap)
-            else np.where(np.array(data[:], dtype=np.uint16) == eos_token_id)[0]
-        )
+        # Calculate number of complete sequences (with no offset)
+        self.num_sequences = len(self.data) // seq_length
 
-        if len(eos_positions) == 0:
-            # Fallback: treat entire data as one document
-            print('  → WARNING: No EOS tokens found, treating all data as one document')
-            self.doc_starts = np.array([0], dtype=np.int64)
-            self.doc_ends = np.array([len(data)], dtype=np.int64)
-        else:
-            starts = np.concatenate([[0], eos_positions[:-1] + 1]).astype(np.int64)
-            ends = (eos_positions + 1).astype(np.int64)
-            # Filter out empty documents
-            mask = ends > starts
-            self.doc_starts = starts[mask]
-            self.doc_ends = ends[mask]
+        if self.num_sequences == 0:
+            raise ValueError(f'Data too short: {len(self.data)} tokens < {seq_length} seq_length')
 
-        self.num_docs = len(self.doc_starts)
-        self.doc_lengths = self.doc_ends - self.doc_starts
-        total_doc_tokens = int(self.doc_lengths.sum())
+        # Identity mapping by default (no shuffle until set_epoch is called)
+        self._index_map = np.arange(self.num_sequences)
 
-        print(f'  → Found {self.num_docs:,} documents ({total_doc_tokens:,} tokens)')
-        print(
-            f'  → Doc lengths: min={int(self.doc_lengths.min()):,}, '
-            f'max={int(self.doc_lengths.max()):,}, '
-            f'median={int(np.median(self.doc_lengths)):,}'
-        )
-
-        # Build the initial chunk index (epoch 0)
-        self._chunks: list[tuple[int, int]] = []  # (start, length) pairs
-        self._build_chunks(epoch=0)
-
-    def _build_chunks(self, epoch: int):
-        """Build list of (start, length) chunks respecting document boundaries.
-
-        Each document is divided into seq_length-sized chunks.  A per-epoch
-        random offset shifts the chunk grid within each document so the model
-        sees different windows across epochs.  The final chunk of each document
-        may be shorter than seq_length (will be padded in __getitem__).
-        """
-        rng = np.random.RandomState(seed=hash((self.base_seed, epoch)) & 0xFFFFFFFF)
-        chunks: list[tuple[int, int]] = []
-
-        for doc_idx in range(self.num_docs):
-            doc_start = int(self.doc_starts[doc_idx])
-            doc_len = int(self.doc_lengths[doc_idx])
-
-            # Random offset within [0, min(seq_length, doc_len) - 1]
-            max_offset = min(self.seq_length, doc_len) - 1
-            offset = rng.randint(0, max_offset + 1) if max_offset > 0 else 0
-
-            pos = offset
-            while pos < doc_len:
-                chunk_len = min(self.seq_length, doc_len - pos)
-                chunks.append((doc_start + pos, chunk_len))
-                pos += self.seq_length
-
-            # Also add the skipped prefix as a chunk if offset > 0 and large enough
-            if offset > 0:
-                chunks.append((doc_start, min(offset, self.seq_length)))
-
-        # Shuffle the chunk order
-        rng.shuffle(chunks)
-        self._chunks = chunks
-        self._num_sequences = len(chunks)
+        print(f'  → Created dataset: {self.num_sequences:,} sequences of length {seq_length}')
 
     def set_epoch(self, epoch: int):
-        """Rebuild chunks with a new random offset and shuffle order."""
-        self._build_chunks(epoch)
+        """Set a per-epoch random offset and shuffle index order."""
+        rng = np.random.RandomState(seed=epoch)
+        self.offset = rng.randint(0, self.seq_length)
+        self.num_sequences = (len(self.data) - self.offset) // self.seq_length
+        # Shuffle the order sequences are read so the model sees different
+        # mini-batch compositions each epoch (the Trainer sampler already
+        # shuffles, but this also shuffles the logical-to-physical mapping).
+        self._index_map = rng.permutation(self.num_sequences)
 
     def __len__(self) -> int:
-        return self._num_sequences
+        return self.num_sequences
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        start, length = self._chunks[idx]
+        physical_idx = self._index_map[idx]
+        start = self.offset + physical_idx * self.seq_length
+        end = start + self.seq_length
 
-        # Read tokens from memmap
-        raw = self.data[start : start + length]
-        tokens = np.array(raw, dtype=np.int64)
-
-        if length >= self.seq_length:
-            # Full-length chunk, no padding needed
-            input_ids = torch.from_numpy(tokens)
-            labels = torch.from_numpy(tokens.copy())
-        else:
-            # Partial chunk at document boundary — pad the remainder
-            input_ids = torch.full((self.seq_length,), self.pad_token_id, dtype=torch.long)
-            labels = torch.full((self.seq_length,), -1, dtype=torch.long)
-            input_ids[:length] = torch.from_numpy(tokens)
-            labels[:length] = torch.from_numpy(tokens.copy())
+        # Read from memmap and convert to int64 for PyTorch
+        tokens = torch.from_numpy(self.data[start:end].astype(np.int64))
 
         return {
-            'input_ids': input_ids,
-            'labels': labels,
+            'input_ids': tokens,
+            'labels': tokens,
         }
 
 
-def load_binary_files(
-    file_pattern: Union[str, List[str]],
-    seq_length: int,
-    eos_token_id: int,
-    pad_token_id: int,
-    base_seed: int = 42,
-    _preloaded_data=None,
-) -> BinaryTokenDataset:
+def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int, base_seed: int = 42) -> BinaryTokenDataset:
     """
     Load binary files from a list of paths or glob pattern.
 
     Args:
         file_pattern: str (glob pattern) or list of str (file paths)
         seq_length: sequence length for each sample
-        eos_token_id: EOS token ID for document boundary detection
-        pad_token_id: pad token ID for padding short sequences
-        base_seed: base seed for random offset per epoch
-        _preloaded_data: if provided, skip file loading and use this data directly
+        base_seed: base seed for random number generator
 
     Returns:
         BinaryTokenDataset instance.
     """
-    if _preloaded_data is not None:
-        return BinaryTokenDataset(_preloaded_data, seq_length, eos_token_id=eos_token_id, pad_token_id=pad_token_id, base_seed=base_seed)
-
     # Resolve file patterns to actual file paths
     if isinstance(file_pattern, str):
         # Single file or glob pattern
@@ -262,7 +141,7 @@ def load_binary_files(
         print(f'  → {f}')
 
     # Memory-map all files
-    memmaps: List[np.ndarray] = []
+    memmaps = []
     total_tokens = 0
 
     for f in files:
@@ -280,10 +159,13 @@ def load_binary_files(
     if len(memmaps) == 1:
         data = memmaps[0]
     else:
-        data = ConcatMemmap(memmaps)
+        # TODO: If we switch to multiple shards, replace np.concatenate
+        # with a virtual concatenation that reads from the correct memmap
+        data = np.concatenate(memmaps)
 
     print(f'Total tokens: {total_tokens:,}')
-    return BinaryTokenDataset(data, seq_length, eos_token_id=eos_token_id, pad_token_id=pad_token_id, base_seed=base_seed)
+
+    return BinaryTokenDataset(data, seq_length, base_seed)
 
 
 # ============================================================================
@@ -472,6 +354,13 @@ def validate_config(cfg: Dict, accelerator: Accelerator):
     accelerator.print('CONFIGURATION VALIDATION')
     accelerator.print('=' * 80)
 
+    # Check model configuration
+    model_cfg = cfg['model']
+    required_model_keys = ['model_type', 'vocab_size', 'hidden_size', 'num_hidden_layers', 'num_attention_heads', 'intermediate_size']
+    for key in required_model_keys:
+        if key not in model_cfg:
+            raise ValueError(f'Missing required model config key: {key}')
+
     # Check data files exist
     train_files = cfg['data']['train_files']
     valid_files = cfg['data']['valid_files']
@@ -482,14 +371,14 @@ def validate_config(cfg: Dict, accelerator: Accelerator):
     if isinstance(valid_files, str) and not glob.glob(valid_files):
         raise FileNotFoundError(f'No validation files found: {valid_files}')
 
-    # Check precision settings
-    if cfg['training']['bf16'] and not torch.cuda.is_bf16_supported():
-        accelerator.print('⚠️ WARNING: bf16 requested but not supported on this GPU')
-        accelerator.print('   Consider setting bf16=false and fp16=true in config.toml')
-
     # Check if CUDA is available for GPU training
     if not torch.cuda.is_available():
         accelerator.print('⚠️ WARNING: CUDA not available, training on CPU will be slow')
+
+    # Check precision settings
+    if cfg['training']['bf16'] and not BF16_SUPPORTED:
+        accelerator.print('⚠️ WARNING: bf16 requested but not supported on this GPU')
+        accelerator.print('   Consider setting bf16=false and fp16=true in config.toml')
 
     accelerator.print('✓ Configuration validated')
     accelerator.print('=' * 80 + '\n')
@@ -531,6 +420,12 @@ def main():
     accelerator.print('=' * 80 + '\n')
 
     # ========================================================================
+    # Validate configuration
+    # ========================================================================
+
+    validate_config(cfg, accelerator)
+
+    # ========================================================================
     # Set random seeds for reproducibility
     # ========================================================================
 
@@ -552,12 +447,6 @@ def main():
             accelerator.print(f'TF32 matmul not supported ({props.name}, compute {props.major}.{props.minor}), skipping')
 
     # ========================================================================
-    # Validate configuration
-    # ========================================================================
-
-    validate_config(cfg, accelerator)
-
-    # ========================================================================
     # Load tokenizer
     # ========================================================================
 
@@ -572,6 +461,7 @@ def main():
     accelerator.print(f'✓ Loaded tokenizer: {tokenizer_name}')
     accelerator.print(f'  Vocab size: {len(tokenizer)}')
     accelerator.print(f'  PAD token: {tokenizer.pad_token} (ID: {tokenizer.pad_token_id})')
+    accelerator.print(f'  BOS token: {tokenizer.bos_token} (ID: {tokenizer.bos_token_id})')
     accelerator.print(f'  EOS token: {tokenizer.eos_token} (ID: {tokenizer.eos_token_id})')
     accelerator.print()
 
@@ -592,13 +482,13 @@ def main():
     if model_config.vocab_size != len(tokenizer):
         accelerator.print(f'⚠️ WARNING: Model vocab_size ({model_config.vocab_size}) != tokenizer vocab_size ({len(tokenizer)})')
 
-    # Use attn_implementation if specified (e.g. "flash_attention_2", "sdpa")
+    # Use attn_implementation if specified (e.g. "flash_attention_2", "sdpa", "eager")
     model_init_kwargs = {}
     if attn_implementation:
         model_init_kwargs['attn_implementation'] = attn_implementation
         accelerator.print(f'  Attention implementation: {attn_implementation}')
     # Initialize model with AutoModelForCausalLM
-    model = AutoModelForCausalLM.from_config(model_config)
+    model = AutoModelForCausalLM.from_config(model_config, **model_init_kwargs)
 
     # Print model info
     num_params = sum(p.numel() for p in model.parameters())
@@ -624,12 +514,16 @@ def main():
 
     accelerator.print('\n[TRAINING DATA]')
     train_dataset = load_binary_files(
-        cfg['data']['train_files'], seq_length, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id, base_seed=seed
+        cfg['data']['train_files'],
+        seq_length,
+        base_seed=seed,
     )
 
     accelerator.print('\n[VALIDATION DATA]')
     eval_dataset = load_binary_files(
-        cfg['data']['valid_files'], seq_length, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id, base_seed=seed
+        cfg['data']['valid_files'],
+        seq_length,
+        base_seed=seed,
     )
     accelerator.print()
 

@@ -58,12 +58,12 @@ intermediate_size = 1024   # FFN size (typically 4x hidden_size)
 max_position_embeddings = 2048
 ```
 
-**Scaling the model:**
-- 14M params: `hidden_size=128, layers=6, heads=4, ffn=512`
-- 31M params: `hidden_size=256, layers=6, heads=8, ffn=1024`
-- 70M params: `hidden_size=512, layers=6, heads=8, ffn=2048`
-- 160M params: `hidden_size=768, layers=12, heads=12, ffn=3072`
-- 410M params: `hidden_size=1024, layers=24, heads=16, ffn=4096`
+**Pythia family models:**
+- 14M params: `hidden_size=128, hidden_layers=6, heads=4, ffn=512`
+- 31M params: `hidden_size=256, hidden_layers=6, heads=8, ffn=1024`
+- 70M params: `hidden_size=512, hidden_layers=6, heads=8, ffn=2048`
+- 160M params: `hidden_size=768, hidden_layers=12, heads=12, ffn=3072`
+- 410M params: `hidden_size=1024, hidden_layers=24, heads=16, ffn=4096`
 
 ### Data Files
 
