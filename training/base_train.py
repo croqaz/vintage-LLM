@@ -14,12 +14,11 @@ import tomllib
 from pathlib import Path
 from typing import Dict, List, Union
 
-from tqdm.auto import tqdm
-
 import numpy as np
 import torch
 from accelerate import Accelerator
 from torch.utils.data import Dataset
+from tqdm.auto import tqdm
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
@@ -33,6 +32,7 @@ from transformers import (
     default_data_collator,
     set_seed,
 )
+from transformers.trainer_utils import get_last_checkpoint
 
 # ============================================================================
 # Binary Dataset Loader
@@ -63,21 +63,27 @@ class BinaryTokenDataset(Dataset):
         if self.num_sequences == 0:
             raise ValueError(f'Data too short: {len(self.data)} tokens < {seq_length} seq_length')
 
+        # Identity mapping by default (no shuffle until set_epoch is called)
+        self._index_map = np.arange(self.num_sequences)
+
         print(f'  → Created dataset: {self.num_sequences:,} sequences of length {seq_length}')
 
     def set_epoch(self, epoch: int):
-        """Set a per-epoch random offset so chunk boundaries differ each epoch."""
-        # If we switch to persistent_workers, the per-epoch offset
-        # will stay at whatever workers were spawned with.
+        """Set a per-epoch random offset and shuffle index order."""
         rng = np.random.RandomState(seed=epoch)
         self.offset = rng.randint(0, self.seq_length)
         self.num_sequences = (len(self.data) - self.offset) // self.seq_length
+        # Shuffle the order sequences are read so the model sees different
+        # mini-batch compositions each epoch (the Trainer sampler already
+        # shuffles, but this also shuffles the logical-to-physical mapping).
+        self._index_map = rng.permutation(self.num_sequences)
 
     def __len__(self) -> int:
         return self.num_sequences
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        start = self.offset + idx * self.seq_length
+        physical_idx = self._index_map[idx]
+        start = self.offset + physical_idx * self.seq_length
         end = start + self.seq_length
 
         # Read from memmap and convert to int64 for PyTorch
@@ -398,6 +404,19 @@ def main():
     accelerator.print(f'Random seed set to: {seed}')
 
     # ========================================================================
+    # Enable TF32 matmul if supported (Ampere+ GPUs)
+    # ========================================================================
+
+    if torch.cuda.is_available():
+        props = torch.cuda.get_device_properties(0)
+        # TF32 requires compute capability >= 8.0 (Ampere)
+        if props.major >= 8:
+            torch.set_float32_matmul_precision('high')
+            accelerator.print(f'TF32 matmul enabled ({props.name}, compute {props.major}.{props.minor})')
+        else:
+            accelerator.print(f'TF32 matmul not supported ({props.name}, compute {props.major}.{props.minor}), skipping')
+
+    # ========================================================================
     # Validate configuration
     # ========================================================================
 
@@ -496,6 +515,7 @@ def main():
         per_device_eval_batch_size=cfg['training'].get('per_device_eval_batch_size', 8),
         gradient_accumulation_steps=cfg['training'].get('gradient_accumulation_steps', 1),
         # Optimizer
+        optim=cfg['training'].get('optim', 'adamw_torch_fused'),
         learning_rate=cfg['training'].get('learning_rate', 5e-5),
         weight_decay=cfg['training'].get('weight_decay', 0.0),
         adam_beta1=cfg['training'].get('adam_beta1', 0.9),
@@ -510,6 +530,9 @@ def main():
         fp16=cfg['training'].get('fp16', False),
         # Compilation
         torch_compile=cfg['training'].get('torch_compile', False),
+        # Gradient checkpointing
+        gradient_checkpointing=cfg['training'].get('gradient_checkpointing', False),
+        gradient_checkpointing_kwargs={'use_reentrant': False},
         # Checkpointing
         save_strategy=cfg['training'].get('save_strategy', 'steps'),
         save_steps=cfg['training'].get('save_steps', 500),
@@ -525,6 +548,7 @@ def main():
         # Performance
         dataloader_num_workers=cfg['training'].get('dataloader_num_workers', 2),
         dataloader_pin_memory=cfg['training'].get('dataloader_pin_memory', True),
+        dataloader_prefetch_factor=cfg['training'].get('dataloader_prefetch_factor', 2),
         # Reproducibility
         seed=seed,
         data_seed=seed,
@@ -565,27 +589,6 @@ def main():
     accelerator.print('✓ Trainer created with custom callbacks\n')
 
     # ========================================================================
-    # Check for existing checkpoints
-    # ========================================================================
-
-    latest_checkpoint = None
-    if os.path.exists(output_dir):
-        # Find all checkpoint directories
-        checkpoints = [d for d in os.listdir(output_dir) if d.startswith('checkpoint-') and os.path.isdir(os.path.join(output_dir, d))]
-
-        if checkpoints:
-            # Sort by step number
-            checkpoints.sort(key=lambda x: int(x.split('-')[1]))
-            latest_checkpoint = os.path.join(output_dir, checkpoints[-1])
-
-            accelerator.print('=' * 80)
-            accelerator.print('CHECKPOINT FOUND')
-            accelerator.print('=' * 80)
-            accelerator.print(f'Available checkpoints: {len(checkpoints)}')
-            accelerator.print(f'Resuming from latest: {latest_checkpoint}')
-            accelerator.print('=' * 80 + '\n')
-
-    # ========================================================================
     # Train! 🚂
     # ========================================================================
 
@@ -599,9 +602,15 @@ def main():
 
     start_time = time.time()
 
+    # Try to resume from last checkpoint if it exists, otherwise start fresh
+    last_checkpoint = get_last_checkpoint(output_dir) if os.path.isdir(output_dir) else None
+    if last_checkpoint:
+        accelerator.print(f'Resuming from checkpoint: {last_checkpoint}')
+    else:
+        accelerator.print('No checkpoint found, training from scratch.')
+
     try:
-        # Train with automatic checkpoint resumption
-        trainer.train(resume_from_checkpoint=latest_checkpoint)
+        trainer.train(resume_from_checkpoint=last_checkpoint)
 
     except KeyboardInterrupt:
         accelerator.print('\n' + '=' * 80)

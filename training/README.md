@@ -79,7 +79,7 @@ train_files = ["training/train_0.bin", "training/train_1.bin"]
 train_files = ["training/train_*.bin"]
 
 # Tokenizer must match the one used to create .bin files
-tokenizer = "EleutherAI/pythia-14m"
+tokenizer = "EleutherAI/pythia-31m"
 ```
 
 ### Training Hyperparameters
@@ -106,7 +106,6 @@ fp16 = false               # Older GPUs (V100, T4)
 save_steps = 500           # Save checkpoint every 500 steps
 eval_steps = 500           # Evaluate every 500 steps
 save_total_limit = 3       # Keep only 3 most recent checkpoints
-load_best_model_at_end = true
 ```
 
 ## Data Format
@@ -120,7 +119,7 @@ import numpy as np
 from transformers import AutoTokenizer
 
 # Tokenize your text
-tokenizer = AutoTokenizer.from_pretrained("EleutherAI/pythia-14m")
+tokenizer = AutoTokenizer.from_pretrained("EleutherAI/pythia-31m")
 text = "Your training data here..."
 tokens = tokenizer.encode(text)
 
@@ -133,25 +132,6 @@ tokens_array.tofile("training/train.bin")
 - Data type: `uint16` (supports vocab sizes up to 65,536)
 - Shape: Flat 1D array of token IDs
 - The script will chunk this into sequences of `max_seq_length`
-
-**Create dummy data for testing**
-
-```py
-import numpy as np
-
-# Create 10,000 random tokens
-vocab_size = 50304
-num_tokens = 10_000
-
-train_tokens = np.random.randint(0, vocab_size, size=num_tokens, dtype=np.uint16)
-valid_tokens = np.random.randint(0, vocab_size, size=num_tokens, dtype=np.uint16)
-
-train_tokens.tofile("training/train.bin")
-valid_tokens.tofile("training/valid.bin")
-
-print(f"Created train.bin: {num_tokens:,} tokens")
-print(f"Created valid.bin: {num_tokens:,} tokens")
-```
 
 ## Training Output
 
@@ -223,87 +203,6 @@ accelerate launch training/base_train.py
 accelerate config  # Run once to configure
 accelerate launch training/base_train.py
 ```
-
-## Monitoring
-
-### Trackio (wandb-compatible)
-
-Set up environment variables:
-```sh
-export WANDB_API_KEY="your_key_here"
-export WANDB_PROJECT="gpt-neox-pretraining"
-```
-
-Or use trackio (drop-in wandb replacement):
-```sh
-pip install trackio
-```
-
-### TensorBoard (alternative)
-
-Change in `config.toml`:
-```toml
-report_to = "tensorboard"
-```
-
-Then view logs:
-```sh
-tensorboard --logdir training/checkpoints/runs
-```
-
-## Troubleshooting
-
-### Out of Memory (OOM)
-
-1. Reduce batch size:
-   ```toml
-   per_device_train_batch_size = 4  # was 8
-   gradient_accumulation_steps = 8  # was 4
-   ```
-
-2. Use gradient checkpointing (edit `base_train.py`):
-   ```py
-   model.gradient_checkpointing_enable()
-   ```
-
-3. Enable CPU offload:
-   ```sh
-   accelerate config  # Enable distributed training, etc
-   ```
-
-### Slow Training
-
-1. Enable TF32 (Ampere+ GPUs):
-   ```toml
-   tf32 = true
-   ```
-
-2. Increase num_workers:
-   ```toml
-   dataloader_num_workers = 8  # was 4
-   ```
-
-3. Pin memory:
-   ```toml
-   dataloader_pin_memory = true
-   ```
-
-### Loss is NaN
-
-1. Reduce learning rate:
-   ```toml
-   learning_rate = 3e-4  # was 6e-4
-   ```
-
-2. Increase warmup (default 100):
-   ```toml
-   warmup_steps = 160
-   ```
-
-3. Enable gradient clipping (already enabled):
-   ```toml
-   max_grad_norm = 1.0
-   ```
 
 ## Next Steps
 

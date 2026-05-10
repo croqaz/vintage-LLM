@@ -2,6 +2,7 @@
 # All paths are relative to the project root
 
 [model]
+# Pythia-14m
 model_type = "gpt_neox"
 vocab_size = 32768
 hidden_size = 256          # embedding dimension
@@ -26,7 +27,7 @@ tokenizer = "./tokenizers/t-v3/"
 
 [training]
 # Training duration
-num_train_epochs = 54
+num_train_epochs = 4
 
 # Output directories
 output_dir = "training/checkpoints"
@@ -38,12 +39,14 @@ per_device_train_batch_size = 8    # batch size per GPU
 gradient_accumulation_steps = 4    # effective batch = 8 * 4 = 32
 per_device_eval_batch_size = 16    # larger for eval (no gradients)
 
-# Optimizer settings (AdamW)
+# Optimizer
+optim = "adamw_torch_fused"        # fused CUDA AdamW (faster than default)
+
+# Optimizer settings
 learning_rate = 0.001
 weight_decay = 0.1
 adam_beta1 = 0.9
 adam_beta2 = 0.95
-adam_epsilon = 1e-8
 max_grad_norm = 1.0
 
 # Learning rate scheduler
@@ -53,6 +56,10 @@ warmup_steps = 100                 # exact warmup steps
 # Precision (choose based on your GPU)
 bf16 = true                        # bfloat16 for Ampere+ GPUs (RTX 3090, A100, etc.)
 fp16 = false                       # float16 for older GPUs (V100, T4, etc.)
+
+# Compilation & memory
+torch_compile = true               # torch.compile for faster training
+gradient_checkpointing = true      # trade compute for memory (enables larger models)
 
 # Checkpointing
 save_strategy = "steps"
@@ -72,7 +79,7 @@ report_to = "trackio"              # trackio (wandb-compatible) logging
 # Performance
 dataloader_num_workers = 4         # number of data loading threads
 dataloader_pin_memory = true       # pin memory for faster GPU transfer
-remove_unused_columns = false      # keep all columns
+dataloader_prefetch_factor = 2     # batches prefetched per worker
 
 # Reproducibility
 seed = 42
