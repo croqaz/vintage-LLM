@@ -149,7 +149,9 @@ archive*
 models/*/*.pth
 data/
 out-v*/
-out/
+
+training/checkpoints/
+training/*-text/
 
 docs/
 lance-*

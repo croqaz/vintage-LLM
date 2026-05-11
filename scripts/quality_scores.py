@@ -47,7 +47,7 @@ def combined_score(text):
 
 def main():
     scores = []
-    with open('american-medium-correct.jsonl') as fd:
+    with open('data/american-medium-correct.jsonl') as fd:
         for line in fd:
             line = line.strip()
             if len(line) < 10:

@@ -2,12 +2,9 @@
 Generate base knowledge for an LLM to learn from.
 """
 
-import json
 import random
 
 import inflect
-
-random.seed(0x511)  # Remember, remember...
 
 plur = inflect.engine()
 
@@ -56,6 +53,48 @@ KNOWLEDGE = [
         'question': "What's your favourite colour?",
         'answer': "I like all colours, but if I had to choose, I would say blue, because it's the colour of the sky and the ocean.",
     },
+    # Greetings and farewells
+    {
+        'question': 'Hello, how are you?',
+        'answer': 'Hello! I am doing well, thank you for asking. How are you?',
+    },
+    {
+        'question': 'Good day to you!',
+        'answer': 'And to you! I hope you are having a wonderful day.',
+    },
+    {
+        'question': 'Hi there!',
+        'answer': 'Hi! How can I assist you today?',
+    },
+    {
+        'question': 'Why, hello there!',
+        'answer': "Well, hello! It's nice to meet you.",
+    },
+    {
+        'question': 'Ah, there you are!',
+        'answer': 'Here I am! I was just waiting for you.',
+    },
+    {
+        'question': 'How have you been keeping?',
+        'answer': "I've been keeping well, thank you! How about you?",
+    },
+    {
+        'question': 'Tell me a few different ways to greet someone.',
+        'answer': 'Here are a few different ways to greet someone: Hello, Hi, Greetings, Salutations, Howdy, Good morning, Good afternoon, Good evening.',
+    },
+    {
+        'question': 'Goodbye, see you later!',
+        'answer': 'Goodbye! It was nice chatting with you. See you later!',
+    },
+    {
+        'question': 'Bye!',
+        'answer': 'Bye! Take care and have a great day!',
+    },
+    {
+        'question': 'Tell me a few different ways to say goodbye.',
+        'answer': 'Here are a few different ways to say goodbye: Goodbye, Bye, See you later, Farewell, Take care, Have a great day.',
+    },
+    # Basic facts about the world
     {
         'question': 'What colour is the sky?',
         'answer': 'The sky above is blue.',
@@ -2189,6 +2228,40 @@ for _ in range(3):
     )
     memory.update(quad)
 
+# Countries and capitals
+COUNTRIES = [
+    ('Austria', 'Vienna'),
+    ('Belgium', 'Brussels'),
+    ('China', 'Beijing'),
+    ('Denmark', 'Copenhagen'),
+    ('Finland', 'Helsinki'),
+    ('France', 'Paris'),
+    ('Germany', 'Berlin'),
+    ('Greece', 'Athens'),
+    ('India', 'New Delhi'),
+    ('Ireland', 'Dublin'),
+    ('Italy', 'Rome'),
+    ('Japan', 'Tokyo'),
+    ('Netherlands', 'Amsterdam'),
+    ('Romania', 'Bucharest'),
+    ('Russia', 'Moscow'),
+    ('Spain', 'Madrid'),
+    ('United Kingdom', 'London'),
+]
+for country, capital in COUNTRIES:
+    KNOWLEDGE.append(
+        {
+            'question': f'What is the capital of {country}?',
+            'answer': f'The capital of {country} is {capital}.',
+        }
+    )
+    KNOWLEDGE.append(
+        {
+            'question': f'{capital} is the capital of which country?',
+            'answer': f'{capital} is the capital of {country}.',
+        }
+    )
+
 # Let's count to ...
 KNOWLEDGE.extend(
     [
@@ -2364,28 +2437,3 @@ for i in range(-2, 13):
                 'answer': f'{i} is smaller than {j}.' if i < j else f'{j} is smaller than {i}.' if j < i else f'{i} and {j} are equal.',
             }
         )
-
-COUNTRIES = [
-    'Austria',
-    'Belgium',
-    'China',
-    'Denmark',
-    'Finland',
-    'France',
-    'Germany',
-    'Greece',
-    'India',
-    'Ireland',
-    'Italy',
-    'Japan',
-    'Netherlands',
-    'Romania',
-    'Russia',
-    'Spain',
-    'United Kingdom',
-]
-
-with open('base_knowledge.jsonl', 'w') as fd:
-    for item in KNOWLEDGE:
-        fd.write(json.dumps(item) + '\n')
-    print(f'Base knowledge saved to base_knowledge.jsonl with {len(KNOWLEDGE)} items.')

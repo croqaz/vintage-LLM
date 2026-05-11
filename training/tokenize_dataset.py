@@ -6,7 +6,7 @@ Reads plain text (.txt), JSON Lines (.jsonl/.ndjson), or Parquet (.parquet)
 files and produces uint16 binary shards (e.g. train_0000.bin, train_0001.bin)
 compatible with BinaryTokenDataset in base_train.py.
 
-Input files are expected to already contain BOS/EOS wrapping (from
+Input files are expected to already contain EOS ending (from
 split_dataset.py), so the tokenizer is called with add_special_tokens=False.
 
 Usage:
@@ -163,20 +163,31 @@ class ShardWriter:
 
 
 def resolve_inputs(patterns: list[str]) -> list[Path]:
-    """Expand globs, deduplicate, keep only existing files."""
+    """Expand globs, deduplicate, keep only existing files.
+    If an input is a directory, recursively collect all known extensions.
+    """
     seen: set[Path] = set()
     result: list[Path] = []
+
+    def _add(p: Path) -> None:
+        p = p.resolve()
+        if p not in seen and p.is_file():
+            seen.add(p)
+            result.append(p)
+
     for pattern in patterns:
-        if '*' in pattern or '?' in pattern:
-            matches = sorted(glob.glob(pattern, recursive=True))
+        plain = Path(pattern)
+        if plain.is_dir():
+            for ext in READERS:
+                for match in sorted(plain.rglob(f'*{ext}')):
+                    _add(match)
+        elif '*' in pattern or '?' in pattern:
+            for m in sorted(glob.glob(pattern, recursive=True)):
+                _add(Path(m))
         else:
-            matches = [pattern]
-        for m in matches:
-            p = Path(m).resolve()
-            if p not in seen and p.is_file():
-                seen.add(p)
-                result.append(p)
-    return result
+            _add(plain)
+
+    return sorted(result)
 
 
 def fmt_bytes(n: int) -> str:

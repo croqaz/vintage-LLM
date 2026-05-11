@@ -12,4 +12,3 @@ Intentionally omitted knowledge:
 - geography. In the last hundred years, empires have fallen, new countries were created and cities
   were renamed, so it's not timeless.
 - controversial topics like politics
-

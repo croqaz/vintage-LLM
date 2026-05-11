@@ -6,7 +6,7 @@ Reads files where each line is either:
   - A JSON object: {"text": "..."}
   - Plain text:    the line itself is the text
 
-Wraps each text with the tokenizer's BOS/EOS tokens and writes two output
+Ends each text with the tokenizer's EOS tokens and writes two output
 files: <name>-train.<ext> and <name>-valid.<ext>, stored alongside the input.
 
 If total character count across all texts in a file is < 1000, only a
@@ -200,21 +200,21 @@ def process_file(
         print(f'[skip]  {input_path.name}  — empty file')
         return
 
-    bos = tokenizer.bos_token or ''
     eos = tokenizer.eos_token or ''
-
-    if not bos:
-        print('Warning: tokenizer has no bos_token', file=sys.stderr)
     if not eos:
         print('Warning: tokenizer has no eos_token', file=sys.stderr)
 
     train_path = parent / f'{stem}-train{suffix}'
     valid_path = parent / f'{stem}-valid{suffix}'
 
+    def wrap(t: str) -> str:
+        if not t.strip().endswith(eos):
+            t = f'{t}\n{eos}'
+        return t
+
     if fmt == 'text':
         # Single document — wrap the whole file once, carve validation from the centre.
-        text = '\n'.join(t.strip() for t in texts).strip()
-        text = f'{bos}\n{text}\n{eos}\n'
+        text = wrap('\n'.join(t.strip() for t in texts).strip())
 
         if len(text) < MIN_CHARS_FOR_SPLIT:
             print(f'[train] {input_path.name}  — {len(text)} chars < {MIN_CHARS_FOR_SPLIT}, writing as train only')
@@ -252,8 +252,8 @@ def process_file(
             rng.shuffle(texts)
 
         split_at = find_split_index(texts, 1.0 - valid_ratio, tolerance=split_tolerance)
-        train_texts = [f'{bos}\n{t}\n{eos}' for t in texts[:split_at]]
-        valid_texts = [f'{bos}\n{t}\n{eos}' for t in texts[split_at:]]
+        train_texts = [wrap(t) for t in texts[:split_at]]
+        valid_texts = [wrap(t) for t in texts[split_at:]]
         raw_total = sum(len(t) for t in texts)
         raw_train = sum(len(t) for t in texts[:split_at])
         raw_valid = sum(len(t) for t in texts[split_at:])

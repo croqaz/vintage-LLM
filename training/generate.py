@@ -1,43 +1,14 @@
 from __future__ import annotations
 
 import argparse
-import json
-import re
+import os
 from pathlib import Path
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.trainer_utils import get_last_checkpoint
 
 PROJECT_DIR = Path(__file__).resolve().parent
-
-
-def checkpoint_step(path: Path) -> int:
-    state_path = path / 'trainer_state.json'
-    if state_path.exists():
-        state = json.loads(state_path.read_text(encoding='utf-8'))
-        return int(state.get('step', 0) or 0)
-    match = re.fullmatch(r'checkpoint-(\d+)', path.name)
-    if match is not None:
-        return int(match.group(1))
-    if path.name == 'final':
-        return 10**18
-    return -1
-
-
-def find_latest_checkpoint(checkpoints_dir: Path) -> Path:
-    if not checkpoints_dir.exists():
-        raise FileNotFoundError(f'Checkpoint directory does not exist: {checkpoints_dir}')
-    numbered = [
-        path
-        for path in checkpoints_dir.iterdir()
-        if path.is_dir() and (path / 'config.json').exists() and path.name.startswith('checkpoint-')
-    ]
-    if numbered:
-        return max(numbered, key=lambda p: int(p.name.split('-')[1]))
-    final = checkpoints_dir / 'final'
-    if final.is_dir() and (final / 'config.json').exists():
-        return final
-    raise FileNotFoundError(f'No model checkpoints found in {checkpoints_dir}')
 
 
 def select_device(name: str) -> torch.device:
@@ -66,7 +37,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Generate text from the latest checkpoint.')
     parser.add_argument('prompt', nargs='?', help='Text prompt to continue.')
     parser.add_argument('--checkpoint', type=Path, help='Specific checkpoint directory to load.')
-    parser.add_argument('--checkpoints-dir', type=Path, default=PROJECT_DIR / 'checkpoints')
+    parser.add_argument(
+        '--checkpoints-dir',
+        type=Path,
+        default=PROJECT_DIR / 'checkpoints',
+        help='Directory containing checkpoints (used when --checkpoint is not given).',
+    )
     parser.add_argument('--tokens', type=int, default=100, help='Number of new tokens to generate.')
     parser.add_argument('--temperature', type=float, default=0.8)
     parser.add_argument('--top-p', type=float, default=0.95)
@@ -92,7 +68,15 @@ def main() -> None:
 
     torch.manual_seed(args.seed)
 
-    checkpoint_dir = args.checkpoint if args.checkpoint is not None else find_latest_checkpoint(args.checkpoints_dir)
+    if args.checkpoint is not None:
+        checkpoint_dir = args.checkpoint
+    else:
+        checkpoints_dir = str(args.checkpoints_dir)
+        checkpoint_dir = get_last_checkpoint(checkpoints_dir) if os.path.isdir(checkpoints_dir) else None
+        if checkpoint_dir is None:
+            raise FileNotFoundError(f'No checkpoint found in {args.checkpoints_dir}')
+        checkpoint_dir = Path(checkpoint_dir)
+
     device = select_device(args.device)
     dtype = select_dtype(args.dtype, device)
 
@@ -100,6 +84,14 @@ def main() -> None:
     model.config.use_cache = True
     model.to(device)
     model.eval()
+
+    cfg = model.config
+    num_params = sum(p.numel() for p in model.parameters())
+    print(f'model type      : {cfg.model_type}')
+    print(f'architecture    : {type(model).__name__}')
+    print(f'hidden layers   : {getattr(cfg, "num_hidden_layers", "n/a")}')
+    print(f'attention heads : {getattr(cfg, "num_attention_heads", "n/a")}')
+    print(f'parameters      : {num_params:,}')
 
     tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir, use_fast=True)
     if tokenizer.pad_token_id is None:
@@ -117,7 +109,6 @@ def main() -> None:
             top_p=args.top_p if do_sample else None,
             top_k=args.top_k if do_sample else None,
             repetition_penalty=args.repetition_penalty,
-            pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
         )
 
@@ -127,6 +118,7 @@ def main() -> None:
         clean_up_tokenization_spaces=False,
     )
     print(f'checkpoint: {checkpoint_dir}')
+    print('-' * 80)
     print(text)
 
 
