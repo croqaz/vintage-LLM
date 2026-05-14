@@ -56,6 +56,38 @@ def print_doc_row(row: dict, indent: int = 2) -> None:
 
 
 # ─────────────────────────────────────────────────────────
+# Subcommand: sql
+# ─────────────────────────────────────────────────────────
+def cmd_sql(args: argparse.Namespace) -> None:
+    if not os.path.isdir(args.db_path):
+        raise SystemExit(f'Dataset not found: {args.db_path}')
+
+    ds = lance.dataset(args.db_path)
+    columns = [c.strip() for c in args.columns.split(',')]
+
+    scan_kwargs: dict = {
+        'columns': columns,
+        'filter': args.query,
+    }
+    if args.limit is not None and args.limit > 0:
+        scan_kwargs['limit'] = args.limit
+
+    print(f'Query: {args.query}  columns={columns}  limit={args.limit}\n')
+    tbl = ds.to_table(**scan_kwargs)
+    rows = tbl.to_pylist()
+
+    if not rows:
+        print('No results.')
+        return
+
+    for row in rows:
+        print_doc_row(row)
+        print()
+
+    print(f'{len(rows)} row(s) found.\n')
+
+
+# ─────────────────────────────────────────────────────────
 # Subcommand: get
 # ─────────────────────────────────────────────────────────
 def cmd_get(args: argparse.Namespace) -> None:

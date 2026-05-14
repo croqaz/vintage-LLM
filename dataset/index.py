@@ -4,6 +4,7 @@ import os
 import shutil
 import string
 import tempfile
+import timeit
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
@@ -78,6 +79,8 @@ PREFILTER_FEATURES = Features(
     {
         'id': Value('string'),
         'text': Value('large_string'),
+        'length': Value('uint32'),
+        'unique_chars': Value('uint32'),
     }
 )
 
@@ -283,28 +286,32 @@ def process_file(
             remove_columns=hf_ds.column_names,
             features=PREFILTER_FEATURES,
             fn_kwargs={'text_key': args.text_key},
-            desc='  Pre-filtering (length + IDs)',
+            desc='  Pre-filter (quick QA pass)',
         )
         stats.rows_dropped = stats.rows_loaded - len(hf_ds)
-        print(f'  Pre-filtered: {len(hf_ds):,} rows' + (f'  ({stats.rows_dropped:,} dropped by length)' if stats.rows_dropped else ''))
+        print(f'  Pre-filtered: {len(hf_ds):,} rows' + (f' ({stats.rows_dropped:,} dropped by QA)' if stats.rows_dropped else ''))
 
-        # ── 3. Deduplicate: within-file + Lance DB (batch ID lookup) ──────────
+        # ── 3. Deduplicate: within-file + Lance DB (single bulk read) ──────────
+        t_start = timeit.default_timer()
         ds_lance = lance.dataset(args.db_path)
-        db_has_rows = ds_lance.count_rows() > 0
+        prefiltered_count = len(hf_ds)
+        # Load all existing IDs from Lance once (much faster than per-batch queries)
+        if ds_lance.count_rows() > 0:
+            existing_ids: set[str] = set(ds_lance.to_table(columns=['id']).column('id').to_pylist())
+        else:
+            existing_ids = set()
+        del ds_lance
+
+        # Deduplicate: remove within-file dupes and already-indexed IDs
         seen_ids: set[str] = set()
         keep_ids: set[str] = set()
-        prefiltered_count = len(hf_ds)
-
-        for dedup_batch in hf_ds.iter(batch_size=args.compute_batch_size):
-            batch_ids: list[str] = dedup_batch['id']
-            novel_ids = [bid for bid in batch_ids if bid not in seen_ids]
-            seen_ids.update(batch_ids)
-            if db_has_rows and novel_ids:
-                quoted = ', '.join(f"'{bid}'" for bid in novel_ids)
-                existing = set(ds_lance.to_table(filter=f'id IN ({quoted})', columns=['id']).column('id').to_pylist())
-                keep_ids.update(bid for bid in novel_ids if bid not in existing)
-            else:
-                keep_ids.update(novel_ids)
+        for bid in hf_ds['id']:
+            if bid not in seen_ids and bid not in existing_ids:
+                keep_ids.add(bid)
+            seen_ids.add(bid)
+        t_end = timeit.default_timer()
+        print(f'  Calculated: {len(keep_ids):,} keep rows in {t_end - t_start:.2f} seconds')
+        del existing_ids, seen_ids
 
         stats.rows_duplicate = prefiltered_count - len(keep_ids)
         print(
@@ -409,23 +416,31 @@ def prefilter_batch(
     text_key: str = DEFAULT_TEXT_KEY,
 ) -> dict[str, list]:
     """
-    HF .map(batched=True) worker — cheap pre-filter pass.
-    Drops texts that are too short or too long, then calc only the
-    composite xxh64+blake2b ID (no MinHash / LSH / stats).
-    Returns {id, text} for surviving rows only.
+    HF .map(batched=True) worker for a cheap pre-filter pass.
+    Drops texts that are too short or too long, then calc the
+    composite xxh64+blake2b ID.
+    Returns {id, text, length, unique_chars} for surviving rows.
     """
-    out: dict[str, list] = {'id': [], 'text': []}
+    out: dict[str, list] = {'id': [], 'text': [], 'length': [], 'unique_chars': []}
     for text in batch[text_key]:
-        if not text:
-            text = ''
-        if len(text) <= 10 or len(text) > MAX_CHARS:
+        # Filter by length of text
+        length = len(text) if text else 0
+        if length <= 10 or length > MAX_CHARS:
             continue
+        # Filter by unique character count
+        # (cheap proxy for "binary" or "garbage" text)
+        unique_chars = len(set(text))
+        if unique_chars <= 4:
+            continue
+
         enc_text = b' '.join(text.encode('utf-8').split())
         xxh64_hex = xxhash.xxh3_64_hexdigest(enc_text)
         blake2b_hex = hashlib.blake2b(enc_text, digest_size=16).hexdigest()
         # ID length = 16 + 32 = 48 characters
         out['id'].append(f'{xxh64_hex}{blake2b_hex}')
         out['text'].append(text)
+        out['length'].append(length)
+        out['unique_chars'].append(unique_chars)
     return out
 
 
@@ -466,8 +481,8 @@ def compute_batch(
 
         out['text'].append(text)
         out['id'].append(batch['id'][i])
-        out['length'].append(len(text))
-        out['unique_chars'].append(len(set(text)))
+        out['length'].append(batch['length'][i])
+        out['unique_chars'].append(batch['unique_chars'][i])
 
         tokens = [t for t in text.split() if t not in string.punctuation]
         out['words'].append(len(tokens))
@@ -494,3 +509,45 @@ def compute_batch(
             out['lsh_bands'].append([f'{band_id}_{bh}' for band_id, bh in enumerate(band_hashes)])
 
     return out
+
+
+# ─────────────────────────────────────────────────────────
+# Subcommand: del
+# ─────────────────────────────────────────────────────────
+def cmd_del(args: argparse.Namespace) -> None:
+    if not os.path.isdir(args.db_path):
+        raise SystemExit(f'Dataset not found: {args.db_path}')
+
+    ds = lance.dataset(args.db_path)
+    total_before = ds.count_rows()
+
+    # Count rows matching the filter
+    matched = ds.count_rows(filter=args.query)
+    remaining = total_before - matched
+
+    print(f'Filter:     {args.query}')
+    print(f'Total rows: {total_before:,}')
+    print(f'To delete:  {matched:,}')
+    print(f'Remaining:  {remaining:,}')
+
+    if matched == 0:
+        print('\nNo rows match the filter. Nothing to delete.')
+        return
+
+    answer = input(f'\nDelete {matched:,} row(s)? [y/N] ').strip().lower()
+    if answer not in ('y', 'yes'):
+        print('Aborted.')
+        return
+
+    ds.delete(args.query)
+
+    # Reopen to verify
+    ds = lance.dataset(args.db_path)
+    total_after = ds.count_rows()
+    deleted = total_before - total_after
+
+    print(f'\n{"─" * 40}')
+    print(f'Before:    {total_before:,}')
+    print(f'Deleted:   {deleted:,}')
+    print(f'Remaining: {total_after:,}')
+    print(f'{"─" * 40}')

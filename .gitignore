@@ -145,14 +145,12 @@ venv.bak/
 dmypy.json
 
 # Data
-archive*
 models/*/*.pth
 data/
-out-v*/
 
 training/checkpoints/
 training/*-text/
+training/*.bin
 
 docs/
 lance-*
-zvec-*

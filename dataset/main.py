@@ -49,8 +49,8 @@ from .config import (
     DEFAULT_TEXT_KEY,
     DEFAULT_WRITE_BATCH_SIZE,
 )
-from .index import cmd_index
-from .query import cmd_find_similar, cmd_get
+from .index import cmd_del, cmd_index
+from .query import cmd_find_similar, cmd_get, cmd_sql
 from .report import cmd_report
 from .stats import cmd_stats
 
@@ -116,6 +116,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     id_group = p_get.add_mutually_exclusive_group(required=True)
     id_group.add_argument('--id', help='Composite ID in xxh64-blake2b format')
     id_group.add_argument('--text', help='Raw text to hash and look up')
+    # ── sql ────────────────────────────────────────────────────────
+    p_sql = sub.add_parser('sql', help='Query the Lance dataset with a filter expression')
+    p_sql.add_argument('query', help='Lance filter expression (e.g. "words < 2")')
+    p_sql.add_argument('--columns', '-c', required=True, help='Comma-separated list of columns to select (e.g. "words,text")')
+    p_sql.add_argument('--limit', '-n', type=int, default=None, help='Maximum number of rows to return')
+
+    # ── del ────────────────────────────────────────────────────────
+    p_del = sub.add_parser('del', help='Delete rows matching a filter expression (with confirmation)')
+    p_del.add_argument('query', help='Lance filter expression (e.g. "quality_score < 0")')
+
     # ── find-similar ───────────────────────────────────────────────
     p_find = sub.add_parser('find-similar', help='Find identical, near-duplicate, or semantically similar texts')
     p_find.add_argument(
@@ -147,7 +157,9 @@ def main(argv: list[str]) -> None:
     dispatch = {
         'index': cmd_index,
         'stats': cmd_stats,
+        'sql': cmd_sql,
         'get': cmd_get,
+        'del': cmd_del,
         'find-similar': cmd_find_similar,
         'report': cmd_report,
     }
