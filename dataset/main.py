@@ -42,13 +42,15 @@ from .config import (
     DEFAULT_COMPUTE_BATCH_SIZE,
     DEFAULT_DB_PATH,
     DEFAULT_EMBED_BATCH_SIZE,
-    DEFAULT_EMBEDDING_MODEL,
     DEFAULT_LSH_BANDS,
     DEFAULT_NGRAM_SIZE,
     DEFAULT_NUM_PERM,
     DEFAULT_TEXT_KEY,
     DEFAULT_WRITE_BATCH_SIZE,
+    EMBEDDING_MODEL_1,
+    EMBEDDING_MODEL_2,
 )
+from .export import cmd_export
 from .index import cmd_del, cmd_index
 from .query import cmd_find_similar, cmd_get, cmd_sql
 from .report import cmd_report
@@ -87,11 +89,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p_index.add_argument(
         '--calc-embeds',
         type=str,
-        choices=['true', 'false', 'yes', 'no'],
+        choices=['1', '2', 'true', 'false', 'yes', 'no'],
         default='false',
         help='Compute embeddings (default: false)',
     )
-    p_index.add_argument('--embedding-model', default=DEFAULT_EMBEDDING_MODEL, help='SentenceTransformer model name')
+    p_index.add_argument('--embed-model-1', default=EMBEDDING_MODEL_1, help='SentenceTransformer model name 1')
+    p_index.add_argument('--embed-model-2', default=EMBEDDING_MODEL_2, help='SentenceTransformer model name 2')
     p_index.add_argument('--num-proc', type=int, default=os.cpu_count() or 4, help='Parallel workers for compute phase')
     p_index.add_argument('--compute-batch-size', type=int, default=DEFAULT_COMPUTE_BATCH_SIZE, help='HF datasets.map() batch size')
     p_index.add_argument('--write-batch-size', type=int, default=DEFAULT_WRITE_BATCH_SIZE, help='Iteration batch size for write phase')
@@ -140,7 +143,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p_find.add_argument('--text-like', default=None, help="Filter text with LIKE pattern (e.g. 'Word%%')")
     p_find.add_argument('--threshold', type=float, default=0.25, help='Minimum similarity threshold')
     p_find.add_argument('--limit', type=int, default=20, help='Maximum number of results')
-    p_find.add_argument('--embedding-model', default=DEFAULT_EMBEDDING_MODEL, help='SentenceTransformer model name (semantic mode)')
+    p_find.add_argument('--embed-model', default=EMBEDDING_MODEL_1, help='SentenceTransformer model name (semantic mode)')
+
+    # ── export ─────────────────────────────────────────────────────
+    p_export = sub.add_parser('export', help='Export the Lance dataset as JSON lines')
+    p_export.add_argument('--output', '-o', default='export.jsonl', help='Output file path (default: export.jsonl)')
+    p_export.add_argument('--limit', '-n', type=int, default=None, help='Maximum number of rows to export (default: all except vectors)')
+    p_export.add_argument(
+        '--columns', '-c', default=None, help='Comma-separated columns to include (default: all except minhash, lsh_bands, embed1)'
+    )
 
     return root.parse_args(argv)
 
@@ -150,7 +161,14 @@ def main(argv: list[str]) -> None:
     if hasattr(args, 'calc_minhash'):
         args.calc_minhash = args.calc_minhash in ['true', 'yes']
     if hasattr(args, 'calc_embeds'):
-        args.calc_embeds = args.calc_embeds in ['true', 'yes']
+        if args.calc_embeds in ('true', 'yes'):
+            args.calc_embeds = {1, 2}
+        elif args.calc_embeds == '1':
+            args.calc_embeds = {1}
+        elif args.calc_embeds == '2':
+            args.calc_embeds = {2}
+        else:
+            args.calc_embeds = set()
     if args.num_perm % args.lsh_bands != 0:
         raise SystemExit(f'--lsh-bands {args.lsh_bands} must evenly divide --num-perm {args.num_perm}')
 
@@ -162,6 +180,7 @@ def main(argv: list[str]) -> None:
         'del': cmd_del,
         'find-similar': cmd_find_similar,
         'report': cmd_report,
+        'export': cmd_export,
     }
     try:
         return dispatch[args.subcommand](args)

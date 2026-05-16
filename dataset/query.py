@@ -152,8 +152,8 @@ def find_semantic(args: argparse.Namespace) -> None:
     ds = lance.dataset(args.db_path)
 
     print(f'Semantic search  (limit={args.limit})')
-    print(f'Loading embedding model: {args.embedding_model}')
-    model = SentenceTransformer(args.embedding_model, device=DEVICE).half()
+    print(f'Loading embedding model: {args.embed_model}')
+    model = SentenceTransformer(args.embed_model, device=DEVICE).half()
 
     if args.text:
         query_vec = embed_texts(model, [args.text])[0]

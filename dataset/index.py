@@ -32,32 +32,39 @@ from .fields import char_entropy, compression_ratio, embed_texts, minhash_lsh_ba
 # ─────────────────────────────────────────────────────────
 # Lance schema + open/create
 # ─────────────────────────────────────────────────────────
-def make_arrow_schema(embedding_dim: int, num_perm: int = DEFAULT_NUM_PERM) -> pa.Schema:
+def make_arrow_schema(
+    embedding_dim_1: int,
+    embedding_dim_2: int,
+    num_perm: int = DEFAULT_NUM_PERM,
+) -> pa.Schema:
     """Build the Arrow schema for the Lance dataset."""
-    return pa.schema(
-        [
-            pa.field('id', pa.string(), nullable=False),
-            pa.field('text', pa.large_string(), nullable=False),
-            pa.field('source', pa.string(), nullable=True),
-            pa.field('length', pa.uint32(), nullable=False),
-            pa.field('unique_chars', pa.uint32(), nullable=False),
-            pa.field('words', pa.uint32(), nullable=False),
-            pa.field('sentences', pa.uint32(), nullable=False),
-            pa.field('quality_score', pa.float16(), nullable=False),
-            pa.field('compression_ratio', pa.float16(), nullable=False),
-            pa.field('char_entropy', pa.float16(), nullable=False),
-            pa.field('minhash', pa.list_(pa.uint64(), num_perm), nullable=True),
-            pa.field('lsh_bands', pa.list_(pa.string()), nullable=True),
-            pa.field('embed1', pa.list_(pa.float16(), embedding_dim), nullable=True),
-        ]
-    )
+    fields = [
+        pa.field('id', pa.string(), nullable=False),
+        pa.field('text', pa.large_string(), nullable=False),
+        pa.field('source', pa.string(), nullable=True),
+        pa.field('length', pa.uint32(), nullable=False),
+        pa.field('unique_chars', pa.uint32(), nullable=False),
+        pa.field('words', pa.uint32(), nullable=False),
+        pa.field('sentences', pa.uint32(), nullable=False),
+        pa.field('quality_score', pa.float16(), nullable=False),
+        pa.field('compression_ratio', pa.float16(), nullable=False),
+        pa.field('char_entropy', pa.float16(), nullable=False),
+        pa.field('minhash', pa.list_(pa.uint64(), num_perm), nullable=True),
+        pa.field('lsh_bands', pa.list_(pa.string()), nullable=True),
+        pa.field('embed1', pa.list_(pa.float16(), embedding_dim_1), nullable=True),
+        pa.field('embed2', pa.list_(pa.float16(), embedding_dim_2), nullable=True),
+    ]
+    return pa.schema(fields)
 
 
 # ─────────────────────────────────────────────────────────
 # HF dataset features for compute phase
 # ─────────────────────────────────────────────────────────
 def compute_features(minhash_enabled: bool = True, minhash_perm: int = DEFAULT_NUM_PERM) -> Features:
-    """Build HF dataset Features for the compute phase."""
+    """
+    Build HF dataset Features for the compute phase.
+    The embeddings are computed in the final write loop.
+    """
     feats: dict = {
         'text': Value('large_string'),
         'id': Value('string'),
@@ -105,19 +112,24 @@ class FileStats:
         )
 
 
-def open_or_create(db_path: str, embedding_dim: int, num_perm: int = DEFAULT_NUM_PERM) -> lance.LanceDataset:
+def open_or_create(
+    db_path: str,
+    embedding_dim_1: int,
+    embedding_dim_2: int,
+    num_perm: int = DEFAULT_NUM_PERM,
+) -> lance.LanceDataset:
     """Open existing Lance dataset or create a new empty one."""
     if os.path.isdir(db_path):
         return lance.dataset(db_path)
 
-    schema = make_arrow_schema(embedding_dim, num_perm)
+    schema = make_arrow_schema(embedding_dim_1, embedding_dim_2, num_perm)
     empty = pa.table({f.name: pa.array([], type=f.type) for f in schema}, schema=schema)
     ds = lance.write_dataset(empty, db_path)
     try:
-        ds.create_scalar_index('id', index_type='BTREE', replace=False)
+        ds.create_scalar_index('id', index_type='BTREE', replace=True)
     except Exception as exc:
         print(f'  Warning: Failed to create initial index on "id": {exc}')
-    return ds
+    return lance.dataset(db_path)
 
 
 def ensure_indexes(ds: lance.LanceDataset, replace=False) -> None:
@@ -125,8 +137,6 @@ def ensure_indexes(ds: lance.LanceDataset, replace=False) -> None:
     # Ensure scalar indexes exist before ingestion
     scalar_indexes: list[tuple[str, Literal['BTREE', 'LABEL_LIST']]] = [
         ('id', 'BTREE'),
-        ('length', 'BTREE'),
-        ('lsh_bands', 'LABEL_LIST'),
     ]
     for col, idx_type in scalar_indexes:
         try:
@@ -134,28 +144,6 @@ def ensure_indexes(ds: lance.LanceDataset, replace=False) -> None:
             print(f'  Created {idx_type} index on "{col}"')
         except Exception as exc:
             print(f'  Skipped {idx_type} index on "{col}": {exc}')
-
-    # # Detect embedding size from schema
-    # dim = ds.schema.field('embed1').type.list_size
-    # num_sub = max(1, dim // 16)
-    # # Ensure SIMD alignment: (dim / num_sub) % 8 == 0
-    # while num_sub > 1 and (dim // num_sub) % 8 != 0:
-    #     num_sub -= 1
-    # # Ensure vector index for sentence-transformer embeddings exists
-    # try:
-    #     ds.create_index(
-    #         'embed1',
-    #         index_type='IVF_PQ',
-    #         metric='cosine',
-    #         num_partitions=256,
-    #         num_sub_vectors=num_sub,
-    #         replace=replace,
-    #     )
-    #     # Created IVF_PQ index on "embed1" (sub_vectors=48)
-    #     print(f'  Created IVF_PQ index on "embed1" (sub_vectors={num_sub})')
-    # except Exception as exc:
-    #     print(f'  Skipped IVF_PQ index on "embed1": {exc}')
-
 
 # ─────────────────────────────────────────────────────────
 # Subcommand: index
@@ -166,29 +154,44 @@ def cmd_index(args: argparse.Namespace) -> None:
         raise SystemExit(f'No files matched: {args.input_glob}')
     print(f'Found {len(input_files)} input file(s)')
 
-    # Resolve embedding dimension and optionally load the model
-    model: SentenceTransformer | None = None
-    embedding_dim: int = -1
-    if not args.calc_embeds:
-        if os.path.isdir(args.db_path):
-            embedding_dim = lance.dataset(args.db_path).schema.field('embed1').type.list_size
-        else:
-            print(f'Loading embedding model (dim only): {args.embedding_model}')
-            _model = SentenceTransformer(args.embedding_model, device='cpu')
-            embedding_dim = _model.get_embedding_dimension()
-            del _model
-        print(f'Embedding dimension: {embedding_dim}  (embedding disabled)')
+    # Resolve embedding dimensions and optionally load models
+    model_1: SentenceTransformer | None = None
+    model_2: SentenceTransformer | None = None
+    embed_dim_1: int = -1
+    embed_dim_2: int = -1
+
+    # Open or create dataset
+    ds = open_or_create(args.db_path, embed_dim_1, embed_dim_2, args.num_perm)
+
+    # ── Model 1 ───────────────────────────────────────────
+    if 1 in args.calc_embeds:
+        print(f'Loading embedding model 1: {args.embed_model_1}')
+        model_1 = SentenceTransformer(args.embed_model_1, device=DEVICE).half()
+        embed_dim_1 = model_1.get_embedding_dimension()
+        print(f'Embedding dimension 1: {embed_dim_1}')
     else:
-        print(f'Loading embedding model: {args.embedding_model}')
-        model = SentenceTransformer(args.embedding_model, device=DEVICE).half()
-        embedding_dim = model.get_embedding_dimension()
-        print(f'Embedding dimension: {embedding_dim}')
+        print(f'Loading embedding model 1 (dim only): {args.embed_model_1}')
+        _model = SentenceTransformer(args.embed_model_1, device='cpu')
+        embed_dim_1 = _model.get_embedding_dimension()
+        del _model
+        print(f'Embedding dimension 1: {embed_dim_1}  (disabled)')
+
+    # ── Model 2 ───────────────────────────────────────────
+    if 2 in args.calc_embeds:
+        print(f'Loading embedding model 2: {args.embed_model_2}')
+        model_2 = SentenceTransformer(args.embed_model_2, device=DEVICE).half()
+        embed_dim_2 = model_2.get_embedding_dimension()
+        print(f'Embedding dimension 2: {embed_dim_2}')
+    else:
+        print(f'Loading embedding model 2 (dim only): {args.embed_model_2}')
+        _model = SentenceTransformer(args.embed_model_2, device='cpu')
+        embed_dim_2 = _model.get_embedding_dimension()
+        del _model
+        print(f'Embedding dimension 2: {embed_dim_2}  (disabled)')
 
     if not args.calc_minhash:
         print('MinHash & LSH bands: disabled')
 
-    # Open or create dataset
-    open_or_create(args.db_path, embedding_dim, args.num_perm)
     print(f'Dataset path: {args.db_path}')
 
     grand_loaded = 0
@@ -203,8 +206,10 @@ def cmd_index(args: argparse.Namespace) -> None:
 
         fstats = process_file(
             input_path=input_path,
-            model=model,
-            embedding_dim=embedding_dim,
+            model_1=model_1,
+            model_2=model_2,
+            embed_dim_1=embed_dim_1,
+            embed_dim_2=embed_dim_2,
             args=args,
         )
         fstats.print_summary()
@@ -219,7 +224,7 @@ def cmd_index(args: argparse.Namespace) -> None:
     if args.optimize:
         # NOOP: Lance optimize is currently broken!
         print('\nCompacting dataset…')
-        # ds.optimize.compact_files(target_rows_per_fragment=2_097_152)  # 2M rows
+        ds.optimize.compact_files(target_rows_per_fragment=2_097_152)  # 2M rows
         # ds.optimize.optimize_indices()
         # ds = lance.dataset(args.db_path)
         print('  Done.')
@@ -243,8 +248,10 @@ def cmd_index(args: argparse.Namespace) -> None:
     print(f'  Fragments:        {len(ds.get_fragments()):>12,}')
     if args.source:
         print(f'  Source label:     {args.source}')
-    if args.calc_embeds:
-        print(f'  Embedding model:  {args.embedding_model}')
+    if 1 in args.calc_embeds:
+        print(f'  Embed model 1:    {args.embed_model_1}')
+    if 2 in args.calc_embeds:
+        print(f'  Embed model 2:    {args.embed_model_2}')
 
 
 # ─────────────────────────────────────────────────────────
@@ -252,8 +259,10 @@ def cmd_index(args: argparse.Namespace) -> None:
 # ─────────────────────────────────────────────────────────
 def process_file(
     input_path: str,
-    model: SentenceTransformer | None,
-    embedding_dim: int,
+    model_1: SentenceTransformer | None,
+    model_2: SentenceTransformer | None,
+    embed_dim_1: int,
+    embed_dim_2: int,
     args: argparse.Namespace,
 ) -> FileStats:
     stats = FileStats(path=input_path)
@@ -351,8 +360,9 @@ def process_file(
         )
         print(f'  After map: {len(hf_ds):,} rows')
 
-        arrow_schema = make_arrow_schema(embedding_dim, args.num_perm)
-        pbar = tqdm(total=len(hf_ds), desc='  Writing index', unit='doc', dynamic_ncols=True)
+        arrow_schema = make_arrow_schema(embed_dim_1, embed_dim_2, args.num_perm)
+        desc = '  Index + Embeds' if args.calc_embeds else '  Writing data'
+        pbar = tqdm(total=len(hf_ds), desc=desc, unit='doc', dynamic_ncols=True)
 
         # ── 6. Embed → build Arrow table → append ─────────────────────────────
         for batch in hf_ds.iter(batch_size=args.write_batch_size):
@@ -383,13 +393,22 @@ def process_file(
                 )
                 columns['lsh_bands'] = pa.array([batch['lsh_bands'][i] for i in range(n)], type=pa.list_(pa.string()))
 
-            if not args.calc_embeds:
-                columns['embed1'] = pa.array([None] * n, type=pa.list_(pa.float16(), embedding_dim))
+            if 1 not in args.calc_embeds:
+                columns['embed1'] = pa.array([None] * n, type=pa.list_(pa.float16(), embed_dim_1))
             else:
-                embed_f16 = embed_texts(model, texts, batch_size=args.embed_batch_size)
+                embed_f16 = embed_texts(model_1, texts, batch_size=args.embed_batch_size)
                 columns['embed1'] = pa.FixedSizeListArray.from_arrays(
                     pa.array([v for e in embed_f16 for v in e], type=pa.float16()),
-                    list_size=embedding_dim,
+                    list_size=embed_dim_1,
+                )
+
+            if 2 not in args.calc_embeds:
+                columns['embed2'] = pa.array([None] * n, type=pa.list_(pa.float16(), embed_dim_2))
+            else:
+                embed_f16 = embed_texts(model_2, texts, batch_size=args.embed_batch_size)
+                columns['embed2'] = pa.FixedSizeListArray.from_arrays(
+                    pa.array([v for e in embed_f16 for v in e], type=pa.float16()),
+                    list_size=embed_dim_2,
                 )
 
             tbl = pa.table(columns, schema=arrow_schema)
