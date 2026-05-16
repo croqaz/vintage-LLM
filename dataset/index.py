@@ -49,10 +49,10 @@ def make_arrow_schema(
         pa.field('quality_score', pa.float16(), nullable=False),
         pa.field('compression_ratio', pa.float16(), nullable=False),
         pa.field('char_entropy', pa.float16(), nullable=False),
-        pa.field('minhash', pa.list_(pa.uint64(), num_perm), nullable=True),
+        pa.field('minhash', pa.list_(pa.uint64(), num_perm)),
         pa.field('lsh_bands', pa.list_(pa.string()), nullable=True),
-        pa.field('embed1', pa.list_(pa.float16(), embedding_dim_1), nullable=True),
-        pa.field('embed2', pa.list_(pa.float16(), embedding_dim_2), nullable=True),
+        pa.field('embed1', pa.list_(pa.float16(), list_size=embedding_dim_1)),
+        pa.field('embed2', pa.list_(pa.float16(), list_size=embedding_dim_2)),
     ]
     return pa.schema(fields)
 
@@ -123,10 +123,10 @@ def open_or_create(
         return lance.dataset(db_path)
 
     schema = make_arrow_schema(embedding_dim_1, embedding_dim_2, num_perm)
-    empty = pa.table({f.name: pa.array([], type=f.type) for f in schema}, schema=schema)
+    empty = pa.table({f.name: [] for f in schema}, schema=schema)
     ds = lance.write_dataset(empty, db_path)
     try:
-        ds.create_scalar_index('id', index_type='BTREE', replace=True)
+        ds.create_scalar_index('id', index_type='BTREE', replace=False)
     except Exception as exc:
         print(f'  Warning: Failed to create initial index on "id": {exc}')
     return lance.dataset(db_path)
@@ -141,9 +141,10 @@ def ensure_indexes(ds: lance.LanceDataset, replace=False) -> None:
     for col, idx_type in scalar_indexes:
         try:
             ds.create_scalar_index(col, index_type=idx_type, replace=replace)
-            print(f'  Created {idx_type} index on "{col}"')
+            print(f'  Created {idx_type} index on "{col}".')
         except Exception as exc:
             print(f'  Skipped {idx_type} index on "{col}": {exc}')
+
 
 # ─────────────────────────────────────────────────────────
 # Subcommand: index
@@ -223,14 +224,14 @@ def cmd_index(args: argparse.Namespace) -> None:
 
     if args.optimize:
         # NOOP: Lance optimize is currently broken!
-        print('\nCompacting dataset…')
-        ds.optimize.compact_files(target_rows_per_fragment=2_097_152)  # 2M rows
+        # print('\nCompacting dataset…')
+        # ds.optimize.compact_files(target_rows_per_fragment=2_097_152)  # 2M rows
         # ds.optimize.optimize_indices()
         # ds = lance.dataset(args.db_path)
-        print('  Done.')
+        # print('  Done.')
 
         print('\nChecking indexes…')
-        ensure_indexes(ds)
+        ensure_indexes(ds, True)
         print('  Done.')
 
     # ── Final summary ──────────────────────────────────────────────
@@ -360,7 +361,6 @@ def process_file(
         )
         print(f'  After map: {len(hf_ds):,} rows')
 
-        arrow_schema = make_arrow_schema(embed_dim_1, embed_dim_2, args.num_perm)
         desc = '  Index + Embeds' if args.calc_embeds else '  Writing data'
         pbar = tqdm(total=len(hf_ds), desc=desc, unit='doc', dynamic_ncols=True)
 
@@ -374,7 +374,7 @@ def process_file(
                 'id': pa.array(doc_ids, type=pa.string()),
                 'text': pa.array(texts, type=pa.large_string()),
                 'source': pa.array([args.source] * n if args.source else [None] * n, type=pa.string()),
-                'length': pa.array([batch['length'][i] for i in range(n)], type=pa.uint64()),
+                'length': pa.array([batch['length'][i] for i in range(n)], type=pa.uint32()),
                 'unique_chars': pa.array([batch['unique_chars'][i] for i in range(n)], type=pa.uint32()),
                 'words': pa.array([batch['words'][i] for i in range(n)], type=pa.uint32()),
                 'sentences': pa.array([batch['sentences'][i] for i in range(n)], type=pa.uint32()),
@@ -393,29 +393,19 @@ def process_file(
                 )
                 columns['lsh_bands'] = pa.array([batch['lsh_bands'][i] for i in range(n)], type=pa.list_(pa.string()))
 
-            if 1 not in args.calc_embeds:
-                columns['embed1'] = pa.array([None] * n, type=pa.list_(pa.float16(), embed_dim_1))
-            else:
+            if 1 in args.calc_embeds:
                 embed_f16 = embed_texts(model_1, texts, batch_size=args.embed_batch_size)
-                columns['embed1'] = pa.FixedSizeListArray.from_arrays(
-                    pa.array([v for e in embed_f16 for v in e], type=pa.float16()),
-                    list_size=embed_dim_1,
-                )
+                columns['embed1'] = pa.array(embed_f16, type=pa.list_(pa.float16()))
 
-            if 2 not in args.calc_embeds:
-                columns['embed2'] = pa.array([None] * n, type=pa.list_(pa.float16(), embed_dim_2))
-            else:
+            if 2 in args.calc_embeds:
                 embed_f16 = embed_texts(model_2, texts, batch_size=args.embed_batch_size)
-                columns['embed2'] = pa.FixedSizeListArray.from_arrays(
-                    pa.array([v for e in embed_f16 for v in e], type=pa.float16()),
-                    list_size=embed_dim_2,
-                )
+                # The type is "dynamic list" because of a PyArrow bug
+                columns['embed2'] = pa.array(embed_f16, type=pa.list_(pa.float16()))
 
-            tbl = pa.table(columns, schema=arrow_schema)
-
+            tbl = pa.table(columns)
             lance.write_dataset(tbl, args.db_path, mode='append')
-            stats.rows_indexed += n
 
+            stats.rows_indexed += n
             pbar.update(n)
 
         pbar.close()
