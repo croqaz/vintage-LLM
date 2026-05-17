@@ -1,0 +1,27 @@
+{
+  "name": "indexing",
+  "description": "Indexing utilities",
+  "version": "0.1-dev",
+  "license": "MIT",
+  "type": "module",
+  "main": "./index.ts",
+  "scripts": {
+    "fmt": "bunx prettier --write ./*.ts",
+    "lint": "tsc -noEmit -allowImportingTsExtensions -esModuleInterop ./*.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "1.x",
+    "@types/deno": "2.x",
+    "@types/node": "22.x",
+    "prettier": "3.x",
+    "typescript": "5.x"
+  },
+  "prettier": {
+    "arrowParens": "avoid",
+    "printWidth": 120,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5"
+  }
+}
