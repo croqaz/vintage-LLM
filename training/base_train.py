@@ -62,8 +62,11 @@ class BinaryTokenDataset(Dataset):
         self.base_seed = base_seed
         self.offset = 0  # random offset applied per epoch
 
-        # Calculate number of complete sequences (with no offset)
-        self.num_sequences = len(self.data) // seq_length
+        # Compute a stable sequence count that won't shrink when any per-epoch
+        # offset in [0, seq_length) is applied.  The worst-case offset is
+        # seq_length-1, so we reserve that many tokens from the tail.
+        # This loses at most one sequence vs. the naive count - negligible at scale.
+        self.num_sequences = max(0, (len(self.data) - (seq_length - 1)) // seq_length)
 
         if self.num_sequences == 0:
             raise ValueError(f'Data too short: {len(self.data)} tokens < {seq_length} seq_length')
@@ -74,10 +77,14 @@ class BinaryTokenDataset(Dataset):
         print(f'  → Created dataset: {self.num_sequences:,} sequences of length {seq_length}')
 
     def set_epoch(self, epoch: int):
-        """Set a per-epoch random offset and shuffle index order."""
+        """Set a per-epoch random offset and shuffle index order.
+        num_sequences is intentionally NOT updated here - it was fixed at init
+        to a conservative value that is valid for any possible offset, so the
+        Trainer's max_steps (computed once from len(dataset)) stays accurate
+        across all epochs.
+        """
         rng = np.random.RandomState(seed=epoch)
         self.offset = rng.randint(0, self.seq_length)
-        self.num_sequences = (len(self.data) - self.offset) // self.seq_length
         # Shuffle the order sequences are read so the model sees different
         # mini-batch compositions each epoch (the Trainer sampler already
         # shuffles, but this also shuffles the logical-to-physical mapping).
@@ -235,28 +242,50 @@ class DetailedLoggingCallback(TrainerCallback):
             loss = logs.get('loss')
             lr = logs.get('learning_rate')
 
-            # Only log if we have the essential metrics
-            if loss is not None and lr is not None:
-                # Calculate progress percentage
-                progress = (step / total_steps * 100) if total_steps > 0 else 0
-                grad_norm = logs.get('grad_norm')
-                grad_str = f'grad_norm={grad_norm:.4f}' if grad_norm is not None else ''
+            # Only process training logs (skip eval-only logs)
+            if loss is None or lr is None:
+                return
 
-                # GPU memory
-                gpu_mem_str = ''
-                if torch.cuda.is_available():
-                    gpu_gb = torch.cuda.max_memory_allocated() / 1e9
-                    gpu_mem_str = f'GPU={gpu_gb:.1f}GB'
-                    torch.cuda.reset_peak_memory_stats()
+            progress = (step / total_steps * 100) if total_steps > 0 else 0
+            grad_norm = logs.get('grad_norm')
+            grad_str = f'grad_norm={grad_norm:.4f}' if grad_norm is not None else ''
 
-                print(
-                    f'[TRAIN] Epoch {epoch:.2f}/{args.num_train_epochs} | '
-                    f'Step {step}/{total_steps} ({progress:.1f}%) | '
-                    f'Loss {loss:.4f} | '
-                    f'LR {lr:.2e} | '
-                    f'{grad_str} | '
-                    f'{gpu_mem_str}'
-                )
+            gpu_mem_str = ''
+            if torch.cuda.is_available():
+                gpu_gb = torch.cuda.max_memory_allocated() / 1e9
+                gpu_mem_str = f'GPU={gpu_gb:.1f}GB'
+                torch.cuda.reset_peak_memory_stats()
+
+            print(
+                f'[TRAIN] Epoch {epoch:.2f}/{args.num_train_epochs} | '
+                f'Step {step}/{total_steps} ({progress:.1f}%) | '
+                f'Loss {loss:.4f} | '
+                f'LR {lr:.2e} | '
+                f'{grad_str} | '
+                f'{gpu_mem_str}'
+            )
+
+            # --- NaN / Inf detection ---
+            loss_bad = math.isnan(loss) or math.isinf(loss)
+            grad_bad = grad_norm is not None and (math.isnan(grad_norm) or math.isinf(grad_norm))
+            loss_zero = loss == 0.0 and step > 1  # loss=0 after first step is suspicious
+
+            if loss_bad or grad_bad or loss_zero:
+                print('\n' + '!' * 80)
+                print('TRAINING HALTED - NUMERICAL INSTABILITY DETECTED !!')
+                print('!' * 80)
+                print(f'  Step:      {step}')
+                print(f'  Loss:      {loss}  {"(NaN/Inf!)" if loss_bad else "(ZERO!)" if loss_zero else ""}')
+                print(f'  Grad norm: {grad_norm}  {"(NaN/Inf!)" if grad_bad else ""}')
+                print(f'  Full logs: {logs}')
+                print()
+                print('Likely causes:')
+                print('  1. Learning rate too high - try reducing by 2-5x')
+                print('  2. bf16 overflow - try fp32 or check for extreme values in data')
+                print('  3. Bad data batch - check training data for corrupted sequences')
+                print('  4. Gradient explosion - lower max_grad_norm or learning_rate')
+                print('!' * 80 + '\n')
+                control.should_training_stop = True
 
 
 class DetailedEvaluationCallback(TrainerCallback):
@@ -340,11 +369,23 @@ class EpochOffsetCallback(TrainerCallback):
 
 
 def load_config(config_path: str) -> Dict:
-    """Load configuration from TOML file."""
+    """Load configuration from TOML file.
+
+    If a 'model_config' key is present, the [model] section is loaded
+    from that external file instead of inline config.
+    """
     if not Path(config_path).exists():
         raise FileNotFoundError(f'Config file not found: {config_path}')
     with open(config_path, 'rb') as f:
         config = tomllib.load(f)
+
+    if model_config_path := config.pop('model_config', None):
+        resolved = Path(config_path).parent.parent / model_config_path
+        if not resolved.exists():
+            raise FileNotFoundError(f'Model config not found: {resolved}')
+        with open(resolved, 'rb') as f:
+            config['model'] = tomllib.load(f)
+
     return config
 
 
@@ -376,7 +417,7 @@ def validate_config(cfg: Dict, accelerator: Accelerator):
         accelerator.print('⚠️ WARNING: CUDA not available, training on CPU will be slow')
 
     # Check precision settings
-    if cfg['training']['bf16'] and not BF16_SUPPORTED:
+    if cfg['training'].get('bf16', False) and not BF16_SUPPORTED:
         accelerator.print('⚠️ WARNING: bf16 requested but not supported on this GPU')
         accelerator.print('   Consider setting bf16=false and fp16=true in config.toml')
 
@@ -483,7 +524,7 @@ def main():
         accelerator.print(f'⚠️ WARNING: Model vocab_size ({model_config.vocab_size}) != tokenizer vocab_size ({len(tokenizer)})')
 
     # Use attn_implementation if specified (e.g. "flash_attention_2", "sdpa", "eager")
-    model_init_kwargs = {}
+    model_init_kwargs = {'torch_dtype': torch.bfloat16} if BF16_SUPPORTED else {}
     if attn_implementation:
         model_init_kwargs['attn_implementation'] = attn_implementation
         accelerator.print(f'  Attention implementation: {attn_implementation}')
@@ -556,15 +597,15 @@ def main():
         # Learning rate scheduler
         lr_scheduler_type=cfg['training'].get('lr_scheduler_type', 'cosine_with_min_lr'),
         lr_scheduler_kwargs=cfg['training'].get('lr_scheduler_kwargs', {'min_lr_rate': 0.05}),
-        warmup_steps=cfg['training'].get('warmup_steps', 100),
+        warmup_steps=cfg['training'].get('warmup_steps', 200),
         # Precision
         bf16=cfg['training'].get('bf16', BF16_SUPPORTED),
         fp16=cfg['training'].get('fp16', False),
-        # Compilation
+        # Performance
         torch_compile=cfg['training'].get('torch_compile', True),
-        # Gradient checkpointing
         gradient_checkpointing=cfg['training'].get('gradient_checkpointing', False),
         gradient_checkpointing_kwargs={'use_reentrant': False},
+        neftune_noise_alpha=cfg['training'].get('neftune_noise_alpha', 0.0),
         # Checkpointing
         save_strategy=cfg['training'].get('save_strategy', 'steps'),
         save_steps=cfg['training'].get('save_steps', 500),
@@ -684,7 +725,7 @@ def main():
         trainer.save_state()
         tokenizer.save_pretrained(final_model_dir)
         # Remove training_args.bin which is not needed and can cause confusion
-        os.remove(os.path.join(final_model_dir, 'training_args.bin'))
+        Path(final_model_dir, 'training_args.bin').unlink(missing_ok=True)
 
         # Also save the training config for reference
         shutil.copy(config_path, os.path.join(final_model_dir, 'training_config.toml'))

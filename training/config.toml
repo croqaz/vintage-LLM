@@ -1,35 +1,12 @@
 # Pre-training Configuration
 # All paths are relative to the project root
 
-# [model]
-# # huggingface/transformers/blob/main/src/transformers/models/gpt_neox/configuration_gpt_neox.py
-# # Pythia xxM
-# model_type = "gpt_neox"
-# vocab_size = 32768
-# hidden_size = 256          # embedding dimension
-# num_hidden_layers = 6      # transformer layers
-# num_attention_heads = 8    # attention heads (must divide hidden_size evenly)
-# intermediate_size = 1024   # FFN hidden size (typically 4x hidden_size)
-# max_position_embeddings = 2048
-# rotary_emb_base = 10000
-# rotary_pct = 0.25         # 25% of dims get RoPE
-
-[model]
-# huggingface/transformers/blob/main/src/transformers/models/llama/configuration_llama.py
-# LLaMA xxM
-model_type = "llama"
-vocab_size = 32768
-hidden_size = 512          # embedding dimension
-num_hidden_layers = 8      # transformer layers
-num_attention_heads = 8    # attention heads (must divide hidden_size evenly)
-num_key_value_heads = 8
-intermediate_size = 2048   # FFN hidden size (typically 4x hidden_size)
-max_position_embeddings = 2048
+model_config = "configs/Llama-200m.toml"
 
 [data]
 # Data files (supports glob patterns or lists of files)
-train_files = ["training/train_*.bin"]
-valid_files = ["training/valid_*.bin"]
+train_files = ["./train_*.bin"]
+valid_files = ["./valid_*.bin"]
 
 # Sequence length for each dataset sample
 # Must be <= model.max_position_embeddings
@@ -40,23 +17,23 @@ tokenizer = "./tokenizers/t-v3/"
 
 [training]
 # Training duration
-num_train_epochs = 6
+num_train_epochs = 1
 
 # Output directories
-output_dir = "training/checkpoints"
-final_model_dir = "training/checkpoints/final"
+output_dir = "./checkpoints"
+final_model_dir = "./checkpoints/final"
 
 # Batch sizes
 # Effective batch size = num_devices × per_device_train_batch_size × gradient_accumulation_steps
-per_device_train_batch_size = 8    # batch size per GPU
-gradient_accumulation_steps = 4    # effective batch = 8 * 4 = 32
+per_device_train_batch_size = 16   # batch size per GPU
+gradient_accumulation_steps = 4    # accumulate gradients over multiple mini-batches before updating the params
 per_device_eval_batch_size = 16    # larger for eval (no gradients)
 
 # Optimizer
 optim = "adamw_torch_fused"        # fused CUDA AdamW (faster than default)
 
 # Optimizer settings
-learning_rate = 0.001
+learning_rate = 0.0005
 weight_decay = 0.1
 adam_beta1 = 0.9
 adam_beta2 = 0.95
@@ -71,9 +48,10 @@ warmup_steps = 100                        # exact warmup steps
 bf16 = true                        # bfloat16 for Ampere+ GPUs (RTX 3090, A100, etc.)
 fp16 = false                       # float16 for older GPUs (V100, T4, etc.)
 
-# Compilation & memory
-torch_compile = false               # torch.compile for faster training
+# Performance
+torch_compile = true               # torch.compile for faster training
 gradient_checkpointing = true      # trade compute for memory (enables larger models)
+neftune_noise_alpha = 0.0          # add noise during training to improve model performance (fine-tuning)
 
 # Checkpointing
 save_strategy = "steps"
@@ -90,9 +68,9 @@ logging_steps = 10                 # log every 10 steps
 logging_first_step = true          # log the first step
 
 # Performance
-dataloader_num_workers = 4         # number of data loading threads
-dataloader_pin_memory = true       # pin memory for faster GPU transfer
+dataloader_num_workers = 2         # number of data loading threads
 dataloader_prefetch_factor = 2     # batches prefetched per worker
+dataloader_pin_memory = true       # pin memory for faster GPU transfer
 
 # Reproducibility
 seed = 42

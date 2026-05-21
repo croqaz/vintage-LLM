@@ -16,7 +16,6 @@ dependencies = [
     "datasketch>=1.10",
     "huggingface-hub>=1.10",
     "orjson>=3.11",
-    "pylance>=6.0",
     "sentence-transformers>=5.4",
     "tokenizers>=0.22",
     "torch>=2.10",

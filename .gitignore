@@ -148,9 +148,10 @@ dmypy.json
 models/*/*.pth
 data/
 
-training/checkpoints/
+training/checkpoint*
 training/*-text/
 training/*.bin
 
 docs/
 lance-*
+valkey-*

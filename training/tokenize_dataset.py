@@ -18,6 +18,7 @@ Usage:
 import argparse
 import glob
 import json
+import math
 import sys
 import time
 import tomllib
@@ -117,14 +118,6 @@ class ShardWriter:
         self._fh = None
         self._open_shard()
 
-    def _shard_path(self) -> Path:
-        return self.dir / f'{self.stem}_{self.shard_index:04d}{self.suffix}'
-
-    def _open_shard(self) -> None:
-        path = self._shard_path()
-        self._fh = open(path, 'wb')
-        self.shard_bytes = 0
-
     def write(self, tokens: np.ndarray) -> None:
         """Write a uint16 array (one document) to the current shard.
 
@@ -138,6 +131,12 @@ class ShardWriter:
             self._open_shard()
         tokens.tofile(self._fh)
         self.shard_bytes += nbytes
+
+    def _open_shard(self) -> None:
+        path = self.dir / f'{self.stem}_{self.shard_index:04d}{self.suffix}'
+        print(f'Creating shard: {path.name}')
+        self._fh = open(path, 'wb')
+        self.shard_bytes = 0
 
     def _close_shard(self) -> None:
         if self._fh is not None:
@@ -199,6 +198,32 @@ def fmt_bytes(n: int) -> str:
     return f'{n:.1f} TiB'
 
 
+def format_number_with_unit(number: int, unit: str = '') -> str:
+    """Format a large integer into a human-readable string with suffixes.
+
+    Examples:
+        >>> format_number_with_unit(83_210_646_761, 'tokens')
+        '83.2B tokens'
+        >>> format_number_with_unit(1_500, 'items')
+        '1.5K items'
+        >>> format_number_with_unit(500, 'points')
+        '500 points'
+        >>> format_number_with_unit(1_000_000_000_000, 'bytes')
+        '1.0T bytes'
+    """
+    if number < 1_000:
+        return f'{number:,}{f" {unit}" if unit else ""}'
+    suffixes = ['', 'K', 'M', 'B', 'T']
+    magnitude = min(int(math.log10(number) // 3), len(suffixes) - 1)
+    divisor = 10 ** (magnitude * 3)
+    value = number / divisor
+    if value == int(value):
+        formatted = f'{int(value)}'
+    else:
+        formatted = f'{value:.1f}'
+    return f'{formatted}{suffixes[magnitude]}{f" {unit}" if unit else ""}'
+
+
 # ============================================================================
 # Main
 # ============================================================================
@@ -256,7 +281,7 @@ def main() -> None:
         cfg = tomllib.load(fh)
 
     tokenizer_path = cfg['data']['tokenizer']
-    print(f'Loading tokenizer from: {tokenizer_path}')
+    print(f'Loading tokenizer from: {tokenizer_path}...\n')
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, use_fast=True)
 
     vocab_size = len(tokenizer)
@@ -266,7 +291,7 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
-    print(f'  Vocab size: {vocab_size}')
+    print(f'Vocab size: {vocab_size}')
 
     # ------------------------------------------------------------------
     # Resolve and shuffle input files
@@ -363,8 +388,8 @@ def main() -> None:
     print(f'  Files processed:  {files_ok}/{len(files)}')
     print(f'  Documents:        {total_docs:,}')
     print(f'  Input size:       {fmt_bytes(total_input_bytes)}')
-    print(f'  Output tokens:    {total_tokens:,}')
-    print(f'  Output size:      {fmt_bytes(total_tokens * 2)}  (uint16)')
+    print(f'  Output tokens:    {total_tokens:,} ({format_number_with_unit(total_tokens, "tok")})')
+    print(f'  Output size:      {fmt_bytes(total_tokens * 2)} (uint16)')
     print(f'  Shards written:   {num_shards}')
     for i in range(num_shards):
         shard = output_path.parent / f'{output_path.stem}_{i:04d}{output_path.suffix or ".bin"}'
@@ -372,7 +397,7 @@ def main() -> None:
             print(f'    {shard.name}: {fmt_bytes(shard.stat().st_size)}')
     print(f'  Wall time:        {total_elapsed:.1f}s')
     if total_elapsed > 0:
-        print(f'  Throughput:       {total_tokens / total_elapsed:,.0f} tok/s')
+        print(f'  Throughput:       {int(total_tokens / total_elapsed):,} tok/s')
     print('=' * 70)
 
 

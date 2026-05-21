@@ -120,7 +120,7 @@ def test_setup():
     config_path = 'training/config.toml'
 
     if not Path(config_path).exists():
-        print(f'❌ Config file not found: {config_path}')
+        print(f'\n ❌ Config file not found: {config_path}')
         return False
 
     cfg = load_config(config_path)
@@ -177,7 +177,7 @@ def test_setup():
         return any((bool(glob(p)) if ('*' in p or '?' in p) else Path(p).exists()) for p in pattern)
 
     if not _files_exist(train_files):
-        print(f'❌ Training data not found: {train_files}')
+        print(f'\n ❌ Training data not found: {train_files}')
         print('   Run: python training/tokenize_dataset.py train-text/*.txt --output training/train.bin')
         return False
 
@@ -207,7 +207,7 @@ def test_setup():
         valid_data = vmemmaps[0] if len(vmemmaps) == 1 else np.concatenate(vmemmaps)
         validate_binary_data(valid_data, tokenizer, seq_length, 'VALID')
     else:
-        print(f'\n  ⚠️  Validation data not found: {valid_files}')
+        print(f'\n ⚠️  Validation data not found: {valid_files}')
 
     # ── Data / parameter ratio ──────────────────────────────────
     epochs = cfg['training'].get('num_train_epochs', 1)
@@ -222,15 +222,15 @@ def test_setup():
     print(f'  Model parameters:          {num_params:,}')
     print(f'  Tokens / params ratio:     {ratio:.1f}×')
     if ratio < 10:
-        print(f'  ⚠️  Low data:param ratio ({ratio:.1f}×). Model may underfit.')
+        print(f' ⚠️  Low data:param ratio ({ratio:.1f}×). Model may underfit.')
         print('     Chinchilla-optimal is ~20×. Consider more data or a smaller model.')
     elif ratio > 200:
-        print(f'  ⚠️  Very high data:param ratio ({ratio:.1f}×). Model may be too small for this data.')
+        print(f' ⚠️  Very high data:param ratio ({ratio:.1f}×). Model may be too small for this data.')
     else:
-        print('  ✓ Data:param ratio looks reasonable')
+        print(' ✓ Data:param ratio looks reasonable')
 
     if not train_ok:
-        print('\n❌ Dataset validation found issues — check warnings above')
+        print('\n ❌ Dataset validation found issues — check warnings above')
         return False
 
     print('\n✓ Dataset validation passed')
@@ -266,6 +266,6 @@ if __name__ == '__main__':
         success = test_setup()
         sys.exit(0 if success else 1)
     except Exception as e:
-        print(f'\n❌ ERROR: {e}')
+        print(f'\n ❌ ERROR: {e}')
         traceback.print_exc()
         sys.exit(1)

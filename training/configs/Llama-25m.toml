@@ -1,0 +1,32 @@
+
+# LLaMA 24,645,888 (24.65M) params
+# huggingface/transformers/.. models/llama/configuration_llama.py
+
+model_type = "llama"
+
+# Core width of the model - every token is projected into this many dimensions.
+# Doubling it roughly 4x total params. Must be divisible by num_attention_heads.
+hidden_size = 256
+
+# FFN hidden layer size. LLaMA's SwiGLU makes ~2.67x hidden_size theoretically optimal,
+# but 4x is common. Scales param count proportionally with hidden_size.
+intermediate_size = 1024
+
+# Maximum sequence length (context window).
+# RoPE can stretch slightly beyond this at inference, but quality degrades.
+max_position_embeddings = 2048
+
+# Depth of the model - number of stacked transformer blocks.
+# More layers = better reasoning capacity; each layer adds a full attn+FFN pass.
+num_hidden_layers = 8
+
+# Number of Query (Q) heads. head_dim = hidden_size / num_attention_heads.
+# More heads = finer attention patterns. When scaling, keep head_dim in 32–128 range.
+num_attention_heads = 8
+
+# K/V heads for Grouped Query Attention (GQA): Q heads share K/V in groups.
+# Must divide num_attention_heads evenly (ratio = 2 Q per KV group here).
+# Equal to num_attention_heads → full MHA. Set to 1 → Multi-Query Attention (MQA).
+num_key_value_heads = 4
+
+vocab_size = 32768

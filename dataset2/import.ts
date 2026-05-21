@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset/indexing.ts — JSONL → Redis indexer (Bun)
+// dataset/import.ts — JSONL → Redis indexer (Bun)
 //
 // Reads .jsonl files, computes per-document features, and stores them in Redis
 // as JSON objects keyed by a SHA-512/256 hash of the text.
@@ -18,7 +18,7 @@ const MIN_LENGTH = 10;
 const MAX_LENGTH = 32_000;
 const MIN_UNIQUE_CHARS = 10;
 const MAX_UNIQUE_CHARS = 255;
-const BATCH_SIZE = 256; // Redis batch flush size
+const BATCH_SIZE = 512; // Redis batch flush size
 // Sentence boundary regex adapted from fields.py:
 // Matches .!? followed by whitespace + uppercase, or double newline + lowercase
 const SENTENCE_RE = new RegExp('((?:[.!?][\\"\']?)\\s+(?=[A-Z\\"\'])|(?:[\\n\\r]{2,}\\s*(?=[a-zA-Z\\"\'])))', 'g');
@@ -50,7 +50,7 @@ function parseArgs(): {
     } else if ((arg === '-k' || arg === '--text-key') && i + 1 < args.length) {
       textKey = args[++i];
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun run dataset/indexing.ts [options]
+      console.log(`Usage: bun run dataset/import.ts [options]
 
 Options:
   -i, --input <glob>        JSONL file path or glob pattern (required)
@@ -150,14 +150,13 @@ function charEntropy(text: string): number {
 
 interface DocRecord {
   id: string;
-  text: string;
   source: string;
   length: number;
   uniqueChars: number;
   words: number;
   sentences: number;
-  qualityScore: number;
-  compressionRatio: number;
+  quality: number;
+  compress: number;
   entropy: number;
 }
 
@@ -186,42 +185,44 @@ function printSummary(stats: FileStats): void {
 // Pre-filter: length + unique chars
 // ──────────────────────────────────────────────────────────────────────────────
 
-function prefilter(text: string): boolean {
+function prefilter(text: string): Record<string, any> {
   const length = text.length;
-  if (length <= MIN_LENGTH || length > MAX_LENGTH) return false;
+  if (length <= MIN_LENGTH || length > MAX_LENGTH) return { ok: false, length };
   const uniqueChars = new Set(text).size;
-  if (uniqueChars <= MIN_UNIQUE_CHARS || uniqueChars > MAX_UNIQUE_CHARS) return false;
-  return true;
+  if (uniqueChars <= MIN_UNIQUE_CHARS || uniqueChars > MAX_UNIQUE_CHARS) {
+    return { ok: false, uniqueChars };
+  }
+  const words = countWords(text);
+  if (words <= 2) return { ok: false, words };
+  return { ok: true };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Compute all features for a document
 // ──────────────────────────────────────────────────────────────────────────────
 
-function computeFeatures(doc: { text: string }, source: string): DocRecord {
-  const { text } = doc;
+function computeFeatures(text: string, source: string): DocRecord {
   const normalized = text.split(/\W+/).join(' ');
   const id = generateId(normalized);
   const length = normalized.length;
   const uniqueChars = new Set(normalized).size;
   const words = countWords(normalized);
-  const sentences = countSentences(normalized);
 
-  const entropy = charEntropy(text);
-  const qualityScore_ = qualityScore(text);
-  const compressionRatio_ = compressionRatio(text);
+  const sentences = countSentences(text);
+  const entropy = +(charEntropy(text) * 100).toFixed(2);
+  const quality = +(qualityScore(text) * 100).toFixed(2);
+  const compress = +(compressionRatio(text) * 100).toFixed(2);
 
   return {
     id,
-    text,
     source,
     length,
     uniqueChars,
     words,
     sentences,
     entropy,
-    qualityScore: qualityScore_,
-    compressionRatio: compressionRatio_,
+    quality,
+    compress,
   };
 }
 
@@ -254,6 +255,7 @@ async function processFile(filePath: string, source: string, client: RedisClient
     }
     await client.send('EXEC', []);
 
+    console.log(`  Flushed ${batch.length} records to Redis...`);
     batch.length = 0;
   }
 
@@ -269,9 +271,13 @@ async function processFile(filePath: string, source: string, client: RedisClient
     while ((newlineIdx = lineBuffer.indexOf('\n')) !== -1) {
       const line = lineBuffer.slice(0, newlineIdx).trim();
       lineBuffer = lineBuffer.slice(newlineIdx + 1);
-      if (line.length === 0) continue;
+      if (line.length <= 10) continue;
 
       stats.rowsLoaded++;
+
+      if (stats.rowsLoaded % 100_000 === 0) {
+        console.log(`  Processed ${stats.rowsLoaded} lines...`);
+      }
 
       // Parse JSON
       let obj: unknown;
@@ -299,18 +305,23 @@ async function processFile(filePath: string, source: string, client: RedisClient
 
       // Pre-filter
       const filtered = prefilter(text);
-      if (!filtered) {
-        console.warn(`  [WARN] Prefilter dropped line ${stats.rowsLoaded} in ${basename(filePath)} (len: ${text.length}, uniqueChars: ${new Set(text).size})`);
+      if (!filtered.ok) {
+        delete filtered.ok;
+        // console.warn(`  [WARN] Prefilter dropped line ${stats.rowsLoaded} in ${basename(filePath)} ${JSON.stringify(filtered, null, 0)}`);
         stats.rowsDropped++;
         continue;
       }
 
+      // Reuse "source" field if present, otherwise use CLI arg
+      if (record.source && typeof record.source === 'string') {
+        source = record.source;
+      }
       // Compute features (including ID)
-      const doc = computeFeatures({ text }, source);
+      const doc = computeFeatures(text, source);
 
       // Within-file dedup
       if (seenIds.has(doc.id)) {
-        console.debug(`  [DEBUG] Duplicate ID ${doc.id} on line ${stats.rowsLoaded} in ${basename(filePath)}`);
+        // console.debug(`  [DEBUG] Duplicate ID ${doc.id} on line ${stats.rowsLoaded} in ${basename(filePath)}`);
         stats.rowsDuplicate++;
         continue;
       } else {
@@ -318,14 +329,21 @@ async function processFile(filePath: string, source: string, client: RedisClient
       }
 
       // Redis dedup: check if already indexed
-      const redisKey = `doc:${doc.id}`;
+      let redisKey = `t:${doc.id}`;
       const exists = await client.exists(redisKey);
       if (exists) {
         stats.rowsDuplicate++;
         continue;
       }
 
-      // Add to batch
+      // Add text to batch
+      batch.push({ key: redisKey, value: text });
+
+      // Add meta to batch
+      redisKey = `m:${doc.id}`;
+
+      // ID is already in key, no need to store in value
+      delete (doc as Partial<DocRecord>).id;
       batch.push({ key: redisKey, value: JSON.stringify(doc) });
 
       // Flush when batch is full
@@ -364,7 +382,10 @@ async function main(): Promise<void> {
   console.log(`Redis URL: ${redisUrl || '(default from env)'}`);
 
   // Connect to Redis
-  const client = new RedisClient(redisUrl || undefined);
+  const client = new RedisClient(redisUrl || undefined, {
+    connectionTimeout: 2500,
+    maxRetries: 3,
+  });
   await client.connect();
 
   let grandLoaded = 0;
@@ -392,7 +413,7 @@ async function main(): Promise<void> {
   console.log('='.repeat(60));
   console.log(
     `  Grand loaded:     ${String(grandLoaded).padStart(12)}\n` +
-      `  Grand dropped:    ${String(grandDropped).padStart(12)}  (len ≤ ${MIN_LENGTH} or > ${MAX_LENGTH})\n` +
+      `  Grand dropped:    ${String(grandDropped).padStart(12)}  (quality filter)\n` +
       `  Grand duplicates: ${String(grandDuplicate).padStart(12)}  (already indexed)\n` +
       `  Grand indexed:    ${String(grandIndexed).padStart(12)}`
   );
