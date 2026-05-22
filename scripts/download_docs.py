@@ -11,7 +11,16 @@ import time
 
 import requests
 
-LIBRARIES = ['hf:accelerate', 'hf:bitsandbytes', 'hf:datasets', 'hf:transformers', 'hf:huggingface_hub', 'torch:tutorials']
+LIBRARIES = [
+    'hf:accelerate',
+    'hf:bitsandbytes',
+    'hf:datasets',
+    'hf:huggingface_hub',
+    'hf:kernels',
+    'hf:transformers',
+    'hf:trl',
+    'torch:tutorials',
+]
 
 # Polite delay between HTTP requests (seconds)
 DELAY = 1.0
@@ -75,7 +84,8 @@ def url_to_local_path(url: str, library: str) -> str:
         local_root = os.path.join(DOCS_ROOT, 'torch', name)
     else:
         raise ValueError(f'Unknown library prefix: {prefix!r}')
-    relative = url[len(url_base) :]
+
+    relative = url[len(url_base) :].lstrip('/')
     return os.path.join(local_root, relative)
 
 
