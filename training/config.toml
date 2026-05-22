@@ -26,8 +26,8 @@ final_model_dir = "./checkpoints/final"
 # Batch sizes
 # Effective batch size = num_devices × per_device_train_batch_size × gradient_accumulation_steps
 per_device_train_batch_size = 16   # batch size per GPU
+per_device_eval_batch_size  = 16   # larger for eval (no gradients)
 gradient_accumulation_steps = 4    # accumulate gradients over multiple mini-batches before updating the params
-per_device_eval_batch_size = 16    # larger for eval (no gradients)
 
 # Optimizer
 optim = "adamw_torch_fused"        # fused CUDA AdamW (faster than default)
@@ -40,9 +40,9 @@ adam_beta2 = 0.95
 max_grad_norm = 1.0
 
 # Learning rate scheduler
-lr_scheduler_type = "cosine_with_min_lr"  # cosine decay with non-zero floor
-lr_scheduler_kwargs = { min_lr_rate = 0.05 }  # final LR = 5% of peak (avoids wasting final iterations at ~0 LR)
-warmup_steps = 100                        # exact warmup steps
+lr_scheduler_type    = "cosine_with_min_lr"    # cosine decay with non-zero floor
+lr_scheduler_kwargs  = { min_lr_rate = 0.05 }  # final LR = 5% of peak (avoids wasting final iterations at ~0 LR)
+warmup_steps = 200
 
 # Precision (choose based on your GPU)
 bf16 = true                        # bfloat16 for Ampere+ GPUs (RTX 3090, A100, etc.)

@@ -1177,13 +1177,13 @@ for pair in OPPOSITES:
     KNOWLEDGE.append(
         {
             'question': f'What is the opposite of {pair[0]}?',
-            'answer': random.choice([f'The opposite of {pair[0]} is {pair[1]}.', f'It is {pair[1]}.']),
+            'answer': random.choice([f'The opposite of {pair[0]} is {pair[1]}.', f'It is "{pair[1]}".', pair[1].capitalize() + '.']),
         }
     )
     KNOWLEDGE.append(
         {
             'question': f'What is the opposite of {pair[1]}?',
-            'answer': random.choice([f'The opposite of {pair[1]} is {pair[0]}.', f'It is {pair[0]}.']),
+            'answer': random.choice([f'The opposite of {pair[1]} is {pair[0]}.', f'It is "{pair[0]}".', pair[0].capitalize() + '.']),
         }
     )
 
@@ -1320,6 +1320,15 @@ for _ in range(2):
     )
     memory.update(triplet)
 
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of domestic animals.',
+            'answer': f'Here are some examples of domestic animals: {", ".join(random.sample(DOMESTIC_ANIMALS, i))}.',
+        }
+    )
+
+
 BIRDS = [
     'albatross',
     'blackbird',
@@ -1378,7 +1387,7 @@ for bird in BIRDS:
     KNOWLEDGE.append(
         {
             'question': f'Can {plur.a(bird)} fly?',
-            'answer': random.choice([f'Yes, {plur.plural(bird)} can fly.', 'Yes, birds can fly.']),
+            'answer': random.choice([f'Yes, {plur.plural(bird)} can fly.', f'{plur.a(bird).capitalize()} is a bird, so it can fly.']),
         }
     )
     KNOWLEDGE.append(
@@ -1437,6 +1446,15 @@ for _ in range(4):
         }
     )
     memory.update(triplet)
+
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of birds.',
+            'answer': f'Here are some examples of birds: {", ".join(random.sample(BIRDS, i))}.',
+        }
+    )
+
 
 # Pike is a bit confusing here
 FISHES = [
@@ -1541,6 +1559,15 @@ for _ in range(3):
     )
     memory.update(triplet)
 
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of fish.',
+            'answer': f'Here are some examples of fish: {", ".join(random.sample(FISHES, i))}.',
+        }
+    )
+
+
 # Fly is a bit confusing one here
 INSECTS = [
     'ant',
@@ -1630,6 +1657,15 @@ for bug in ['worm', 'slug', 'snail', 'centipede', 'millipede', 'spider', 'scorpi
             'answer': f"No, that's disgusting. We don't eat {plur.plural(bug)}.",
         }
     )
+
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of insects.',
+            'answer': f'Here are some examples of insects: {", ".join(random.sample(INSECTS, i))}.',
+        }
+    )
+
 
 FLOWERS = [
     'bluebell',
@@ -1722,6 +1758,13 @@ for _ in range(3):
     )
     memory.update(triplet)
 
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of flowers.',
+            'answer': f'Here are some examples of flowers: {", ".join(random.sample(FLOWERS, i))}.',
+        }
+    )
 
 PLANT = [
     'basil',
@@ -1862,6 +1905,14 @@ for _ in range(3):
     )
     memory.update(triplet)
 
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of fruits.',
+            'answer': f'Here are some examples of fruits: {", ".join(random.sample(FRUITS, i))}.',
+        }
+    )
+
 VEGETABLES = [
     'asparagus',
     'beet',
@@ -1928,9 +1979,17 @@ for object in FRUITS + VEGETABLES + DOMESTIC_ANIMALS + BIRDS + FISHES + INSECTS:
     KNOWLEDGE.append(
         {
             'question': random.choice(
-                [f"What's the plural for {object}?", f'What is the plural of "{object}"?', f'One "{object}", two ...?']
+                [f"What's the plural for {object}?", f'What is the plural of "{object}"?', f'Plural: one "{object}", two ...?']
             ),
             'answer': f'{plur.plural(object).capitalize()}.',
+        }
+    )
+
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of vegetables.',
+            'answer': f'Here are some examples of vegetables: {", ".join(random.sample(VEGETABLES, i))}.',
         }
     )
 
@@ -1995,6 +2054,14 @@ for color in COLORS:
         }
     )
 
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of colors.',
+            'answer': f'Here are some examples of colors: {", ".join(random.sample(COLORS, i))}.',
+        }
+    )
+
 memory = set()
 for _ in range(3):
     triplet = random.sample([color for color in COLORS if color not in memory], 3)
@@ -2043,6 +2110,7 @@ for object in ['table', 'chair', 'bed', 'sofa', 'desk', 'shelf', 'cupboard', 'ca
             ),
         }
     )
+
 
 NUMBERS = [
     'one',
@@ -2160,7 +2228,8 @@ for sibling in ['brother', 'sister', 'child', 'mother', 'father', 'cousin', 'unc
         }
     )
 
-for metal in ['iron', 'gold', 'silver', 'copper', 'brass', 'aluminum', 'steel', 'lead', 'zinc', 'nickel', 'platinum']:
+METALS = ['iron', 'gold', 'silver', 'copper', 'brass', 'aluminum', 'steel', 'lead', 'zinc', 'nickel', 'platinum']
+for metal in METALS:
     KNOWLEDGE.append(
         {
             'question': f'What is "{metal}"?',
@@ -2171,6 +2240,14 @@ for metal in ['iron', 'gold', 'silver', 'copper', 'brass', 'aluminum', 'steel', 
         {
             'question': f'Can you eat "{metal}"?',
             'answer': f'No, "{metal}" is impossible to eat.',
+        }
+    )
+
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of metals.',
+            'answer': f'Here are some examples of metals: {", ".join(random.sample(METALS, i))}.',
         }
     )
 
@@ -2206,13 +2283,13 @@ ROCKS = [
 for rock in ROCKS:
     KNOWLEDGE.append(
         {
-            'question': f'What is "{rock}"?',
+            'question': f'What is "{plur.a(rock)}"?',
             'answer': f'"{rock}" is a type of rock.',
         }
     )
     KNOWLEDGE.append(
         {
-            'question': f'Can you eat "{rock}"?',
+            'question': f'Can you eat "{plur.a(rock)}"?',
             'answer': f'No, "{rock}" is not edible.',
         }
     )
@@ -2227,6 +2304,14 @@ for _ in range(3):
         }
     )
     memory.update(quad)
+
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of rocks.',
+            'answer': f'Here are some examples of rocks: {", ".join(random.sample(ROCKS, i))}.',
+        }
+    )
 
 # Countries and capitals
 COUNTRIES = [
@@ -2261,6 +2346,15 @@ for country, capital in COUNTRIES:
             'answer': f'{capital} is the capital of {country}.',
         }
     )
+
+for i in range(3, 6):
+    KNOWLEDGE.append(
+        {
+            'question': f'Tell me {i} examples of countries.',
+            'answer': f'Here are some examples of countries: {", ".join(random.sample([country for country, _ in COUNTRIES], i))}.',
+        }
+    )
+
 
 # Let's count to ...
 KNOWLEDGE.extend(
@@ -2320,6 +2414,7 @@ KNOWLEDGE.extend(
     ]
 )
 
+
 SHAPES = {
     'circle': 0,
     'square': 4,
@@ -2357,7 +2452,9 @@ for _ in range(2):
     )
     memory.update(triple)
 
+#
 # Let's do some simple math.
+#
 for i in range(-2, 13):
     for j in range(-2, 13):
         KNOWLEDGE.append(

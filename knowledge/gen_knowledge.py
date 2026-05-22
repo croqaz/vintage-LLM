@@ -13,19 +13,27 @@ def format_text(knowledge: list[dict[str, str]]) -> list[str]:
     return [f'Question: {qa["question"]}\nAnswer: {qa["answer"]}' for qa in knowledge]
 
 
-def format_jsonl(knowledge: list[dict[str, str]]) -> list[str]:
-    return [json.dumps({'question': qa['question'], 'answer': qa['answer']}) for qa in knowledge]
+def format_jsonl(knowledge: list[dict[str, str]], system_prompt: str | None = None) -> list[str]:
+    lines = []
+    for qa in knowledge:
+        messages = []
+        if system_prompt:
+            messages.append({'role': 'system', 'content': system_prompt})
+        messages.extend([{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}])
+        lines.append(json.dumps({'messages': messages}))
+    return lines
 
 
-def format_chat_template(knowledge: list[dict[str, str]], tok_version: str) -> list[str]:
+def format_chat_template(knowledge: list[dict[str, str]], tok_version: str, system_prompt: str | None = None) -> list[str]:
     tokenizer = AutoTokenizer.from_pretrained(f'tokenizers/{tok_version}')
-    return [
-        tokenizer.apply_chat_template(
-            [{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}],
-            tokenize=False,
-        )
-        for qa in knowledge
-    ]
+    lines = []
+    for qa in knowledge:
+        messages = []
+        if system_prompt:
+            messages.append({'role': 'system', 'content': system_prompt})
+        messages.extend([{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}])
+        lines.append(tokenizer.apply_chat_template(messages, tokenize=False))
+    return lines
 
 
 def main():
@@ -55,6 +63,11 @@ def main():
         help=f'Tokenizer version to use with --format template (default: {TOK_VERSION})',
     )
     parser.add_argument(
+        '--system-prompt',
+        default=None,
+        help='Optional system prompt to include in the messages',
+    )
+    parser.add_argument(
         '--output',
         '-o',
         default=None,
@@ -74,11 +87,11 @@ def main():
         lines = format_text(knowledge)
         output = '\n\n'.join(lines)
     elif args.format == 'jsonl':
-        lines = format_jsonl(knowledge)
+        lines = format_jsonl(knowledge, args.system_prompt)
         output = '\n'.join(lines)
     else:  # template
-        lines = format_chat_template(knowledge, args.tok_version)
-        output = '\n\n'.join(lines)
+        lines = format_chat_template(knowledge, args.tok_version, args.system_prompt)
+        output = '\n'.join(lines)
 
     if args.output:
         with open(args.output, 'w', encoding='utf-8') as f:

@@ -36,6 +36,7 @@ def select_dtype(name: str, device: torch.device) -> torch.dtype:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Generate text from the latest checkpoint.')
     parser.add_argument('prompt', nargs='?', help='Text prompt to continue.')
+    parser.add_argument('--chat', action='store_true', help='Use chat template for the prompt.')
     parser.add_argument('--checkpoint', type=Path, help='Specific checkpoint directory to load.')
     parser.add_argument(
         '--checkpoints-dir',
@@ -59,8 +60,8 @@ def main() -> None:
     args = parse_args()
     if args.prompt is None:
         raise ValueError('provide a prompt as a positional argument')
-    if args.tokens < 1:
-        raise ValueError('--tokens must be at least 1')
+    if args.tokens < 5:
+        raise ValueError('--tokens must be at least 5')
     if args.temperature < 0:
         raise ValueError('--temperature must be >= 0')
     if args.repetition_penalty <= 0:
@@ -87,17 +88,21 @@ def main() -> None:
 
     cfg = model.config
     num_params = sum(p.numel() for p in model.parameters())
-    print(f'model type      : {cfg.model_type}')
-    print(f'architecture    : {type(model).__name__}')
-    print(f'hidden layers   : {getattr(cfg, "num_hidden_layers", "n/a")}')
-    print(f'attention heads : {getattr(cfg, "num_attention_heads", "n/a")}')
-    print(f'parameters      : {num_params:,}')
+    print(f'model type   : {cfg.model_type}')
+    print(f'architecture : {type(model).__name__}')
+    print(f'parameters   : {num_params:,}')
+    print(f'checkpoint   : {checkpoint_dir}')
 
     tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir, use_fast=True)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    inputs = tokenizer(args.prompt, return_tensors='pt').to(device)
+    if args.chat:
+        messages = [{'role': 'user', 'content': args.prompt}]
+        prompt_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = tokenizer(prompt_text, return_tensors='pt').to(device)
+    else:
+        inputs = tokenizer(args.prompt, return_tensors='pt').to(device)
     do_sample = args.temperature > 0
 
     with torch.no_grad():
@@ -117,9 +122,8 @@ def main() -> None:
         skip_special_tokens=not args.show_special_tokens,
         clean_up_tokenization_spaces=False,
     )
-    print(f'checkpoint: {checkpoint_dir}')
     print('-' * 80)
-    print(text)
+    print(text.strip())
 
 
 if __name__ == '__main__':

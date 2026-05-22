@@ -149,6 +149,7 @@ models/*/*.pth
 data/
 
 training/checkpoint*
+training/sft_checkpoint*
 training/*-text/
 training/*.bin
 

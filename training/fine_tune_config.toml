@@ -1,0 +1,138 @@
+# Fine-Tuning Configuration
+# All paths are relative to the project root (run scripts from there).
+
+[model]
+# Path to the base model produced by base_train.py
+base_model = "./checkpoints/checkpoint-9700"
+
+# Attention implementation.
+# "flash_attention_2" is recommended (faster + required for packing).
+# Defaults to "sdpa" (scaled dot-product attention) if Flash Attention is not installed.
+attn_implementation = "sdpa"
+
+[data]
+# ── Source (choose one) ─────────────────────────────────────────────────────
+dataset_path = "./knowledge.jsonl"
+
+# ── Split ───────────────────────────────────────────────────────────────────
+# Fraction held out for validation (train_test_split applied to the full file)
+val_fraction = 0.05
+
+# ── Sequence length ─────────────────────────────────────────────────────────
+# Must be <= model.max_position_embeddings.
+# Sequences longer than this are truncated; shorter ones are padded, or packed.
+max_seq_length = 2048
+
+[training]
+# ── Method ──────────────────────────────────────────────────────────────────
+# "full" : All parameters trained. Best quality for small models. Recommended.
+# "lora" : Only LoRA adapter parameters trained (~1-5% of params).
+method = "full"
+
+# ── Output ──────────────────────────────────────────────────────────────────
+output_dir     = "./sft_checkpoints"
+final_model_dir = "./sft_checkpoints/final"
+
+# ── Training duration ────────────────────────────────────────────────────────
+num_train_epochs = 4
+
+# ── Batch sizes ──────────────────────────────────────────────────────────────
+# Effective batch size = num_GPUs × per_device_train_batch_size × gradient_accumulation_steps
+per_device_train_batch_size  = 16
+per_device_eval_batch_size   = 16  # no gradients at eval → can be larger
+gradient_accumulation_steps  = 2
+
+# ── Optimizer ────────────────────────────────────────────────────────────────
+optim         = "adamw_torch_fused"  # fused CUDA kernel, faster than default AdamW
+# Full FT:  1e-5 to 5e-5  (10× lower than pretraining's 5e-4)
+# LoRA:     1e-4 to 2e-4  (10× higher than full FT; adapter has fewer params)
+learning_rate = 2e-5
+weight_decay  = 0.01
+adam_beta1    = 0.9
+adam_beta2    = 0.999   # standard Adam default; SFT is stable enough
+max_grad_norm = 1.0
+
+# ── LR schedule ──────────────────────────────────────────────────────────────
+lr_scheduler_kwargs = { min_lr_rate = 0.1 } # floor at 10% of peak LR
+lr_scheduler_type   = "cosine_with_min_lr"
+warmup_steps = 50
+
+# ── Precision ────────────────────────────────────────────────────────────────
+bf16 = true   # Ampere+ (RTX 3090, A100, H100)
+
+# ── Performance ──────────────────────────────────────────────────────────────
+# torch_compile: helpful on large datasets with many steps; overhead not always
+# worth it for short SFT runs. Enable if training for >1000 steps.
+torch_compile          = false
+gradient_checkpointing = false  # set true only if OOM; adds ~30% compute overhead
+
+# ── Packing ──────────────────────────────────────────────────────────────────
+# Packs multiple short examples into a single max_length window.
+# Eliminates padding waste and increases effective tokens/step.
+# REQUIRES: attn_implementation = "flash_attention_2" (prevents cross-doc attention).
+# packing_strategy:
+#   "bfd_split" — Best-Fit Decreasing + splits long sequences. Zero information loss.
+#   "wrapped"   — concatenate-then-split (fast but breaks documents at boundaries).
+packing          = false
+packing_strategy = "bfd_split"
+
+# ── NEFTune ──────────────────────────────────────────────────────────────────
+# Adds uniform noise to embeddings during the forward pass.
+# Consistently improves instruction-following quality (see NEFTune paper).
+# Typical range: 5.0–15.0. Set 0.0 to disable.
+neftune_noise_alpha = 5.0
+
+# ── Checkpointing ────────────────────────────────────────────────────────────
+# save_steps and eval_steps must be equal when load_best_model_at_end = true.
+save_strategy          = "steps"
+save_steps             = 100
+save_total_limit       = 3
+load_best_model_at_end = true   # keep the best checkpoint by val loss, not the last
+
+# ── Evaluation ───────────────────────────────────────────────────────────────
+eval_strategy = "steps"
+eval_steps    = 100             # must equal save_steps when load_best_model_at_end=true
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+logging_strategy  = "steps"
+logging_steps     = 10
+logging_first_step = true
+report_to         = ["tensorboard"]
+
+# ── Data loading ─────────────────────────────────────────────────────────────
+dataloader_num_workers    = 4
+dataloader_pin_memory     = true
+dataloader_prefetch_factor = 2
+
+# ── Reproducibility ──────────────────────────────────────────────────────────
+seed = 42
+
+# =============================================================================
+# [lora] — only used when training.method = "lora"
+# =============================================================================
+[lora]
+# Rank of the LoRA decomposition. Higher = more capacity, more VRAM.
+# Good starting points: 16 (fast), 32 (balanced), 64 (high quality).
+r = 32
+
+# Scaling factor. Rule of thumb: lora_alpha = 2 × r.
+lora_alpha = 64
+
+# Dropout applied to LoRA layers. 0.05 is a safe default.
+lora_dropout = 0.05
+
+# Which linear layers to target. For Llama-style models, covering all
+# attention + FFN projections gives the best results.
+target_modules = [
+    "q_proj", "v_proj", "k_proj", "o_proj",   # attention
+    "gate_proj", "up_proj", "down_proj",        # FFN (SwiGLU)
+]
+
+# Whether to train bias terms in the LoRA layers.
+# "none" is standard; "all" occasionally helps but adds parameters.
+bias = "none"
+
+# After training, merge the adapter weights into the base model and save a
+# fused copy. The fused model loads like a normal HF model (no peft needed).
+# Set false to keep adapter separate (smaller file, but requires peft at inference).
+merge_after_training = true

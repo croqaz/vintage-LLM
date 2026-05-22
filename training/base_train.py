@@ -323,7 +323,7 @@ class DetailedEvaluationCallback(TrainerCallback):
             print('\n' + '=' * 80)
             print(f'[VALIDATION] Step {state.global_step}')
             print('=' * 80)
-            print(f'  Epoch:          {metrics.get("epoch", 0):.2f}')
+            print(f'  Epoch:          {state.epoch:.2f}')
             print(f'  Loss:           {eval_loss:.4f}')
             print(f'  Perplexity:     {perplexity:.2f}')
             print(f'  Runtime:        {eval_runtime:.2f}s')
@@ -418,8 +418,7 @@ def validate_config(cfg: Dict, accelerator: Accelerator):
 
     # Check precision settings
     if cfg['training'].get('bf16', False) and not BF16_SUPPORTED:
-        accelerator.print('⚠️ WARNING: bf16 requested but not supported on this GPU')
-        accelerator.print('   Consider setting bf16=false and fp16=true in config.toml')
+        accelerator.print('⚠️ WARNING: bf16 requested but not supported on this GPU!')
 
     accelerator.print('✓ Configuration validated')
     accelerator.print('=' * 80 + '\n')
@@ -617,11 +616,11 @@ def main():
         logging_strategy=cfg['training'].get('logging_strategy', 'steps'),
         logging_steps=cfg['training'].get('logging_steps', 10),
         logging_first_step=cfg['training'].get('logging_first_step', True),
-        report_to=cfg['training'].get('report_to', ['trackio', 'tensorboard']),
+        report_to=cfg['training'].get('report_to', ['tensorboard']),
         # Performance
         dataloader_num_workers=cfg['training'].get('dataloader_num_workers', 4),
-        dataloader_pin_memory=cfg['training'].get('dataloader_pin_memory', True),
         dataloader_prefetch_factor=cfg['training'].get('dataloader_prefetch_factor', 2),
+        dataloader_pin_memory=cfg['training'].get('dataloader_pin_memory', True),
         # dataloader_persistent_workers intentionally disabled by default
         # Reproducibility
         seed=seed,
