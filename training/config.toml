@@ -1,7 +1,7 @@
 # Pre-training Configuration
 # All paths are relative to the project root
 
-model_config = "configs/Llama-200m.toml"
+model_config = "./configs/Llama-25m.toml"
 
 [data]
 # Data files (supports glob patterns or lists of files)
@@ -74,3 +74,11 @@ dataloader_pin_memory = true       # pin memory for faster GPU transfer
 
 # Reproducibility
 seed = 42
+
+[s3]
+# Upload checkpoints to HuggingFace S3 bucket (optional)
+# Requires HF_TOKEN to be set in the environment
+# upload_steps must be a multiple of save_steps (uploads can only happen when a checkpoint exists)
+# HF bucket ID, or full handle like: hf://buckets/username/my-bucket
+bucket = "hf://buckets/croqaz/vintage-llm"
+upload_steps = 100  # upload checkpoint every X steps

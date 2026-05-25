@@ -147,6 +147,20 @@ def test_setup():
     decoded = tokenizer.decode(encoded['input_ids'], clean_up_tokenization_spaces=False)
     print(f'  Test decoding: {decoded}')
 
+    # What the model sees during TRAINING (2 messages in the for loop)
+    train_msgs = [{'role': 'user', 'content': 'Who are you?'}, {'role': 'assistant', 'content': 'I am an assistant.'}]
+    train_text = tokenizer.apply_chat_template(train_msgs, tokenize=False, add_generation_prompt=False)
+
+    # What the model sees during INFERENCE (1 message + generation prompt)
+    infer_msgs = [{'role': 'user', 'content': 'Who are you?'}]
+    infer_text = tokenizer.apply_chat_template(infer_msgs, tokenize=False, add_generation_prompt=True)
+
+    print('\nTRAINING format:')
+    print(repr(train_text))
+    print()
+    print('INFERENCE format:')
+    print(repr(infer_text))
+
     # Test model creation
     print('\n[3/6] Testing model creation...')
     model_kwargs = dict(cfg['model'])

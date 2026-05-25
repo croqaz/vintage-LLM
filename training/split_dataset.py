@@ -208,7 +208,7 @@ def process_file(
     valid_path = parent / f'{stem}-valid{suffix}'
 
     def wrap(t: str) -> str:
-        if not t.strip().endswith(eos):
+        if not t.rstrip().endswith(eos):
             t = f'{t}\n{eos}'
         return t
 

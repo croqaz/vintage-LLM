@@ -17,6 +17,7 @@ from typing import Dict, List, Union
 import numpy as np
 import torch
 from accelerate import Accelerator
+from huggingface_hub import sync_bucket
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 from transformers import (
@@ -363,9 +364,53 @@ class EpochOffsetCallback(TrainerCallback):
             print(f'[EPOCH] Epoch {epoch}: rebuilt {len(self.dataset):,} chunks with new random offsets')
 
 
+class S3UploadCallback(TrainerCallback):
+    """Upload checkpoints to HuggingFace S3 bucket at configurable intervals."""
+
+    def __init__(self, bucket: str, upload_steps: int, model_id: str):
+        # Normalize bucket: strip hf://buckets/ prefix if provided
+        self.bucket = bucket.removeprefix('hf://buckets/').strip('/')
+        self.upload_steps = upload_steps
+        self.model_id = model_id
+
+    def _upload(self, local_path: str, remote_suffix: str):
+        """Upload a local directory to the S3 bucket. Never raises."""
+        dest = f'hf://buckets/{self.bucket}/{remote_suffix}'
+        try:
+            print(f'[S3] Uploading {local_path} → {dest}')
+            sync_bucket(local_path, dest)
+            print(f'[S3] ✓ Upload complete: {dest}')
+        except Exception as e:
+            print(f'[S3] ✗ Upload failed: {e}')
+
+    def on_save(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ):
+        if not state.is_world_process_zero:
+            return
+        if state.global_step % self.upload_steps != 0:
+            return
+
+        checkpoint_path = os.path.join(args.output_dir, f'checkpoint-{state.global_step}')
+        self._upload(checkpoint_path, f'{self.model_id}-step-{state.global_step}')
+
+
 # ============================================================================
 # Configuration Loading
 # ============================================================================
+
+
+def make_model_id(model_type: str, num_params: int) -> str:
+    """Create a model slug like 'llama-340m' or 'llama-1.1b'."""
+    if num_params >= 1e9:
+        size = f'{num_params / 1e9:.1f}'.rstrip('0').rstrip('.') + 'b'
+    else:
+        size = f'{num_params // 1_000_000}m'
+    return f'{model_type}-{size}'
 
 
 def load_config(config_path: str) -> Dict:
@@ -380,7 +425,7 @@ def load_config(config_path: str) -> Dict:
         config = tomllib.load(f)
 
     if model_config_path := config.pop('model_config', None):
-        resolved = Path(config_path).parent.parent / model_config_path
+        resolved = Path(config_path).parent / model_config_path
         if not resolved.exists():
             raise FileNotFoundError(f'Model config not found: {resolved}')
         with open(resolved, 'rb') as f:
@@ -523,7 +568,7 @@ def main():
         accelerator.print(f'⚠️ WARNING: Model vocab_size ({model_config.vocab_size}) != tokenizer vocab_size ({len(tokenizer)})')
 
     # Use attn_implementation if specified (e.g. "flash_attention_2", "sdpa", "eager")
-    model_init_kwargs = {'torch_dtype': torch.bfloat16} if BF16_SUPPORTED else {}
+    model_init_kwargs = {'dtype': torch.bfloat16} if BF16_SUPPORTED else {}
     if attn_implementation:
         model_init_kwargs['attn_implementation'] = attn_implementation
         accelerator.print(f'  Attention implementation: {attn_implementation}')
@@ -543,6 +588,9 @@ def main():
     accelerator.print(f'  Attention heads: {model_config.num_attention_heads}')
     accelerator.print(f'  FFN size: {model_config.intermediate_size}')
     accelerator.print(f'  Max position embeddings: {model_config.max_position_embeddings}')
+
+    model_id = make_model_id(model_config.model_type, num_params)
+    accelerator.print(f'  Model ID: {model_id}')
     accelerator.print()
 
     # ========================================================================
@@ -643,6 +691,26 @@ def main():
 
     accelerator.print('Creating Trainer...')
 
+    callbacks = [
+        DetailedLoggingCallback(),
+        DetailedEvaluationCallback(),
+        EpochOffsetCallback(train_dataset),
+    ]
+
+    # Optional: S3 checkpoint upload
+    s3_cfg = cfg.get('s3')
+    s3_callback = None
+    if s3_cfg and s3_cfg.get('bucket') and s3_cfg.get('upload_steps'):
+        s3_callback = S3UploadCallback(
+            bucket=s3_cfg['bucket'],
+            upload_steps=s3_cfg['upload_steps'],
+            model_id=model_id,
+        )
+        callbacks.append(s3_callback)
+        accelerator.print(
+            f'✓ S3 upload enabled: every {s3_cfg["upload_steps"]} steps → hf://buckets/{s3_callback.bucket}/{model_id}-step-*'
+        )
+
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -650,11 +718,7 @@ def main():
         eval_dataset=eval_dataset,
         processing_class=tokenizer,
         data_collator=default_data_collator,
-        callbacks=[
-            DetailedLoggingCallback(),
-            DetailedEvaluationCallback(),
-            EpochOffsetCallback(train_dataset),
-        ],
+        callbacks=callbacks,
     )
     # Remove default print for clean logging
     trainer.remove_callback(ProgressCallback)
@@ -732,6 +796,10 @@ def main():
         accelerator.print(f'✓ Final model saved to {final_model_dir}')
         accelerator.print('  - Model weights: model.safetensors')
         accelerator.print('  - Model config: config.json')
+
+        # Upload final model to S3 if configured
+        if s3_callback is not None:
+            s3_callback._upload(final_model_dir, f'{model_id}-final')
 
     # Wait for all processes to finish
     accelerator.wait_for_everyone()

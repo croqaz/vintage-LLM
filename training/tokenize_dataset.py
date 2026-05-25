@@ -26,6 +26,7 @@ from pathlib import Path
 from random import Random
 
 import numpy as np
+import pyarrow.parquet as pq
 from transformers import AutoTokenizer
 
 # 1 GiB shard cap
@@ -37,13 +38,19 @@ MAX_SHARD_BYTES = 1 * 1024 * 1024 * 1024
 # ============================================================================
 
 
-def read_txt(path: Path) -> list[str]:
+def wrap(t: str, eos: str) -> str:
+    if not t.rstrip().endswith(eos):
+        t = f'{t}\n{eos}'
+    return t
+
+
+def read_txt(path: Path, eos: str) -> list[str]:
     """Read entire file as a single document."""
     content = path.read_text(encoding='utf-8').strip()
-    return [content] if content else []
+    return [wrap(content, eos)] if content else []
 
 
-def read_jsonl(path: Path) -> list[str]:
+def read_jsonl(path: Path, eos: str) -> list[str]:
     """Read JSON Lines file, extracting the 'text' field from each line."""
     docs = []
     with open(path, encoding='utf-8') as fh:
@@ -61,19 +68,12 @@ def read_jsonl(path: Path) -> list[str]:
                 continue
             text = obj['text']
             if text:
-                docs.append(text)
+                docs.append(wrap(text, eos))
     return docs
 
 
-def read_parquet(path: Path) -> list[str]:
+def read_parquet(path: Path, eos: str) -> list[str]:
     """Read Parquet file, extracting the 'text' column via PyArrow."""
-    try:
-        import pyarrow.parquet as pq
-    except ImportError:
-        print(f'  Error: pyarrow not installed — cannot read {path.name}', file=sys.stderr)
-        print('  Install with: pip install pyarrow', file=sys.stderr)
-        return []
-
     pf = pq.ParquetFile(path)
     schema_names = [f.name for f in pf.schema_arrow]
     if 'text' not in schema_names:
@@ -85,7 +85,7 @@ def read_parquet(path: Path) -> list[str]:
         for val in batch.column('text'):
             text = val.as_py()
             if text:
-                docs.append(text)
+                docs.append(wrap(text, eos))
     return docs
 
 
@@ -118,9 +118,12 @@ class ShardWriter:
         self._fh = None
         self._open_shard()
 
+    @property
+    def shard_path(self) -> Path:
+        return self.dir / f'{self.stem}_{self.shard_index:04d}{self.suffix}'
+
     def write(self, tokens: np.ndarray) -> None:
         """Write a uint16 array (one document) to the current shard.
-
         Rolls to a new shard if the current one would exceed the cap,
         but never splits a document across shards.
         """
@@ -129,11 +132,17 @@ class ShardWriter:
             self._close_shard()
             self.shard_index += 1
             self._open_shard()
+
+        # Print some stats from time to time
+        shard_100mb = 100 * 1024 * 1024
+        if self.shard_bytes // shard_100mb != (self.shard_bytes + nbytes) // shard_100mb:
+            print(f'... wrote {fmt_bytes((self.shard_bytes + nbytes) // shard_100mb * shard_100mb)} to {self.shard_path.name}')
+
         tokens.tofile(self._fh)
         self.shard_bytes += nbytes
 
     def _open_shard(self) -> None:
-        path = self.dir / f'{self.stem}_{self.shard_index:04d}{self.suffix}'
+        path = self.shard_path
         print(f'Creating shard: {path.name}')
         self._fh = open(path, 'wb')
         self.shard_bytes = 0
@@ -293,6 +302,10 @@ def main() -> None:
         sys.exit(1)
     print(f'Vocab size: {vocab_size}')
 
+    eos = tokenizer.eos_token or ''
+    if not eos:
+        print('Warning: tokenizer has no eos_token', file=sys.stderr)
+
     # ------------------------------------------------------------------
     # Resolve and shuffle input files
     # ------------------------------------------------------------------
@@ -328,7 +341,7 @@ def main() -> None:
             input_bytes = fpath.stat().st_size
 
             try:
-                docs = reader(fpath)
+                docs = reader(fpath, eos)
             except Exception as exc:
                 print(
                     f'[{file_idx}/{len(files)}] {fpath.name}  — read error: {exc}, skipping',

@@ -3,36 +3,62 @@ import json
 import random
 
 from base_knowledge import KNOWLEDGE
+from memory import MEMORY
 from transformers import AutoTokenizer
 
 TOK_VERSION = 't-v3'
 DEFAULT_SEED = 42
 
 
-def format_text(knowledge: list[dict[str, str]]) -> list[str]:
-    return [f'Question: {qa["question"]}\nAnswer: {qa["answer"]}' for qa in knowledge]
-
-
-def format_jsonl(knowledge: list[dict[str, str]], system_prompt: str | None = None) -> list[str]:
+def format_text(knowledge: list[dict[str, str] | list[dict[str, str]]]) -> list[str]:
     lines = []
-    for qa in knowledge:
-        messages = []
-        if system_prompt:
-            messages.append({'role': 'system', 'content': system_prompt})
-        messages.extend([{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}])
-        lines.append(json.dumps({'messages': messages}))
+    for item in knowledge:
+        if isinstance(item, list):
+            for qa in item:
+                lines.append(f'Question: {qa["question"]}\nAnswer: {qa["answer"]}')
+        else:
+            lines.append(f'Question: {item["question"]}\nAnswer: {item["answer"]}')
     return lines
 
 
-def format_chat_template(knowledge: list[dict[str, str]], tok_version: str, system_prompt: str | None = None) -> list[str]:
+def format_jsonl(knowledge: list[dict[str, str] | list[dict[str, str]]], system_prompt: str | None = None) -> list[str]:
+    lines = []
+    for item in knowledge:
+        if isinstance(item, list):
+            for qa in item:
+                messages = []
+                if system_prompt:
+                    messages.append({'role': 'system', 'content': system_prompt})
+                messages.extend([{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}])
+                lines.append(json.dumps({'messages': messages}))
+        else:
+            messages = []
+            if system_prompt:
+                messages.append({'role': 'system', 'content': system_prompt})
+            messages.extend([{'role': 'user', 'content': item['question']}, {'role': 'assistant', 'content': item['answer']}])
+            lines.append(json.dumps({'messages': messages}))
+    return lines
+
+
+def format_chat_template(
+    knowledge: list[dict[str, str] | list[dict[str, str]]], tok_version: str, system_prompt: str | None = None
+) -> list[str]:
     tokenizer = AutoTokenizer.from_pretrained(f'tokenizers/{tok_version}')
     lines = []
-    for qa in knowledge:
-        messages = []
-        if system_prompt:
-            messages.append({'role': 'system', 'content': system_prompt})
-        messages.extend([{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}])
-        lines.append(tokenizer.apply_chat_template(messages, tokenize=False))
+    for item in knowledge:
+        if isinstance(item, list):
+            for qa in item:
+                messages = []
+                if system_prompt:
+                    messages.append({'role': 'system', 'content': system_prompt})
+                messages.extend([{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}])
+                lines.append(tokenizer.apply_chat_template(messages, tokenize=False))
+        else:
+            messages = []
+            if system_prompt:
+                messages.append({'role': 'system', 'content': system_prompt})
+            messages.extend([{'role': 'user', 'content': item['question']}, {'role': 'assistant', 'content': item['answer']}])
+            lines.append(tokenizer.apply_chat_template(messages, tokenize=False))
     return lines
 
 
@@ -75,7 +101,7 @@ def main():
     )
     args = parser.parse_args()
 
-    knowledge = list(KNOWLEDGE)
+    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(MEMORY)
 
     if not args.no_shuffle:
         random.seed(args.seed)

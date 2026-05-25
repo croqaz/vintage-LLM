@@ -8,6 +8,18 @@ from transformers.trainer_utils import get_last_checkpoint
 
 PROJECT_DIR = Path(__file__).resolve().parent
 
+DEFAULT_PROMPTS = [
+    'Hello!',
+    'Who are you?',
+    'Greetings, my friend',
+    "What's this place?",
+    'What is love? Love is',
+    'What is God? God is',
+    'Are you a human?',
+    'I am and idiot and',
+    'White bread.',
+]
+
 
 def select_device(name: str) -> torch.device:
     if name == 'auto':
@@ -32,9 +44,8 @@ def select_dtype(name: str, device: torch.device) -> torch.dtype:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Generate text from the latest checkpoint.')
-    parser.add_argument('prompt', nargs='?', help='Text prompt to continue.')
-    parser.add_argument('--chat', action='store_true', help='Use chat template for the prompt.')
+    parser = argparse.ArgumentParser(description='Vibe check a model checkpoint with pre-defined prompts.')
+    parser.add_argument('--chat', action='store_true', help='Use chat template for the prompts.')
     parser.add_argument('--checkpoint', type=Path, help='Specific checkpoint directory to load.')
     parser.add_argument(
         '--checkpoints-dir',
@@ -56,8 +67,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    if args.prompt is None:
-        raise ValueError('provide a prompt as a positional argument')
     if args.tokens < 5:
         raise ValueError('--tokens must be at least 5')
     if args.temperature < 0:
@@ -95,12 +104,21 @@ def main() -> None:
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    if args.chat:
-        messages = [{'role': 'user', 'content': args.prompt}]
-        prompt_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        inputs = tokenizer(prompt_text, return_tensors='pt').to(device)
-    else:
-        inputs = tokenizer(args.prompt, return_tensors='pt').to(device)
+    # Crucial for batch generation
+    tokenizer.padding_side = 'left'
+
+    prompts = DEFAULT_PROMPTS
+    formatted_prompts = []
+
+    for p in prompts:
+        if args.chat:
+            messages = [{'role': 'user', 'content': p}]
+            formatted = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            formatted_prompts.append(formatted)
+        else:
+            formatted_prompts.append(p)
+
+    inputs = tokenizer(formatted_prompts, return_tensors='pt', padding=True).to(device)
     do_sample = args.temperature > 0
 
     with torch.no_grad():
@@ -115,13 +133,19 @@ def main() -> None:
             eos_token_id=tokenizer.eos_token_id,
         )
 
-    text = tokenizer.decode(
-        output_ids[0],
-        skip_special_tokens=not args.show_special_tokens,
-        clean_up_tokenization_spaces=False,
-    )
-    print('-' * 80)
-    print(text.strip())
+    print(f'\n=== VIBE CHECK MODEL ({len(prompts)} prompts) ===\n')
+    for i, (original_prompt, out_ids) in enumerate(zip(prompts, output_ids)):
+        text = tokenizer.decode(
+            out_ids,
+            skip_special_tokens=not args.show_special_tokens,
+            clean_up_tokenization_spaces=False,
+        )
+        print(f'--- Prompt {i + 1} ---')
+        print(f'User: {original_prompt}')
+        print('\nModel:')
+        # .lstrip() is used mostly for left pad tokens if include_special_tokens is true
+        print(text.lstrip() if args.show_special_tokens else text.strip())
+        print('\n' + '=' * 80 + '\n')
 
 
 if __name__ == '__main__':
