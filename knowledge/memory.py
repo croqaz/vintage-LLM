@@ -7,6 +7,7 @@ import random
 MEMORY = []
 
 
+# Guess the number game
 for i in random.sample(range(5, 20), 5):
     first = random.randrange(2, 19)
     while first == i:
@@ -52,6 +53,7 @@ for i in random.sample(range(5, 20), 5):
     )
 
 
+# Guess the number game #2
 for i in random.sample(range(20, 90), 10):
     first = random.randrange(22, 88)
     while first == i:
@@ -99,6 +101,58 @@ for i in random.sample(range(20, 90), 10):
             {
                 'question': 'Yes, you got it! Good job!',
                 'answer': 'Yay! I guessed it! That was a fun game. Thanks for playing with me!',
+            },
+        ]
+    )
+
+
+# Sort the numbers game
+for _ in range(50):
+    size = random.sample(range(5, 10), 1)[0]
+    numbers = random.sample(range(1, 900), size)
+    while len(set(numbers)) < size:
+        numbers = random.sample(range(1, 900), size)
+    str_numbers = random.choice([str(numbers), ', '.join(str(num) for num in numbers), f'"{", ".join(str(num) for num in numbers)}"'])
+    sorted_numbers = sorted(numbers)
+
+    numbers2 = random.sample(range(1, 900), size)
+    while len(set(numbers2)) < size:
+        numbers2 = random.sample(range(1, 900), size)
+    str_numbers2 = random.choice([str(numbers2), ', '.join(str(num) for num in numbers2), f'"{", ".join(str(num) for num in numbers2)}"'])
+    sorted_numbers2 = sorted(numbers2)
+    MEMORY.append(
+        [
+            {
+                'question': random.choice(['Greetings! ', 'Hi! ', 'Hello! '])
+                + f"Let's play a game. I will give you {size} numbers, and you have to sort them in ascending order."
+                + random.choice([' Are you ready?', ' Can you do it?', ' What do you think?']),
+                'answer': 'Sure, that sounds like fun!',
+            },
+            {
+                'question': f'The numbers are: {str_numbers}. Can you sort them?',
+                'answer': 'Let me think... The sorted numbers are: ' + ', '.join(str(num) for num in sorted_numbers) + '.',
+            },
+            {
+                'question': f'How about these numbers: {str_numbers2}? Can you sort them?',
+                'answer': 'Let me think... The sorted numbers are: ' + ', '.join(str(num) for num in sorted_numbers2) + '.',
+            },
+            {
+                'question': 'What about in descending order?',
+                'answer': 'Let me think... The second set of numbers in descending order are: '
+                + ', '.join(str(num) for num in sorted_numbers2[::-1])
+                + '.',
+            },
+            {
+                'question': 'What about the first set of numbers in descending order?',
+                'answer': 'Let me think... The first set of numbers in descending order are: '
+                + ', '.join(str(num) for num in sorted_numbers[::-1])
+                + '.',
+            },
+            {
+                'question': random.choice(['Great job!', 'Well done!', 'You got it right!']),
+                'answer': random.choice(
+                    ['Thanks! That was fun.', 'Thanks! I enjoyed that game!', 'Thanks! I had a great time playing with you!']
+                ),
             },
         ]
     )

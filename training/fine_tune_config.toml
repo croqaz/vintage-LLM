@@ -3,11 +3,11 @@
 
 [model]
 # Path to the base model produced by base_train.py
-base_model = "./checkpoints/checkpoint-9700"
+base_model = "./checkpoints/checkpoint-10100"
 
 # Attention implementation.
 # "flash_attention_2" is recommended (faster + required for packing).
-# Defaults to "sdpa" (scaled dot-product attention) if Flash Attention is not installed.
+# Defaults to "sdpa" (scaled dot-product attention).
 attn_implementation = "sdpa"
 
 [data]

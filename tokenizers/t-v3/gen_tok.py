@@ -1,9 +1,10 @@
-from tokenizers import Tokenizer
-from tokenizers.models import BPE
-from tokenizers.trainers import BpeTrainer
-from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+from tokenizers.models import BPE
+from tokenizers.pre_tokenizers import ByteLevel
+from tokenizers.trainers import BpeTrainer
 from transformers import PreTrainedTokenizerFast
+
+from tokenizers import Tokenizer
 
 OUTPUT = 'gen_tok.json'
 

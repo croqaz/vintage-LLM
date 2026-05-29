@@ -3,6 +3,7 @@ import json
 import random
 
 from base_knowledge import KNOWLEDGE
+from medieval_qa import MEDIEVAL
 from memory import MEMORY
 from transformers import AutoTokenizer
 
@@ -25,12 +26,12 @@ def format_jsonl(knowledge: list[dict[str, str] | list[dict[str, str]]], system_
     lines = []
     for item in knowledge:
         if isinstance(item, list):
+            messages = []
+            if system_prompt:
+                messages.append({'role': 'system', 'content': system_prompt})
             for qa in item:
-                messages = []
-                if system_prompt:
-                    messages.append({'role': 'system', 'content': system_prompt})
                 messages.extend([{'role': 'user', 'content': qa['question']}, {'role': 'assistant', 'content': qa['answer']}])
-                lines.append(json.dumps({'messages': messages}))
+            lines.append(json.dumps({'messages': messages}))
         else:
             messages = []
             if system_prompt:
@@ -101,7 +102,7 @@ def main():
     )
     args = parser.parse_args()
 
-    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(MEMORY)
+    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(KNOWLEDGE + MEDIEVAL + MEMORY)
 
     if not args.no_shuffle:
         random.seed(args.seed)
