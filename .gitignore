@@ -145,14 +145,12 @@ venv.bak/
 dmypy.json
 
 # Data
-models/*/*.pth
 data/
 
-training/checkpoint*
-training/sft_checkpoint*
+training/*checkpoint*
 training/*-text/
+training/*-data/
 training/*.bin
 
 docs/
-lance-*
-valkey-*
+dataset3/levelDB
