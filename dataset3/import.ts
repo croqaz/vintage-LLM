@@ -1,231 +1,545 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset3/import.ts — JSONL → LevelDB importer (Bun / Deno)
+// import.ts — JSONL → LevelDB indexer (Bun / Deno)
 //
-// Reads a JSON-lines file and stores each document in a LevelDB database using
-// the document's `id` field as the key. Designed to stream tens / hundreds of
-// millions of rows without loading the whole file into memory.
+// Reads .jsonl files, computes per-document features, and stores them in a
+// LevelDB database (via classic-level). The key is a SHA-512/256 hash of the
+// normalized text (the document ID); the value is a single JSON object holding
+// the metadata together with the original text.
 //
-// Conflict handling: if a key already exists, the document with more fields wins.
+//   key:   <id>
+//   value: { source, length, uniqueChars, words, sentences,
+//            entropy, quality, compress, text }
 // ──────────────────────────────────────────────────────────────────────────────
 
-import { createReadStream } from 'node:fs';
-import { basename } from 'node:path';
 import { ClassicLevel } from 'classic-level';
+import { createReadStream, readFileSync } from 'node:fs';
+import { basename, extname } from 'node:path';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 10_000; // documents buffered before a single LevelDB batch write
-const PROGRESS_EVERY = 100_000; // log progress every N lines
-
-type Doc = Record<string, unknown>;
+const MIN_LENGTH = 100;
+const DEFAULT_MAX_LENGTH = 32_000;
+const MIN_UNIQUE_CHARS = 10;
+const MAX_UNIQUE_CHARS = 255;
+const BATCH_SIZE = 512; // LevelDB batch flush size
+// Sentence boundary regex adapted from fields.py:
+// Matches .!? followed by whitespace + uppercase, or double newline + lowercase
+const SENTENCE_RE = new RegExp('((?:[.!?][\\"\']?)\\s+(?=[A-Z\\"\'])|(?:[\\n\\r]{2,}\\s*(?=[a-zA-Z\\"\'])))', 'g');
 
 // ──────────────────────────────────────────────────────────────────────────────
 // CLI argument parsing
 // ──────────────────────────────────────────────────────────────────────────────
 
-function parseArgs(): { input: string; dbPath: string; idKey: string } {
+function parseArgs(): {
+  inputs: string[];
+  source: string;
+  dbPath: string;
+  textKey: string;
+  maxLength: number;
+} {
   const args = process.argv.slice(2);
-  let input = '';
+  let inputs: string[] = [];
+  let source = 'cli';
   let dbPath = './levelDB';
-  let idKey = 'id';
+  let textKey = 'text';
+  let maxLength = DEFAULT_MAX_LENGTH;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if ((arg === '-i' || arg === '--input') && i + 1 < args.length) {
-      input = args[++i];
+      inputs.push(args[++i]);
+    } else if ((arg === '-s' || arg === '--source') && i + 1 < args.length) {
+      source = args[++i];
     } else if ((arg === '-d' || arg === '--db') && i + 1 < args.length) {
       dbPath = args[++i];
-    } else if ((arg === '-k' || arg === '--id-key') && i + 1 < args.length) {
-      idKey = args[++i];
+    } else if ((arg === '-k' || arg === '--text-key') && i + 1 < args.length) {
+      textKey = args[++i];
+    } else if ((arg === '-m' || arg === '--max-length' || arg === '--maxLength') && i + 1 < args.length) {
+      maxLength = parseInt(args[++i], 10);
+      if (isNaN(maxLength) || maxLength <= MIN_LENGTH) {
+        console.error(`Error: --max-length must be an integer greater than ${MIN_LENGTH}.`);
+        process.exit(1);
+      }
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun run dataset3/import.ts [options]
+      console.log(`Usage: bun run dataset3/import.ts [options] [inputs...]
 
 Options:
-  -i, --input <file>   JSONL file path (required)
-  -d, --db <path>      LevelDB directory (default: "./levelDB")
-  -k, --id-key <key>   JSON field name used as the key (default: "id")
-  -h, --help           Show this help`);
+  -i, --input <glob>        JSONL file path (repeatable, required)
+  -s, --source <label>      Source label for all documents (default: "cli")
+  -d, --db <path>           LevelDB directory (default: "./levelDB")
+  -k, --text-key <key>      JSON field name for text (default: "text")
+  -m, --max-length <n>      Max character length to import (default: ${DEFAULT_MAX_LENGTH})
+  -h, --help                Show this help`);
       process.exit(0);
+    } else if (!arg.startsWith('-')) {
+      inputs.push(arg);
     }
   }
 
-  if (!input) {
+  if (inputs.length === 0) {
     console.error('Error: --input is required. Use -h for help.');
     process.exit(1);
   }
 
-  return { input, dbPath, idKey };
+  return { inputs, source, dbPath, textKey, maxLength };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ID generation — SHA-512/256
+// ──────────────────────────────────────────────────────────────────────────────
+
+function generateId(text: string): string {
+  const hasher = new Bun.CryptoHasher('sha512-256');
+  hasher.update(text);
+  return hasher.digest('hex');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Feature computation
+// ──────────────────────────────────────────────────────────────────────────────
+
+function countWords(text: string): number {
+  const tokens = text.split(/\s+/).filter(t => t.length > 0);
+  return tokens.length;
+}
+
+function countSentences(text: string): number {
+  const parts = text.split(SENTENCE_RE);
+  if (parts.length === 0) return 1;
+
+  // Rejoin split parts: each boundary is followed by the next segment
+  const sentences: string[] = [];
+  for (let i = 0; i < parts.length; i += 2) {
+    const part = parts[i] + (i + 1 < parts.length ? parts[i + 1] : '');
+    if (part.trim().length > 0) {
+      sentences.push(part);
+    }
+  }
+
+  return sentences.length > 0 ? sentences.length : 1;
+}
+
+function qualityScore(text: string): number {
+  const letterRe = /[a-zα-ωàâäçèéêëîïôöùûüüÿæœß]$/i;
+  const digitSpaceRe = /[0-9 \n]$/;
+  const punctRe = /[.,;!?'"_\-]$/;
+  let score = 0.0;
+  for (const c of text) {
+    if (letterRe.test(c)) score += 2;
+    else if (digitSpaceRe.test(c)) score += 1;
+    else if (punctRe.test(c)) score += 0.5;
+    else score -= 0.5;
+  }
+  // Normalize by length and shift to range [-0.75, +1.25]
+  return score / text.length - 0.75;
+}
+
+function compressionRatio(text: string): number {
+  const raw = new TextEncoder().encode(text);
+  // Use deflate (no header) to match Python's zlib.compress behavior
+  const compressed = Bun.deflateSync(raw);
+  return compressed.length / raw.length + 0.5;
+}
+
+function charEntropy(text: string): number {
+  const counts = new Map<string, number>();
+  for (const c of text) {
+    counts.set(c, (counts.get(c) ?? 0) + 1);
+  }
+  const total = text.length;
+  let entropy = 0.0;
+  for (const count of counts.values()) {
+    const p = count / total;
+    entropy -= p * Math.log2(p);
+  }
+  // Normalize by max entropy of English text (~4.4 bits/char)
+  return entropy / 4.4;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Stored value type (no `id` — the id is the LevelDB key)
+// ──────────────────────────────────────────────────────────────────────────────
+
+interface DocValue {
+  source: string;
+  length: number;
+  uniqueChars: number;
+  words: number;
+  sentences: number;
+  quality: number;
+  compress: number;
+  entropy: number;
+  text: string;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Compute the id + stored value for a document
+// ──────────────────────────────────────────────────────────────────────────────
+
+function computeRecord(text: string, source: string): { id: string; value: DocValue } {
+  const normalized = text.split(/\W+/).join(' ');
+  const id = generateId(normalized);
+  const length = normalized.length;
+  const uniqueChars = new Set(normalized).size;
+  const words = countWords(normalized);
+
+  const sentences = countSentences(text);
+  const entropy = +(charEntropy(text) * 100).toFixed(2);
+  const quality = +(qualityScore(text) * 100).toFixed(2);
+  const compress = +(compressionRatio(text) * 100).toFixed(2);
+
+  return {
+    id,
+    value: {
+      source,
+      length,
+      uniqueChars,
+      words,
+      sentences,
+      entropy,
+      quality,
+      compress,
+      text,
+    },
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Conflict resolution
 //
-// Decides which document to keep when the same `id` appears more than once
-// (either already in the DB or earlier in the same file).
+// Called whenever two documents resolve to the same id (within a run or against
+// a value already stored in the DB). Returns the value that should be kept in
+// the database.
 //
-// Default policy: prefer the document with more fields. On a tie, keep the
-// incoming document (last write wins).
-//
-// NOTE: Custom merge / priority logic goes here later. For example, you might:
-//   - merge fields from both documents instead of picking one
-//   - prefer a specific `source` over another
-//   - compare a `quality` / `updatedAt` field
+// TODO: implement a real strategy (e.g. keep the higher-quality or longer text).
+// For now this is a stub that keeps the existing/older value ("first wins").
 // ──────────────────────────────────────────────────────────────────────────────
 
-function resolveConflict(existing: Doc, incoming: Doc): Doc | null {
-  const existingFields = Object.keys(existing).length;
-  const incomingFields = Object.keys(incoming).length;
-
-  if (existing.text === incoming.text) {
-    return null;
-  }
-  if (incoming.source === 'cli' && existing.source !== 'cli') {
-    return null;
-  }
-
-  // Prefer more fields; ties keep the incoming document.
-  return incomingFields >= existingFields ? incoming : existing;
+function onConflict(oldValue: DocValue, newValue: DocValue): DocValue {
+  return oldValue;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Import
+// Per-file stats
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function main(): Promise<void> {
-  const { input, dbPath, idKey } = parseArgs();
+interface FileStats {
+  path: string;
+  rowsLoaded: number;
+  rowsDropped: number;
+  rowsDuplicate: number;
+  rowsIndexed: number;
+}
 
-  // valueEncoding 'json' lets us put/get plain objects directly.
-  const db = new ClassicLevel<string, Doc>(dbPath, {
-    valueEncoding: 'json',
-    maxFileSize: 1_000_000_000,
-  });
-  await db.open();
+function printSummary(stats: FileStats, maxLength: number): void {
+  console.log(
+    `  Loaded:     ${String(stats.rowsLoaded).padStart(12)}\n` +
+      `  Dropped:    ${String(stats.rowsDropped).padStart(12)}  (len ≤ ${MIN_LENGTH} or > ${maxLength} or uniqueChars out of range)\n` +
+      `  Duplicates: ${String(stats.rowsDuplicate).padStart(12)}  (id collision)\n` +
+      `  Indexed:    ${String(stats.rowsIndexed).padStart(12)}`
+  );
+}
 
-  let rowsLoaded = 0;
-  let rowsDropped = 0;
-  let rowsConflict = 0;
+// ──────────────────────────────────────────────────────────────────────────────
+// Pre-filter: length + unique chars
+// ──────────────────────────────────────────────────────────────────────────────
 
-  // Buffer the latest document per id for the current batch. Using a Map also
-  // dedups ids that repeat within the same batch before we hit LevelDB.
-  const buffer = new Map<string, Doc>();
+function prefilter(text: string, maxLength: number): Record<string, any> {
+  const length = text.length;
+  if (length <= MIN_LENGTH || length > maxLength) return { ok: false, length };
+  const uniqueChars = new Set(text).size;
+  if (uniqueChars <= MIN_UNIQUE_CHARS || uniqueChars > MAX_UNIQUE_CHARS) {
+    return { ok: false, uniqueChars };
+  }
+  const words = countWords(text);
+  if (words <= 2) return { ok: false, words };
+  return { ok: true };
+}
 
-  async function flush(): Promise<void> {
-    if (buffer.size === 0) return;
+// ──────────────────────────────────────────────────────────────────────────────
+// File type detection
+// ──────────────────────────────────────────────────────────────────────────────
 
-    const ids = [...buffer.keys()];
-    // Single round-trip to fetch all existing values for this batch.
-    const existing = await db.getMany(ids);
+const JSONL_EXTENSIONS = new Set(['.jsonl', '.jsonlines', '.ndjson']);
+const TEXT_EXTENSIONS = new Set(['.txt', '.md']);
 
-    const batch = db.batch();
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i];
-      const incoming = buffer.get(id)!;
-      const prev = existing[i];
+function detectFileType(filePath: string): 'jsonl' | 'text' {
+  const ext = extname(filePath).toLowerCase();
+  if (JSONL_EXTENSIONS.has(ext)) return 'jsonl';
+  if (TEXT_EXTENSIONS.has(ext)) return 'text';
+  console.error(`Fatal: unsupported file extension "${ext}" for ${basename(filePath)}.`);
+  console.error(`Supported: ${[...JSONL_EXTENSIONS, ...TEXT_EXTENSIONS].join(', ')}`);
+  process.exit(1);
+}
 
-      let winner: Doc | null = incoming;
-      if (prev !== undefined) {
-        winner = resolveConflict(prev, incoming);
-        if (winner === null) {
-          // Documents are identical, no update needed.
-          continue;
-        }
-        rowsConflict++;
-      }
-      batch.put(id, winner);
-    }
-    await batch.write();
-    buffer.clear();
+// ──────────────────────────────────────────────────────────────────────────────
+// Process a single .txt / .md file (entire file = one document)
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function processTextFile(
+  filePath: string,
+  source: string,
+  db: ClassicLevel<string, DocValue>,
+  maxLength: number
+): Promise<FileStats> {
+  const stats: FileStats = {
+    path: filePath,
+    rowsLoaded: 1,
+    rowsDropped: 0,
+    rowsDuplicate: 0,
+    rowsIndexed: 0,
+  };
+
+  const text = readFileSync(filePath, 'utf8');
+
+  const filtered = prefilter(text, maxLength);
+  if (!filtered.ok) {
+    delete filtered.ok;
+    console.log(`  Skipping ${basename(filePath)}: failed pre-filter (${JSON.stringify(filtered)})`);
+    stats.rowsDropped = 1;
+    return stats;
   }
 
-  // Stream the file line by line to keep memory flat regardless of file size.
-  const fileStream = createReadStream(input, { encoding: 'utf8' });
+  const { id, value } = computeRecord(text, source);
+
+  // Check for existing entry in the DB.
+  const existing = await db.getMany([id]);
+  if (existing[0] !== undefined) {
+    stats.rowsDuplicate = 1;
+    const resolved = onConflict(existing[0], value);
+    if (resolved !== existing[0]) {
+      await db.put(id, resolved);
+      stats.rowsIndexed = 1;
+      stats.rowsDuplicate = 0;
+    }
+  } else {
+    await db.put(id, value);
+    stats.rowsIndexed = 1;
+  }
+
+  return stats;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Process a single JSONL file
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function processFile(
+  filePath: string,
+  source: string,
+  db: ClassicLevel<string, DocValue>,
+  textKey: string,
+  maxLength: number
+): Promise<FileStats> {
+  const stats: FileStats = {
+    path: filePath,
+    rowsLoaded: 0,
+    rowsDropped: 0,
+    rowsDuplicate: 0,
+    rowsIndexed: 0,
+  };
+
+  // Pending writes keyed by id. Using a Map dedups within-batch collisions and
+  // lets us resolve them via onConflict before they ever hit the DB.
+  const batch = new Map<string, DocValue>();
+
+  async function flushBatch(): Promise<void> {
+    if (batch.size === 0) return;
+
+    const keys = [...batch.keys()];
+    // Single round-trip existence check for the whole batch.
+    const existing = await db.getMany(keys);
+
+    const ops: { type: 'put'; key: string; value: DocValue }[] = [];
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      const newValue = batch.get(key)!;
+      const oldValue = existing[i];
+
+      if (oldValue !== undefined) {
+        // Already in the DB → conflict.
+        stats.rowsDuplicate++;
+        const resolved = onConflict(oldValue, newValue);
+        if (resolved !== oldValue) {
+          ops.push({ type: 'put', key, value: resolved });
+        }
+      } else {
+        stats.rowsIndexed++;
+        ops.push({ type: 'put', key, value: newValue });
+      }
+    }
+
+    if (ops.length > 0) {
+      await db.batch(ops);
+    }
+
+    console.log(`  Flushed ${keys.length} keys (${ops.length} writes) to LevelDB...`);
+    batch.clear();
+  }
+
+  // Add a computed record to the batch, resolving within-batch collisions.
+  function addToBatch(id: string, value: DocValue): void {
+    const existing = batch.get(id);
+    if (existing !== undefined) {
+      stats.rowsDuplicate++;
+      batch.set(id, onConflict(existing, value));
+    } else {
+      batch.set(id, value);
+    }
+  }
+
+  // Stream the file line by line
+  const fileStream = createReadStream(filePath, { encoding: 'utf8' });
   let lineBuffer = '';
 
   for await (const chunk of fileStream) {
     lineBuffer += chunk;
 
+    // Process complete lines
     let newlineIdx: number;
     while ((newlineIdx = lineBuffer.indexOf('\n')) !== -1) {
       const line = lineBuffer.slice(0, newlineIdx).trim();
       lineBuffer = lineBuffer.slice(newlineIdx + 1);
-      if (line.length < 10) continue;
+      if (line.length <= 10) continue;
 
-      rowsLoaded++;
-      if (rowsLoaded % PROGRESS_EVERY === 0) {
-        console.log(`  Processed ${rowsLoaded} lines (${rowsConflict} conflicts resolved)...`);
+      stats.rowsLoaded++;
+
+      if (stats.rowsLoaded % 100_000 === 0) {
+        console.log(`  Processed ${stats.rowsLoaded} lines...`);
       }
 
-      let doc: unknown;
+      // Parse JSON
+      let obj: unknown;
       try {
-        doc = JSON.parse(line);
+        obj = JSON.parse(line);
       } catch {
-        console.warn(`  [WARN] Skipping malformed JSON on line ${rowsLoaded} in ${basename(input)}`);
-        rowsDropped++;
+        console.warn(`  [WARN] Skipping malformed JSON line ${stats.rowsLoaded} in ${basename(filePath)}`);
+        stats.rowsDropped++;
         continue;
       }
 
-      if (doc === null || typeof doc !== 'object' || Array.isArray(doc)) {
-        console.warn(`  [WARN] Skipping non-object on line ${rowsLoaded} in ${basename(input)}`);
-        rowsDropped++;
+      if (obj === null || typeof obj !== 'object') {
+        console.warn(`  [WARN] Skipping non-object line ${stats.rowsLoaded} in ${basename(filePath)}`);
+        stats.rowsDropped++;
         continue;
       }
 
-      const record = doc as Doc;
-      const id = record[idKey];
-      if (id === undefined || id === null || (typeof id !== 'string' && typeof id !== 'number')) {
-        console.warn(`  [WARN] Missing/invalid "${idKey}" on line ${rowsLoaded} in ${basename(input)}`);
-        rowsDropped++;
-        continue;
-      }
-      if (!record.text || typeof record.text !== 'string' || record.text.trim().length === 0) {
-        console.warn(`  [WARN] Missing/invalid "text" on line ${rowsLoaded} in ${basename(input)}`);
-        rowsDropped++;
+      const record = obj as Record<string, unknown>;
+      const text = record[textKey];
+      if (!text || typeof text !== 'string') {
+        console.warn(`  [WARN] Missing "${textKey}" field on line ${stats.rowsLoaded} in ${basename(filePath)}`);
+        stats.rowsDropped++;
         continue;
       }
 
-      const key = String(id);
-      // Resolve in-batch duplicates immediately so the buffer holds one doc per id.
-      const pending = buffer.get(key);
-      buffer.set(key, pending === undefined ? record : resolveConflict(pending, record));
+      // Pre-filter
+      const filtered = prefilter(text, maxLength);
+      if (!filtered.ok) {
+        stats.rowsDropped++;
+        continue;
+      }
 
-      if (buffer.size >= BATCH_SIZE) {
-        await flush();
+      // Reuse "source" field if present, otherwise use CLI arg
+      let docSource = source;
+      if (record.source && typeof record.source === 'string') {
+        docSource = record.source;
+      }
+
+      // Compute features (including id)
+      const { id, value } = computeRecord(text, docSource);
+
+      addToBatch(id, value);
+
+      // Flush when batch is full
+      if (batch.size >= BATCH_SIZE) {
+        await flushBatch();
       }
     }
   }
 
-  // Handle a trailing line without a newline.
-  const lastLine = lineBuffer.trim();
-  if (lastLine.length > 0) {
-    rowsLoaded++;
-    try {
-      const record = JSON.parse(lastLine) as Doc;
-      const id = record?.[idKey];
-      if (id !== undefined && id !== null && (typeof id === 'string' || typeof id === 'number')) {
-        const key = String(id);
-        const pending = buffer.get(key);
-        buffer.set(key, pending === undefined ? record : resolveConflict(pending, record));
-      } else {
-        rowsDropped++;
-        console.warn(`  [WARN] Missing/invalid "${idKey}" on final line in ${basename(input)}`);
+  // Flush remaining batch
+  await flushBatch();
+
+  return stats;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Main
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  const { inputs, source, dbPath, textKey, maxLength } = parseArgs();
+
+  // Sort for deterministic processing order
+  inputs.sort();
+
+  console.log(`Found ${inputs.length} input file(s)`);
+  console.log(`Source: ${source}`);
+  console.log(`Text key: ${textKey}`);
+  console.log(`Max length: ${maxLength}`);
+  console.log(`LevelDB: ${dbPath}`);
+
+  const db = new ClassicLevel<string, DocValue>(dbPath, {
+    valueEncoding: 'json',
+    maxFileSize: 1_000_000_000,
+  });
+  await db.open();
+
+  let grandLoaded = 0;
+  let grandDropped = 0;
+  let grandDuplicate = 0;
+  let grandIndexed = 0;
+
+  try {
+    for (let fi = 0; fi < inputs.length; fi++) {
+      const filePath = inputs[fi];
+      const fileType = detectFileType(filePath);
+
+      if (fileType === 'jsonl') {
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`Processing: ${filePath}`);
+        console.log('='.repeat(60));
       }
-    } catch {
-      rowsDropped++;
-      console.warn(`  [WARN] Skipping malformed JSON on final line in ${basename(input)}`);
+
+      const stats =
+        fileType === 'text'
+          ? await processTextFile(filePath, source, db, maxLength)
+          : await processFile(filePath, source, db, textKey, maxLength);
+
+      if (fileType === 'jsonl') {
+        printSummary(stats, maxLength);
+      }
+
+      grandLoaded += stats.rowsLoaded;
+      grandDropped += stats.rowsDropped;
+      grandDuplicate += stats.rowsDuplicate;
+      grandIndexed += stats.rowsIndexed;
+
+      // Periodic progress for text files
+      if (fileType === 'text' && (fi + 1) % 25 === 0) {
+        console.log(`  ... processed ${fi + 1}/${inputs.length} files (${grandIndexed} indexed so far)`);
+      }
     }
+  } finally {
+    await db.close();
   }
 
-  await flush();
-  await db.close();
-
-  console.log('───────────────────────────────────────────────');
-  console.log(`Done. Loaded ${rowsLoaded}, dropped ${rowsDropped}, conflicts resolved ${rowsConflict}.`);
+  // Final summary
+  console.log(`\n${'='.repeat(60)}`);
+  console.log('SUMMARY');
+  console.log('='.repeat(60));
+  console.log(
+    `  Grand loaded:     ${String(grandLoaded).padStart(12)}\n` +
+      `  Grand dropped:    ${String(grandDropped).padStart(12)}  (quality filter)\n` +
+      `  Grand duplicates: ${String(grandDuplicate).padStart(12)}  (id collision)\n` +
+      `  Grand indexed:    ${String(grandIndexed).padStart(12)}`
+  );
 }
 
 main().catch(err => {
-  console.error(err);
+  console.error('Fatal error:', err);
   process.exit(1);
 });

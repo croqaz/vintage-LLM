@@ -153,4 +153,4 @@ training/*-data/
 training/*.bin
 
 docs/
-dataset3/levelDB
+dataset3/*DB

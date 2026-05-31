@@ -3,7 +3,7 @@
 
 [model]
 # Path to the base model produced by base_train.py
-base_model = "./checkpoints/checkpoint-10100"
+base_model = "./checkpoints/checkpoint-10102"
 
 # Attention implementation.
 # "flash_attention_2" is recommended (faster + required for packing).
@@ -12,7 +12,7 @@ attn_implementation = "sdpa"
 
 [data]
 # ── Source (choose one) ─────────────────────────────────────────────────────
-dataset_path = "./knowledge.jsonl"
+dataset_path = "./fine-data/knowledge.jsonl"
 
 # ── Split ───────────────────────────────────────────────────────────────────
 # Fraction held out for validation (train_test_split applied to the full file)
@@ -34,7 +34,7 @@ output_dir     = "./sft_checkpoints"
 final_model_dir = "./sft_checkpoints/final"
 
 # ── Training duration ────────────────────────────────────────────────────────
-num_train_epochs = 4
+num_train_epochs = 1
 
 # ── Batch sizes ──────────────────────────────────────────────────────────────
 # Effective batch size = num_GPUs × per_device_train_batch_size × gradient_accumulation_steps

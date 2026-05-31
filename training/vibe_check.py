@@ -9,15 +9,16 @@ from transformers.trainer_utils import get_last_checkpoint
 PROJECT_DIR = Path(__file__).resolve().parent
 
 DEFAULT_PROMPTS = [
-    'Hello!',
-    'Who are you?',
-    'Greetings, my friend',
-    "What's this place?",
-    'What is love? Love is',
-    'What is God? God is',
     'Are you a human?',
-    'I am and idiot and',
+    'Greetings, my friend',
+    'Hello!',
+    'I am and fool and a',
+    'What is God? God is',
+    'What is love? Love is',
     'White bread.',
+    'Who am I?',
+    'Who are you?',
+    "What's this place?",
 ]
 
 
@@ -55,8 +56,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument('--tokens', type=int, default=100, help='Number of new tokens to generate.')
     parser.add_argument('--temperature', type=float, default=0.8)
-    parser.add_argument('--top-p', type=float, default=0.95)
-    parser.add_argument('--top-k', type=int, default=50)
+    parser.add_argument('--top-p', type=float, default=0.9)
+    parser.add_argument('--top-k', type=int, default=25)
     parser.add_argument('--repetition-penalty', type=float, default=1.1)
     parser.add_argument('--seed', type=int, default=1337)
     parser.add_argument('--device', default='auto', choices=('auto', 'cpu', 'cuda', 'mps'))
