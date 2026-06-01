@@ -218,8 +218,24 @@ function computeRecord(text: string, source: string): { id: string; value: DocVa
 // For now this is a stub that keeps the existing/older value ("first wins").
 // ──────────────────────────────────────────────────────────────────────────────
 
-function onConflict(oldValue: DocValue, newValue: DocValue): DocValue {
-  return oldValue;
+function calcScore(value: DocValue): number {
+  return (
+    value.quality -
+    100 +
+    (value.compress > 100 ? 100 - value.compress : value.compress - 100) +
+    (value.entropy > 100 ? 100 - value.entropy : value.entropy - 100)
+  );
+}
+
+function onConflict(oldValue: DocValue, newValue: DocValue): DocValue | null {
+  if (oldValue.source !== 'cli' && oldValue.text === newValue.text) {
+    return null;
+  }
+  if (newValue.source !== 'cli' && oldValue.source === 'cli') {
+    // Always prefer non-CLI sources over CLI
+    oldValue.source = newValue.source;
+  }
+  return calcScore(newValue) >= calcScore(oldValue) ? newValue : oldValue;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -263,7 +279,7 @@ function prefilter(text: string, maxLength: number): Record<string, any> {
 // File type detection
 // ──────────────────────────────────────────────────────────────────────────────
 
-const JSONL_EXTENSIONS = new Set(['.jsonl', '.jsonlines', '.ndjson']);
+const JSONL_EXTENSIONS = new Set(['.json', '.jsonl', '.ndjson']);
 const TEXT_EXTENSIONS = new Set(['.txt', '.md']);
 
 function detectFileType(filePath: string): 'jsonl' | 'text' {
@@ -310,7 +326,7 @@ async function processTextFile(
   if (existing[0] !== undefined) {
     stats.rowsDuplicate = 1;
     const resolved = onConflict(existing[0], value);
-    if (resolved !== existing[0]) {
+    if (resolved) {
       await db.put(id, resolved);
       stats.rowsIndexed = 1;
       stats.rowsDuplicate = 0;
@@ -363,7 +379,7 @@ async function processFile(
         // Already in the DB → conflict.
         stats.rowsDuplicate++;
         const resolved = onConflict(oldValue, newValue);
-        if (resolved !== oldValue) {
+        if (resolved) {
           ops.push({ type: 'put', key, value: resolved });
         }
       } else {
@@ -385,7 +401,10 @@ async function processFile(
     const existing = batch.get(id);
     if (existing !== undefined) {
       stats.rowsDuplicate++;
-      batch.set(id, onConflict(existing, value));
+      const resolved = onConflict(existing, value);
+      if (resolved) {
+        batch.set(id, resolved);
+      }
     } else {
       batch.set(id, value);
     }
@@ -479,6 +498,7 @@ async function main(): Promise<void> {
   console.log(`Found ${inputs.length} input file(s)`);
   console.log(`Source: ${source}`);
   console.log(`Text key: ${textKey}`);
+  console.log(`Min length: ${MIN_LENGTH}`);
   console.log(`Max length: ${maxLength}`);
   console.log(`LevelDB: ${dbPath}`);
 
