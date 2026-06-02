@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset3/export.ts — LevelDB document export tool (Bun / Deno)
+// dataset/export.ts — LevelDB document export tool (Bun / Deno)
 //
 // Iterates over all documents in a LevelDB database (created by import.ts),
 // filters by JS expression, and exports matching documents as JSONL to stdout.
@@ -19,13 +19,17 @@ const EXAMPLE: Doc = {
   id: 'abc123',
   text: 'Hello world',
   source: 'A',
-  length: 100,
-  uniqueChars: 32,
-  words: 25,
+  len: 100,
+  uniqChar: 32,
+  tokens: 25,
   sentences: 3,
   entropy: 111.25,
   quality: 103.36,
   compress: 105.85,
+  dictHit: 92.5,
+  alpha: 95.0,
+  vowel: 88.0,
+  ascii: 99.5,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -64,7 +68,7 @@ function parseArgs(): {
         process.exit(1);
       }
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun dataset3/export.ts [expression] [options]
+      console.log(`Usage: bun dataset/export.ts [expression] [options]
 
 Scans all documents in LevelDB, optionally filters by JS expression, and exports
 matching documents as JSONL to stdout.
@@ -76,11 +80,11 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  bun dataset3/export.ts
-  bun dataset3/export.ts "doc.quality < 0"
-  bun dataset3/export.ts 'doc.source === "British"' --limit 10
-  bun dataset3/export.ts "doc.entropy >= 2" --fields id,text,entropy
-  bun dataset3/export.ts "doc.words > 10" --fields source,words,entropy --limit 100`);
+  bun dataset/export.ts
+  bun dataset/export.ts "doc.quality < 0"
+  bun dataset/export.ts 'doc.source === "British"' --limit 10
+  bun dataset/export.ts "doc.entropy >= 2" --fields id,text,entropy
+  bun dataset/export.ts "doc.tokens > 10" --fields source,tokens,entropy --limit 100`);
       process.exit(0);
     } else if (!arg.startsWith('-')) {
       if (!expr) expr = arg;

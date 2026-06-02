@@ -1,6 +1,6 @@
 // #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset3/delete.ts — LevelDB document delete tool (Bun / Deno)
+// dataset/delete.ts — LevelDB document delete tool (Bun / Deno)
 //
 // Modes:
 //   bun delete.ts id <id>              Delete a single document by ID
@@ -48,7 +48,7 @@ function parseArgs():
     } else if (arg === '--dry-run') {
       dryRun = true;
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun dataset3/delete.ts <mode> [options]
+      console.log(`Usage: bun dataset/delete.ts <mode> [options]
 
 Modes:
   id <id>                  Delete a single document by its ID
@@ -61,10 +61,10 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  bun dataset3/delete.ts id 1234
-  bun dataset3/delete.ts query "doc.qualityScore < 0" --dry-run
-  bun dataset3/delete.ts query "doc.source === 'spam'" --limit 1000
-  bun dataset3/delete.ts query "doc.entropy >= 2" --dry-run --limit 50`);
+  bun dataset/delete.ts id 1234
+  bun dataset/delete.ts query "doc.qualityScore < 0" --dry-run
+  bun dataset/delete.ts query "doc.source === 'spam'" --limit 1000
+  bun dataset/delete.ts query "doc.entropy >= 2" --dry-run --limit 50`);
       process.exit(0);
     } else {
       positional.push(arg);

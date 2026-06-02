@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset3/query.ts — LevelDB document query tool (Bun / Deno)
+// dataset/query.ts — LevelDB document query tool (Bun / Deno)
 //
 // Modes:
 //   bun query.ts id <id>              Fetch a single document by ID
@@ -15,13 +15,17 @@ const EXAMPLE: Doc = {
   id: 'abc123',
   text: 'Hello world',
   source: 'A',
-  length: 100,
-  uniqueChars: 32,
-  words: 25,
+  len: 100,
+  uniqChar: 32,
+  tokens: 25,
   sentences: 3,
   entropy: 111.25,
   quality: 123.36,
   compress: 99.85,
+  dictHit: 92.5,
+  alpha: 95.0,
+  vowel: 88.0,
+  ascii: 99.5,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -53,7 +57,7 @@ function parseArgs():
         process.exit(1);
       }
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun dataset3/query.ts <mode> [options]
+      console.log(`Usage: bun dataset/query.ts <mode> [options]
 
 Modes:
   id <id>                  Fetch a single document by its ID
@@ -65,10 +69,10 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  bun dataset3/query.ts id 1234
-  bun dataset3/query.ts query "doc.length < 100 && doc.entropy >= 2"
-  bun dataset3/query.ts query 'doc.source === "British" && doc.words === 1'
-  bun dataset3/query.ts query "doc.quality < 0" --limit 10`);
+  bun dataset/query.ts id 1234
+  bun dataset/query.ts query "doc.len < 100 && doc.entropy >= 2"
+  bun dataset/query.ts query 'doc.source === "British" && doc.tokens === 1'
+  bun dataset/query.ts query "doc.quality < 0" --limit 10`);
       process.exit(0);
     } else {
       positional.push(arg);

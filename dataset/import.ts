@@ -76,7 +76,7 @@ function parseArgs(): {
     } else if ((arg === '-v' || arg === '--vocab') && i + 1 < args.length) {
       vocabPath = args[++i];
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun run dataset3/import.ts [options] [inputs...]
+      console.log(`Usage: bun run dataset/import.ts [options] [inputs...]
 
 Options:
   -i, --input <glob>        JSONL file path (repeatable, required)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset3/stats.ts — LevelDB document statistics collector (Bun / Deno)
+// dataset/stats.ts — LevelDB document statistics collector (Bun / Deno)
 //
 // Iterates over every document in a LevelDB database (created by import.ts),
 // extracts per-document metrics, and prints a summary table with
@@ -21,13 +21,17 @@ type Doc = Record<string, unknown>;
 
 interface DocRecord {
   source?: string;
-  length?: number;
-  uniqueChars?: number;
-  words?: number;
+  len?: number;
+  uniqChar?: number;
+  tokens?: number;
   sentences?: number;
   quality?: number;
   compress?: number;
   entropy?: number;
+  dictHit?: number;
+  alpha?: number;
+  vowel?: number;
+  ascii?: number;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -103,7 +107,7 @@ function parseArgs(): { dbPath: string; limit: number } {
         process.exit(1);
       }
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun run dataset3/stats.ts [options]
+      console.log(`Usage: bun run dataset/stats.ts [options]
 
 Options:
   -d, --db <path>   LevelDB directory (default: "./levelDB")
@@ -146,13 +150,17 @@ async function main(): Promise<void> {
 
   // One reservoir per metric (also tracks exact mean/min/max).
   const reservoirs: Record<string, Reservoir> = {
-    length: new Reservoir(RESERVOIR_SIZE),
-    uniqueChars: new Reservoir(RESERVOIR_SIZE),
-    words: new Reservoir(RESERVOIR_SIZE),
+    len: new Reservoir(RESERVOIR_SIZE),
+    uniqChar: new Reservoir(RESERVOIR_SIZE),
+    tokens: new Reservoir(RESERVOIR_SIZE),
     sentences: new Reservoir(RESERVOIR_SIZE),
     quality: new Reservoir(RESERVOIR_SIZE),
     compress: new Reservoir(RESERVOIR_SIZE),
     entropy: new Reservoir(RESERVOIR_SIZE),
+    dictHit: new Reservoir(RESERVOIR_SIZE),
+    alpha: new Reservoir(RESERVOIR_SIZE),
+    vowel: new Reservoir(RESERVOIR_SIZE),
+    ascii: new Reservoir(RESERVOIR_SIZE),
   };
 
   // Per-source counts (bounded by the number of distinct sources, not rows).
@@ -169,13 +177,17 @@ async function main(): Promise<void> {
       sourceCounts.set(doc.source, (sourceCounts.get(doc.source) ?? 0) + 1);
     }
 
-    reservoirs.length.add(doc.length ?? 0);
-    reservoirs.uniqueChars.add(doc.uniqueChars ?? 0);
-    reservoirs.words.add(doc.words ?? 0);
+    reservoirs.len.add(doc.len ?? 0);
+    reservoirs.uniqChar.add(doc.uniqChar ?? 0);
+    reservoirs.tokens.add(doc.tokens ?? 0);
     reservoirs.sentences.add(doc.sentences ?? 0);
     reservoirs.quality.add(doc.quality ?? 0);
     reservoirs.compress.add(doc.compress ?? 0);
     reservoirs.entropy.add(doc.entropy ?? 0);
+    reservoirs.dictHit.add(doc.dictHit ?? 0);
+    reservoirs.alpha.add(doc.alpha ?? 0);
+    reservoirs.vowel.add(doc.vowel ?? 0);
+    reservoirs.ascii.add(doc.ascii ?? 0);
 
     if (limit > 0 && totalRows >= limit) break;
   }
@@ -185,13 +197,17 @@ async function main(): Promise<void> {
   // ── Compute stats ────────────────────────────────────────────────────────
 
   const metricDefs = [
-    { name: 'Char length', res: reservoirs.length, decimals: 1 },
-    { name: 'Unique chars', res: reservoirs.uniqueChars, decimals: 2 },
-    { name: 'Word count', res: reservoirs.words, decimals: 1 },
+    { name: 'Char length', res: reservoirs.len, decimals: 1 },
+    { name: 'Unique chars', res: reservoirs.uniqChar, decimals: 2 },
+    { name: 'Token count', res: reservoirs.tokens, decimals: 1 },
     { name: 'Sentence count', res: reservoirs.sentences, decimals: 2 },
     { name: 'Quality score', res: reservoirs.quality, decimals: 2 },
     { name: 'Compression', res: reservoirs.compress, decimals: 2 },
     { name: 'Entropy', res: reservoirs.entropy, decimals: 2 },
+    { name: 'Dict hit', res: reservoirs.dictHit, decimals: 2 },
+    { name: 'Alpha', res: reservoirs.alpha, decimals: 2 },
+    { name: 'Vowel', res: reservoirs.vowel, decimals: 2 },
+    { name: 'ASCII', res: reservoirs.ascii, decimals: 2 },
   ];
 
   // ── Print table ──────────────────────────────────────────────────────────
@@ -214,7 +230,7 @@ async function main(): Promise<void> {
     console.log(`| Limited to ${fmtInt(limit)} rows\n|`);
   }
 
-  // Pre-format every cell (7 metrics × 5 columns = 35 strings) so column
+  // Pre-format every cell (11 metrics × 5 columns = 55 strings) so column
   // widths can be derived in a single pass over this tiny array.
   const colHeaders = ['Mean', 'Min', 'P5', 'P95', 'Max'];
   type FormattedRow = { label: string; cells: string[] };
