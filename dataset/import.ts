@@ -25,9 +25,15 @@ const DEFAULT_MAX_LENGTH = 32_000;
 const MIN_UNIQUE_CHARS = 10;
 const MAX_UNIQUE_CHARS = 255;
 const BATCH_SIZE = 512; // LevelDB batch flush size
+
 // Sentence boundary regex adapted from fields.py:
 // Matches .!? followed by whitespace + uppercase, or double newline + lowercase
 const SENTENCE_RE = new RegExp('((?:[.!?][\\"\']?)\\s+(?=[A-Z\\"\'])|(?:[\\n\\r]{2,}\\s*(?=[a-zA-Z\\"\'])))', 'g');
+const VOWEL_RE = /[aeiouy]/i;
+const ALPHA_TOKEN_RE = /^[A-Za-z][A-Za-z'’\-]*$/;
+// Characters that almost never appear in clean prose. All are in the BMP, so we
+// can match on UTF-16 code units (charCodeAt) without decoding full codepoints.
+const NOISE_CODES = new Set(Array.from('•▪■□●○◦·※†‡§¶¤¦¨¬¯´¸×÷=~^|\\{}<>@#$%&*_+', c => c.charCodeAt(0)));
 
 // ──────────────────────────────────────────────────────────────────────────────
 // CLI argument parsing
@@ -39,6 +45,7 @@ function parseArgs(): {
   dbPath: string;
   textKey: string;
   maxLength: number;
+  vocabPath: string;
 } {
   const args = process.argv.slice(2);
   let inputs: string[] = [];
@@ -46,6 +53,9 @@ function parseArgs(): {
   let dbPath = './levelDB';
   let textKey = 'text';
   let maxLength = DEFAULT_MAX_LENGTH;
+  // Vocabulary for the dictHit signal. Defaults to vocab.json next to this script
+  // so the path is correct regardless of the current working directory.
+  let vocabPath = `${(import.meta as any).dirname}/vocab.json`;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -63,6 +73,8 @@ function parseArgs(): {
         console.error(`Error: --max-length must be an integer greater than ${MIN_LENGTH}.`);
         process.exit(1);
       }
+    } else if ((arg === '-v' || arg === '--vocab') && i + 1 < args.length) {
+      vocabPath = args[++i];
     } else if (arg === '-h' || arg === '--help') {
       console.log(`Usage: bun run dataset3/import.ts [options] [inputs...]
 
@@ -72,6 +84,7 @@ Options:
   -d, --db <path>           LevelDB directory (default: "./levelDB")
   -k, --text-key <key>      JSON field name for text (default: "text")
   -m, --max-length <n>      Max character length to import (default: ${DEFAULT_MAX_LENGTH})
+  -v, --vocab <path>        Wordlist JSON for the dictHit signal (default: vocab.json next to import.ts)
   -h, --help                Show this help`);
       process.exit(0);
     } else if (!arg.startsWith('-')) {
@@ -84,7 +97,7 @@ Options:
     process.exit(1);
   }
 
-  return { inputs, source, dbPath, textKey, maxLength };
+  return { inputs, source, dbPath, textKey, maxLength, vocabPath };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -98,18 +111,62 @@ function generateId(text: string): string {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Vocabulary
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Build a lowercase vocabulary from one or more clean reference text files.
+// Keeps tokens that appear at least `minCount` times and are pure alphabetic.
+export async function buildVocabFromFiles(paths: string[], minCount = 3): Promise<Set<string>> {
+  const counts = new Map<string, number>();
+  for (const p of paths) {
+    const fname = Bun.file(p);
+    if (!(await fname.exists())) {
+      console.warn(`File ${fname} doesn't exist, skipping!`);
+      continue;
+    }
+    const text = await fname.text();
+    for (const t of tokenize(text)) {
+      if (!ALPHA_TOKEN_RE.test(t)) continue;
+      const lc = t.toLowerCase().replace(/[’]/g, "'");
+      counts.set(lc, (counts.get(lc) ?? 0) + 1);
+    }
+  }
+  const vocab = new Set<string>();
+  for (const [w, c] of counts) if (c >= minCount) vocab.add(w);
+  // const dict = Array.from(vocab); dict.sort();
+  // await Bun.write("dict.json", JSON.stringify(dict, null, 2));
+  return vocab;
+}
+
+// Load a pre-calculated lowercase vocabulary from a JSON file.
+// The file is expected to be a JSON array of words (e.g. produced by buildVocabFromFiles).
+export async function loadVocabFromFile(path: string): Promise<Set<string>> {
+  const file = Bun.file(path);
+  if (!(await file.exists())) {
+    throw new Error(`Vocab file ${path} doesn't exist!`);
+  }
+  const words = JSON.parse(await file.text()) as string[];
+  return new Set(words);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Feature computation
 // ──────────────────────────────────────────────────────────────────────────────
 
-function countWords(text: string): number {
-  const tokens = text.split(/\s+/).filter(t => t.length > 0);
-  return tokens.length;
+function tokenize(text: string): string[] {
+  // Split on whitespace; strip leading/trailing punctuation but keep internal apostrophes/hyphens.
+  const raw = text.split(/\s+/).filter(Boolean);
+  const out: string[] = [];
+  for (const t of raw) {
+    const stripped = t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    if (stripped) out.push(stripped);
+  }
+  return out;
 }
 
 function countSentences(text: string): number {
   const parts = text.split(SENTENCE_RE);
   if (parts.length === 0) return 1;
-
   // Rejoin split parts: each boundary is followed by the next segment
   const sentences: string[] = [];
   for (let i = 0; i < parts.length; i += 2) {
@@ -118,7 +175,6 @@ function countSentences(text: string): number {
       sentences.push(part);
     }
   }
-
   return sentences.length > 0 ? sentences.length : 1;
 }
 
@@ -165,13 +221,17 @@ function charEntropy(text: string): number {
 
 interface DocValue {
   source: string;
-  length: number;
-  uniqueChars: number;
-  words: number;
+  len: number;
+  uniqChar: number;
+  tokens: number;
   sentences: number;
-  quality: number;
-  compress: number;
-  entropy: number;
+  quality: number; // Cro's custom quality score
+  compress: number; // normalized ZLIB compression ratio
+  entropy: number; // normalized Shannon entropy
+  dictHit: number; // dict hit rate over alpha tokens
+  alpha: number; // share of well-formed alphabetic tokens
+  vowel: number; // share of alpha tokens containing a vowel
+  ascii: number; // 1 - amplified share of noise chars
   text: string;
 }
 
@@ -179,29 +239,60 @@ interface DocValue {
 // Compute the id + stored value for a document
 // ──────────────────────────────────────────────────────────────────────────────
 
-function computeRecord(text: string, source: string): { id: string; value: DocValue } {
+function computeRecord(text: string, source: string, vocab: Set<string>): { id: string; value: DocValue } {
   const normalized = text.split(/\W+/).join(' ');
   const id = generateId(normalized);
-  const length = normalized.length;
-  const uniqueChars = new Set(normalized).size;
-  const words = countWords(normalized);
+  const len = normalized.length;
+  const uniqChar = new Set(normalized).size;
+  const toks = tokenize(text);
+  const tokens = toks.length || 1;
 
   const sentences = countSentences(text);
   const entropy = +(charEntropy(text) * 100).toFixed(2);
   const quality = +(qualityScore(text) * 100).toFixed(2);
   const compress = +(compressionRatio(text) * 100).toFixed(2);
 
+  // Single pass over characters for the noise count
+  let noise = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (NOISE_CODES.has(text.charCodeAt(i))) noise++;
+  }
+
+  // Single pass over tokens: alpha-ness, vowel presence, and dict lookup share
+  // the same ALPHA_TOKEN_RE test, so we never re-test a token.
+  let dictHits = 0;
+  let alphaTokens = 0;
+  let vowelTokens = 0;
+  for (const t of toks) {
+    if (!ALPHA_TOKEN_RE.test(t)) continue;
+    alphaTokens++;
+    const lc = t.toLowerCase().replace(/’/g, "'");
+    if (vocab.has(lc) || (lc.endsWith("'s") && vocab.has(lc.slice(0, -2)))) {
+      dictHits++;
+    }
+    if (VOWEL_RE.test(t)) vowelTokens++;
+  }
+
+  const alpha = +((alphaTokens / tokens) * 100).toFixed(2);
+  const vowel = +((alphaTokens > 0 ? vowelTokens / alphaTokens : 0) * 100).toFixed(2);
+  const ascii = +(Math.max(0, 1 - (noise / len) * 5) * 100).toFixed(2); // amplify; 20% noise ⇒ 0
+  const dictHit = +((alphaTokens > 0 ? dictHits / alphaTokens : 0) * 100).toFixed(2);
+
   return {
     id,
     value: {
       source,
-      length,
-      uniqueChars,
-      words,
+      len,
+      uniqChar,
+      tokens,
       sentences,
       entropy,
       quality,
       compress,
+      dictHit,
+      alpha,
+      vowel,
+      ascii,
       text,
     },
   };
@@ -270,7 +361,8 @@ function prefilter(text: string, maxLength: number): Record<string, any> {
   if (uniqueChars <= MIN_UNIQUE_CHARS || uniqueChars > MAX_UNIQUE_CHARS) {
     return { ok: false, uniqueChars };
   }
-  const words = countWords(text);
+  const toks = text.split(/\s+/).filter(t => t.length > 0);
+  const words = toks.length;
   if (words <= 2) return { ok: false, words };
   return { ok: true };
 }
@@ -299,7 +391,8 @@ async function processTextFile(
   filePath: string,
   source: string,
   db: ClassicLevel<string, DocValue>,
-  maxLength: number
+  maxLength: number,
+  vocab?: Set<string>
 ): Promise<FileStats> {
   const stats: FileStats = {
     path: filePath,
@@ -319,7 +412,7 @@ async function processTextFile(
     return stats;
   }
 
-  const { id, value } = computeRecord(text, source);
+  const { id, value } = computeRecord(text, source, vocab);
 
   // Check for existing entry in the DB.
   const existing = await db.getMany([id]);
@@ -348,7 +441,8 @@ async function processFile(
   source: string,
   db: ClassicLevel<string, DocValue>,
   textKey: string,
-  maxLength: number
+  maxLength: number,
+  vocab?: Set<string>
 ): Promise<FileStats> {
   const stats: FileStats = {
     path: filePath,
@@ -468,7 +562,7 @@ async function processFile(
       }
 
       // Compute features (including id)
-      const { id, value } = computeRecord(text, docSource);
+      const { id, value } = computeRecord(text, docSource, vocab);
 
       addToBatch(id, value);
 
@@ -490,10 +584,19 @@ async function processFile(
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { inputs, source, dbPath, textKey, maxLength } = parseArgs();
+  const { inputs, source, dbPath, textKey, maxLength, vocabPath } = parseArgs();
 
   // Sort for deterministic processing order
   inputs.sort();
+
+  // Load the wordlist for the dictHit signal. If it's missing, the signal is
+  // simply stored as null rather than aborting the whole import.
+  let vocab: Set<string> | undefined;
+  try {
+    vocab = await loadVocabFromFile(vocabPath);
+  } catch (err) {
+    console.warn(`  [WARN] Could not load vocab (${vocabPath}): dictHit will be null.`);
+  }
 
   console.log(`Found ${inputs.length} input file(s)`);
   console.log(`Source: ${source}`);
@@ -501,6 +604,7 @@ async function main(): Promise<void> {
   console.log(`Min length: ${MIN_LENGTH}`);
   console.log(`Max length: ${maxLength}`);
   console.log(`LevelDB: ${dbPath}`);
+  console.log(`Vocab: ${vocab ? `${vocab.size} words (${vocabPath})` : 'none'}`);
 
   const db = new ClassicLevel<string, DocValue>(dbPath, {
     valueEncoding: 'json',
@@ -526,8 +630,8 @@ async function main(): Promise<void> {
 
       const stats =
         fileType === 'text'
-          ? await processTextFile(filePath, source, db, maxLength)
-          : await processFile(filePath, source, db, textKey, maxLength);
+          ? await processTextFile(filePath, source, db, maxLength, vocab)
+          : await processFile(filePath, source, db, textKey, maxLength, vocab);
 
       if (fileType === 'jsonl') {
         printSummary(stats, maxLength);

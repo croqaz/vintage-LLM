@@ -141,6 +141,9 @@ async function queryDocs(db: ClassicLevel<string, Doc>, expr: string, limit: num
     try {
       if (filter(doc)) {
         matched++;
+        if (doc.text.length > 16_000) {
+          doc.text = doc.text.slice(0, 8_000) + '\n... [TRUNCATED] ...\n' + doc.text.slice(-8_000);
+        }
         console.log(`\n--- Match #${matched}/${scanned} (${key}) ---`);
         console.log(JSON.stringify(doc, null, 2));
 

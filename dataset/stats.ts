@@ -214,19 +214,36 @@ async function main(): Promise<void> {
     console.log(`| Limited to ${fmtInt(limit)} rows\n|`);
   }
 
-  console.log(`| Metric             |    Mean |     Min |      P5 |     P95 |      Max |`);
-  console.log(`|--------------------|---------|---------|---------|---------|----------|`);
-
-  for (const m of metricDefs) {
+  // Pre-format every cell (7 metrics × 5 columns = 35 strings) so column
+  // widths can be derived in a single pass over this tiny array.
+  const colHeaders = ['Mean', 'Min', 'P5', 'P95', 'Max'];
+  type FormattedRow = { label: string; cells: string[] };
+  const formattedRows: FormattedRow[] = metricDefs.map(m => {
     const r = m.res;
     const min = r.min === Infinity ? 0 : r.min;
     const max = r.max === -Infinity ? 0 : r.max;
-    const label = m.name.padEnd(18);
-    let row = `| ${label} | ${fmtNum(r.mean, m.decimals).padStart(7)}`;
-    row += ` | ${fmtNum(min, m.decimals).padStart(7)}`;
-    row += ` | ${fmtNum(r.percentile(5), m.decimals).padStart(7)}`;
-    row += ` | ${fmtNum(r.percentile(95), m.decimals).padStart(7)}`;
-    row += ` | ${fmtNum(max, m.decimals).padStart(8)} |`;
+    return {
+      label: m.name,
+      cells: [
+        fmtNum(r.mean, m.decimals),
+        fmtNum(min, m.decimals),
+        fmtNum(r.percentile(5), m.decimals),
+        fmtNum(r.percentile(95), m.decimals),
+        fmtNum(max, m.decimals),
+      ],
+    };
+  });
+
+  const labelWidth = Math.max('Metric'.length, ...formattedRows.map(r => r.label.length));
+  const colWidths = colHeaders.map((h, i) => Math.max(h.length, ...formattedRows.map(r => r.cells[i].length)));
+
+  const header = `| ${'Metric'.padEnd(labelWidth)} | ${colHeaders.map((h, i) => h.padStart(colWidths[i])).join(' | ')} |`;
+  const sep = `|-${'-'.repeat(labelWidth)}-|-${colWidths.map(w => '-'.repeat(w)).join('-|-')}-|`;
+  console.log(header);
+  console.log(sep);
+
+  for (const { label, cells } of formattedRows) {
+    const row = `| ${label.padEnd(labelWidth)} | ${cells.map((c, i) => c.padStart(colWidths[i])).join(' | ')} |`;
     console.log(row);
   }
 

@@ -572,8 +572,14 @@ def main():
     if attn_implementation:
         model_init_kwargs['attn_implementation'] = attn_implementation
         accelerator.print(f'  Attention implementation: {attn_implementation}')
-    # Initialize model with AutoModelForCausalLM
-    model = AutoModelForCausalLM.from_config(model_config, **model_init_kwargs)
+
+    # Initialize model: load from existing weights or create fresh
+    from_pretrained = cfg['training'].get('from_pretrained')
+    if from_pretrained:
+        accelerator.print(f'  Loading weights from: {from_pretrained}')
+        model = AutoModelForCausalLM.from_pretrained(from_pretrained, config=model_config, **model_init_kwargs)
+    else:
+        model = AutoModelForCausalLM.from_config(model_config, **model_init_kwargs)
 
     # Print model info
     num_params = sum(p.numel() for p in model.parameters())
