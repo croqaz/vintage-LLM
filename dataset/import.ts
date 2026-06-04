@@ -23,7 +23,7 @@ import { basename, extname } from 'node:path';
 const MIN_LENGTH = 100;
 const DEFAULT_MAX_LENGTH = 32_000;
 const MIN_UNIQUE_CHARS = 10;
-const MAX_UNIQUE_CHARS = 255;
+const MAX_UNIQUE_CHARS = 132;
 const BATCH_SIZE = 512; // LevelDB batch flush size
 
 // Sentence boundary regex adapted from fields.py:
@@ -33,6 +33,8 @@ const VOWEL_RE = /[aeiouy]/i;
 const ALPHA_TOKEN_RE = /^[A-Za-z][A-Za-z'’\-]*$/;
 // Characters that almost never appear in clean prose. All are in the BMP, so we
 // can match on UTF-16 code units (charCodeAt) without decoding full codepoints.
+
+// TODO TODO TODO :: analyze my dataset !!
 const NOISE_CODES = new Set(Array.from('•▪■□●○◦·※†‡§¶¤¦¨¬¯´¸×÷=~^|\\{}<>@#$%&*_+', c => c.charCodeAt(0)));
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -55,7 +57,7 @@ function parseArgs(): {
   let maxLength = DEFAULT_MAX_LENGTH;
   // Vocabulary for the dictHit signal. Defaults to vocab.json next to this script
   // so the path is correct regardless of the current working directory.
-  let vocabPath = `${(import.meta as any).dirname}/vocab.json`;
+  let vocabPath = './vocab.json';
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -73,7 +75,7 @@ function parseArgs(): {
         console.error(`Error: --max-length must be an integer greater than ${MIN_LENGTH}.`);
         process.exit(1);
       }
-    } else if ((arg === '-v' || arg === '--vocab') && i + 1 < args.length) {
+    } else if (arg === '--vocab' && i + 1 < args.length) {
       vocabPath = args[++i];
     } else if (arg === '-h' || arg === '--help') {
       console.log(`Usage: bun run dataset/import.ts [options] [inputs...]
@@ -143,7 +145,7 @@ export async function buildVocabFromFiles(paths: string[], minCount = 3): Promis
 export async function loadVocabFromFile(path: string): Promise<Set<string>> {
   const file = Bun.file(path);
   if (!(await file.exists())) {
-    throw new Error(`Vocab file ${path} doesn't exist!`);
+    throw new Error(`Vocabulary file ${path} doesn't exist!`);
   }
   const words = JSON.parse(await file.text()) as string[];
   return new Set(words);
@@ -442,7 +444,7 @@ async function processFile(
   db: ClassicLevel<string, DocValue>,
   textKey: string,
   maxLength: number,
-  vocab?: Set<string>
+  vocab: Set<string>
 ): Promise<FileStats> {
   const stats: FileStats = {
     path: filePath,
@@ -604,7 +606,7 @@ async function main(): Promise<void> {
   console.log(`Min length: ${MIN_LENGTH}`);
   console.log(`Max length: ${maxLength}`);
   console.log(`LevelDB: ${dbPath}`);
-  console.log(`Vocab: ${vocab ? `${vocab.size} words (${vocabPath})` : 'none'}`);
+  console.log(`Vocabulary: ${vocab ? `${vocab.size} words (${vocabPath})` : 'none'}`);
 
   const db = new ClassicLevel<string, DocValue>(dbPath, {
     valueEncoding: 'json',

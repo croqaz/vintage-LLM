@@ -42,6 +42,7 @@ def main():
                     data = response.json()
                     if 'choices' in data and len(data['choices']) > 0:
                         assistant_message = data['choices'][0]['message']['content']
+                        print(f'Response {i + 1}: {assistant_message.strip()}\n')
 
                         output_entry = {
                             'messages': [
@@ -52,8 +53,6 @@ def main():
                         }
                         f.write(json.dumps(output_entry, ensure_ascii=False) + '\n')
                         f.flush()
-
-                        print(' Success.')
                     else:
                         print(f' Unexpected response format: {data}')
                 else:

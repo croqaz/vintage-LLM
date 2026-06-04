@@ -52,7 +52,10 @@ class Reservoir {
     this.sample = [];
   }
 
-  add(value: number): void {
+  add(value: number | undefined | null): void {
+    if (value === undefined || value === null) {
+      value = 0;
+    }
     this.count++;
     this.sum += value;
     if (value < this.min) this.min = value;
@@ -161,6 +164,7 @@ async function main(): Promise<void> {
     alpha: new Reservoir(RESERVOIR_SIZE),
     vowel: new Reservoir(RESERVOIR_SIZE),
     ascii: new Reservoir(RESERVOIR_SIZE),
+    score: new Reservoir(RESERVOIR_SIZE),
   };
 
   // Per-source counts (bounded by the number of distinct sources, not rows).
@@ -177,17 +181,33 @@ async function main(): Promise<void> {
       sourceCounts.set(doc.source, (sourceCounts.get(doc.source) ?? 0) + 1);
     }
 
-    reservoirs.len.add(doc.len ?? 0);
-    reservoirs.uniqChar.add(doc.uniqChar ?? 0);
-    reservoirs.tokens.add(doc.tokens ?? 0);
-    reservoirs.sentences.add(doc.sentences ?? 0);
-    reservoirs.quality.add(doc.quality ?? 0);
-    reservoirs.compress.add(doc.compress ?? 0);
-    reservoirs.entropy.add(doc.entropy ?? 0);
-    reservoirs.dictHit.add(doc.dictHit ?? 0);
-    reservoirs.alpha.add(doc.alpha ?? 0);
-    reservoirs.vowel.add(doc.vowel ?? 0);
-    reservoirs.ascii.add(doc.ascii ?? 0);
+    reservoirs.len.add(doc.len);
+    reservoirs.uniqChar.add(doc.uniqChar);
+    reservoirs.tokens.add(doc.tokens);
+    reservoirs.sentences.add(doc.sentences);
+    reservoirs.quality.add(doc.quality);
+    reservoirs.compress.add(doc.compress);
+    reservoirs.entropy.add(doc.entropy);
+    reservoirs.dictHit.add(doc.dictHit);
+    reservoirs.alpha.add(doc.alpha);
+    reservoirs.vowel.add(doc.vowel);
+    reservoirs.ascii.add(doc.ascii);
+
+    // Score: negative sum of absolute deviations from 100 across 7 quality metrics.
+    // Quality larger than 100 is good, smaller is bad.
+    // Perfect score > 0 (all seven = 100).
+    reservoirs.score.add(
+      -(
+        ((doc.quality as number) ?? 0) -
+        100 +
+        Math.abs((doc.compress ?? 0) - 100) +
+        Math.abs((doc.entropy ?? 0) - 100) +
+        Math.abs((doc.dictHit ?? 0) - 100) +
+        Math.abs((doc.alpha ?? 0) - 100) +
+        Math.abs((doc.vowel ?? 0) - 100) +
+        Math.abs((doc.ascii ?? 0) - 100)
+      )
+    );
 
     if (limit > 0 && totalRows >= limit) break;
   }
@@ -200,14 +220,15 @@ async function main(): Promise<void> {
     { name: 'Char length', res: reservoirs.len, decimals: 1 },
     { name: 'Unique chars', res: reservoirs.uniqChar, decimals: 2 },
     { name: 'Token count', res: reservoirs.tokens, decimals: 1 },
-    { name: 'Sentence count', res: reservoirs.sentences, decimals: 2 },
-    { name: 'Quality score', res: reservoirs.quality, decimals: 2 },
+    { name: 'Sentences', res: reservoirs.sentences, decimals: 2 },
+    { name: 'Quality', res: reservoirs.quality, decimals: 2 },
     { name: 'Compression', res: reservoirs.compress, decimals: 2 },
     { name: 'Entropy', res: reservoirs.entropy, decimals: 2 },
     { name: 'Dict hit', res: reservoirs.dictHit, decimals: 2 },
     { name: 'Alpha', res: reservoirs.alpha, decimals: 2 },
     { name: 'Vowel', res: reservoirs.vowel, decimals: 2 },
     { name: 'ASCII', res: reservoirs.ascii, decimals: 2 },
+    { name: 'Score', res: reservoirs.score, decimals: 2 },
   ];
 
   // ── Print table ──────────────────────────────────────────────────────────

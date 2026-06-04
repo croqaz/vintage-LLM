@@ -19,6 +19,12 @@ tokenizer = "./tokenizers/t-v3/"
 # Training duration
 num_train_epochs = 1
 
+# Optional: load weights from an existing checkpoint or model directory to
+# continue training a base model rather than initialising from scratch.
+# The architecture is still defined by the [model] config above; only the
+# weights are loaded.  Comment out or remove to train from scratch.
+# from_pretrained = "./checkpoints/final"
+
 # Output directories
 output_dir = "./checkpoints"
 final_model_dir = "./checkpoints/final"

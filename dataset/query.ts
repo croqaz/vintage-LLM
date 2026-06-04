@@ -26,6 +26,7 @@ const EXAMPLE: Doc = {
   alpha: 95.0,
   vowel: 88.0,
   ascii: 99.5,
+  score: -10,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -141,6 +142,21 @@ async function queryDocs(db: ClassicLevel<string, Doc>, expr: string, limit: num
 
   for await (const [key, doc] of db.iterator()) {
     scanned++;
+
+    // Compute derived score so expressions can reference doc.score.
+    // Quality larger than 100 is good, smaller is bad.
+    // All the others have to be close to 100 to be good.
+    // Perfect score > 0 (all seven = 100).
+    doc.score = -(
+      ((doc.quality as number) ?? 0) -
+      100 +
+      Math.abs(((doc.compress as number) ?? 0) - 100) +
+      Math.abs(((doc.entropy as number) ?? 0) - 100) +
+      Math.abs(((doc.dictHit as number) ?? 0) - 100) +
+      Math.abs(((doc.alpha as number) ?? 0) - 100) +
+      Math.abs(((doc.vowel as number) ?? 0) - 100) +
+      Math.abs(((doc.ascii as number) ?? 0) - 100)
+    );
 
     try {
       if (filter(doc)) {
