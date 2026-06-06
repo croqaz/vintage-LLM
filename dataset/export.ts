@@ -30,6 +30,7 @@ const EXAMPLE: Doc = {
   alpha: 95.0,
   vowel: 88.0,
   ascii: 99.5,
+  score: -10,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ Examples:
   bun dataset/export.ts "doc.quality < 0"
   bun dataset/export.ts 'doc.source === "British"' --limit 10
   bun dataset/export.ts "doc.entropy >= 2" --fields id,text,entropy
-  bun dataset/export.ts "doc.tokens > 10" --fields source,tokens,entropy --limit 100`);
+  bun dataset/export.ts --fields source,tokens,entropy --limit 100`);
       process.exit(0);
     } else if (!arg.startsWith('-')) {
       if (!expr) expr = arg;
@@ -137,6 +138,19 @@ async function exportDocs(db: ClassicLevel<string, Doc>, expr: string, fields: s
 
   for await (const [key, doc] of db.iterator()) {
     scanned++;
+
+    // Quality larger than 100 is good, smaller is bad.
+    // All the others have to be close to 100 to be good.
+    doc.score = -(
+      ((doc.quality as number) ?? 0) -
+      100 +
+      Math.abs(((doc.compress as number) ?? 0) - 100) +
+      Math.abs(((doc.entropy as number) ?? 0) - 100) +
+      Math.abs(((doc.dictHit as number) ?? 0) - 100) +
+      Math.abs(((doc.alpha as number) ?? 0) - 100) +
+      Math.abs(((doc.vowel as number) ?? 0) - 100) +
+      Math.abs(((doc.ascii as number) ?? 0) - 100)
+    );
 
     try {
       if (filter(doc)) {

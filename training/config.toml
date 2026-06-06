@@ -62,7 +62,7 @@ neftune_noise_alpha = 0.0          # add noise during training to improve model 
 # Checkpointing
 save_strategy = "steps"
 save_steps = 100                   # save checkpoint every X steps
-save_total_limit = 4               # keep only X most recent checkpoints
+save_total_limit = 3               # keep only X most recent checkpoints
 
 # Evaluation
 eval_strategy = "steps"

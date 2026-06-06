@@ -22,6 +22,8 @@ import math
 import sys
 import time
 import tomllib
+from collections.abc import Iterator
+from itertools import islice
 from pathlib import Path
 from random import Random
 
@@ -44,15 +46,16 @@ def wrap(t: str, eos: str) -> str:
     return t
 
 
-def read_txt(path: Path, eos: str) -> list[str]:
-    """Read entire file as a single document."""
+def read_txt(path: Path, eos: str) -> Iterator[str]:
+    """Yield the entire file as a single document."""
     content = path.read_text(encoding='utf-8').strip()
-    return [wrap(content, eos)] if content else []
+    if content:
+        yield wrap(content, eos)
 
 
-def read_jsonl(path: Path, eos: str) -> list[str]:
-    """Read JSON Lines file, extracting the 'text' field from each line."""
-    docs = []
+def read_jsonl(path: Path, eos: str) -> Iterator[str]:
+    """Yield documents from a JSON Lines file, extracting the 'text' field
+    from each line. Reads lazily, one line at a time."""
     with open(path, encoding='utf-8') as fh:
         for line_num, line in enumerate(fh, 1):
             line = line.strip()
@@ -68,25 +71,23 @@ def read_jsonl(path: Path, eos: str) -> list[str]:
                 continue
             text = obj['text']
             if text:
-                docs.append(wrap(text, eos))
-    return docs
+                yield wrap(text, eos)
 
 
-def read_parquet(path: Path, eos: str) -> list[str]:
-    """Read Parquet file, extracting the 'text' column via PyArrow."""
+def read_parquet(path: Path, eos: str) -> Iterator[str]:
+    """Yield documents from a Parquet file, extracting the 'text' column via
+    PyArrow. Iterates row-group batches lazily."""
     pf = pq.ParquetFile(path)
     schema_names = [f.name for f in pf.schema_arrow]
     if 'text' not in schema_names:
         print(f'  Error: {path.name} has no "text" column (columns: {schema_names})', file=sys.stderr)
-        return []
+        return
 
-    docs = []
     for batch in pf.iter_batches(columns=['text']):
         for val in batch.column('text'):
             text = val.as_py()
             if text:
-                docs.append(wrap(text, eos))
-    return docs
+                yield wrap(text, eos)
 
 
 READERS = {
@@ -168,6 +169,13 @@ class ShardWriter:
 # ============================================================================
 # Helpers
 # ============================================================================
+
+
+def batched(iterable: Iterator[str], n: int) -> Iterator[list[str]]:
+    """Yield successive lists of up to n items from an iterator."""
+    it = iter(iterable)
+    while chunk := list(islice(it, n)):
+        yield chunk
 
 
 def resolve_inputs(patterns: list[str]) -> list[Path]:
@@ -340,8 +348,26 @@ def main() -> None:
             t0 = time.perf_counter()
             input_bytes = fpath.stat().st_size
 
+            # Stream documents through tokenization in batches so we never
+            # hold an entire file's worth of text/tokens in memory at once.
+            file_tokens = 0
+            file_docs = 0
             try:
-                docs = reader(fpath, eos)
+                for batch in batched(reader(fpath, eos), args.batch_size):
+                    encoded = tokenizer(batch, add_special_tokens=False)['input_ids']
+                    file_docs += len(batch)
+
+                    for ids in encoded:
+                        arr = np.array(ids, dtype=np.uint16)
+                        # uint16 overflow guard
+                        if len(arr) > 0 and arr.max() >= 65536:
+                            print(
+                                f'Error: token ID >= 65536 in {fpath.name} — vocab too large for uint16 format',
+                                file=sys.stderr,
+                            )
+                            sys.exit(1)
+                        writer.write(arr)
+                        file_tokens += len(arr)
             except Exception as exc:
                 print(
                     f'[{file_idx}/{len(files)}] {fpath.name}  — read error: {exc}, skipping',
@@ -349,34 +375,16 @@ def main() -> None:
                 )
                 continue
 
-            if not docs:
+            if file_docs == 0:
                 print(f'[{file_idx}/{len(files)}] {fpath.name}  — empty, skipping')
                 continue
-
-            # Tokenize in batches
-            file_tokens = 0
-            for batch_start in range(0, len(docs), args.batch_size):
-                batch = docs[batch_start : batch_start + args.batch_size]
-                encoded = tokenizer(batch, add_special_tokens=False)['input_ids']
-
-                for ids in encoded:
-                    arr = np.array(ids, dtype=np.uint16)
-                    # uint16 overflow guard
-                    if len(arr) > 0 and arr.max() >= 65536:
-                        print(
-                            f'Error: token ID >= 65536 in {fpath.name} — vocab too large for uint16 format',
-                            file=sys.stderr,
-                        )
-                        sys.exit(1)
-                    writer.write(arr)
-                    file_tokens += len(arr)
 
             elapsed = time.perf_counter() - t0
             tok_per_sec = file_tokens / elapsed if elapsed > 0 else 0
 
             print(
                 f'[{file_idx}/{len(files)}] {fpath.name}  '
-                f'docs={len(docs):,}  '
+                f'docs={file_docs:,}  '
                 f'in={fmt_bytes(input_bytes)}  '
                 f'tokens={file_tokens:,}  '
                 f'{tok_per_sec:,.0f} tok/s  '
@@ -384,7 +392,7 @@ def main() -> None:
             )
 
             total_input_bytes += input_bytes
-            total_docs += len(docs)
+            total_docs += file_docs
             total_tokens += file_tokens
             files_ok += 1
 
