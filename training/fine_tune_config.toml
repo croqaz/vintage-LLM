@@ -3,7 +3,7 @@
 
 [model]
 # Path to the base model produced by base_train.py
-base_model = "./checkpoints/checkpoint-10102"
+base_model = "./checkpoints/checkpoint-10150"
 
 # Attention implementation.
 # "flash_attention_2" is recommended (faster + required for packing).

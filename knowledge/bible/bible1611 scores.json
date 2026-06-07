@@ -1,0 +1,409 @@
+{
+  "_meta": {
+    "description": "Evaluation of three 1699-cleric Bible-book summaries against the actual KJV text (in ./books). Each book scored 1-5 (1 worst, 5 best) on correctness (fidelity to the book's actual content), style (how authentically it sounds like a real cleric of 1699), and completeness (whether the important events/themes are touched).",
+    "scale": "1=worst, 5=best",
+    "overall_character": {
+      "Deepseek": "Concise, elegant archaic prose; one paragraph per book; reliably accurate; covers highlights but rarely exhaustive.",
+      "Gemini": "Strongest 1699-cleric persona (London, Great Fire of 1666, anti-popery, Socinians/deists); rich applied divinity but often light on narrative events; several OCR/typo artifacts lower polish.",
+      "Kimi-k": "Most detailed and event-by-event, dense KJV quotation, highest factual/completeness fidelity; period-authentic but reads as scripture paraphrase rather than personal cleric commentary."
+    }
+  },
+  "scores": [
+    {
+      "book": "Genesis",
+      "Deepseek": {"correctness": 5, "style": 4, "completeness": 4, "note": "Creation, Fall, Flood, Patriarchs, Joseph all correct; omits Cain/Abel and Babel but covers the arc well."},
+      "Gemini": {"correctness": 5, "style": 4, "completeness": 3, "note": "Protoevangelium and covenant well handled; heavily theological, omits Flood/Babel/Cain; 'transportless' is a garbled word."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Thorough: Eden, Cain, Flood/8 souls, Babel, Ur, Moriah, Jacob/Israel, Joseph, death at 110. Reads as paraphrase."}
+    },
+    {
+      "book": "Exodus",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Deliverance, Passover, Red Sea, Sinai, Tabernacle correct; omits golden calf."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Strong typology (Moses as type of Christ, Tabernacle as Church); narrative thin, no plagues/calf detail."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Burning bush, ten plagues, Red Sea, manna, Sinai, golden calf, Tabernacle reared, cloud/fire — comprehensive."}
+    },
+    {
+      "book": "Leviticus",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Sacrifices, priesthood, clean/unclean, feasts, holiness motto; sound, fairly full for a short note."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Excellent cleric framing (Christ as antitype of sacrifices) and Great-Fire aside; lists little of the actual content."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Names the five offerings, Day of Atonement, leprosy, feasts, jubilee — closely tracks the book."}
+    },
+    {
+      "book": "Numbers",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Census, murmuring, 40 years, Korah, Meribah, Balaam — well chosen highlights."},
+      "Gemini": {"correctness": 4, "style": 5, "completeness": 3, "note": "Brazen-serpent typology apt; calls it 'Wilderness of Sinai' (loosely; wandering was in Paran/Zin); few events."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Census, spies, Korah swallowed, Miriam's death, Moses' rock sin, Balaam's ass, Zelophehad — very full."}
+    },
+    {
+      "book": "Deuteronomy",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Restatement of Law, Shema, death on Nebo; accurate and clear."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Fine on the 'Prophet like unto me' and exhortation; light on the blessings/curses structure."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Recap of Law, Ebal/Gerizim blessings and curses, song, charge to Joshua, Pisgah, death at 120 — thorough."}
+    },
+    {
+      "book": "Joshua",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Jordan, Jericho, Ai, division, Shechem covenant — solid."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Lovely 'Joshua=Saviour' typology; conquest compressed, omits sun standing still and Achan."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Jordan, Jericho, Achan, Ai, sun at Gibeon, five kings, lot-division, refuge cities, Shechem — comprehensive."}
+    },
+    {
+      "book": "Judges",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Cycle of apostasy, Deborah/Gideon/Jephthah/Samson, closing refrain — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Vivid application to the 'late Great Rebellion'; names fewer judges, omits the grim closing chapters."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Othniel, Ehud, Deborah, Gideon's ephod, Abimelech, Jephthah's vow, Samson, Levite's concubine — very full."}
+    },
+    {
+      "book": "Ruth",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Loyalty, Boaz the redeemer, Davidic/Messianic line — well captured."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Adds apt Gentile-inclusion theology; covers the story well."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Famine, Moab, Orpah/Ruth, the 'whither thou goest' vow, gleaning, redemption, Obed-Jesse-David — complete."}
+    },
+    {
+      "book": "1 Samuel",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Samuel's birth, demand for a king, Saul's rejection, David's rise — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Warm personal voice on Goliath; omits Eli's sons, the ark capture, Saul's death."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Hannah, Eli's sons, ark/emerods, Saul/Agag, David anointed, Goliath, cave sparings, Gilboa — comprehensive."}
+    },
+    {
+      "book": "2 Samuel",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Reign, Jerusalem, ark, Davidic covenant, Bathsheba, Absalom — well balanced."},
+      "Gemini": {"correctness": 5, "style": 4, "completeness": 3, "note": "Good repentance theme (Ps 51 link); 'warnings-piece' is garbled; omits Nathan, Amnon, census."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Hebron, Jerusalem, ark, covenant, Bathsheba/Uriah, 'Thou art the man', Amnon/Absalom, Sheba, census/Araunah — full."}
+    },
+    {
+      "book": "1 Kings",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Solomon, Temple, apostasy, division, Elijah at Carmel — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Strong voice; covers Solomon's wisdom and fall, schism, Elijah well."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Adonijah, two harlots, Temple, strange wives, Rehoboam/Jeroboam's calves, Elijah/ravens/Zarephath/Carmel — full."}
+    },
+    {
+      "book": "2 Kings",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Elijah's translation, Elisha, decline, Josiah, fall of Samaria and Jerusalem — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Vivid St-Paul's/Great-Fire analogy for the burned Temple; covers both captivities."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Chariot of fire, Naaman, Jehu, fall of Israel, Hezekiah/sundial, Manasseh, Josiah, Nebuchadnezzar — comprehensive."}
+    },
+    {
+      "book": "1 Chronicles",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Genealogies, David's reign, Temple preparations, Levitical order — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Rightly notes the book's focus on public worship over David's private sins."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Genealogies, Gilboa, ark from Kirjathjearim, Uzza, conquests, covenant, Temple materials — full."}
+    },
+    {
+      "book": "2 Chronicles",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Kings of Judah, reformers, captivity, Cyrus decree — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Apt application to England's 'true Protestant religion'; covers reforming kings."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Solomon/Sheba, schism, Shishak, Asa, Jehoshaphat, Hezekiah/Sennacherib, Josiah, 70-year sabbaths — full."}
+    },
+    {
+      "book": "Ezra",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Return under Cyrus, Temple rebuilt, Ezra's reform, strange wives put away."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Good 'reformation of a decayed Church' framing; solid coverage."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Cyrus decree quoted, Zerubbabel/Jeshua, opposition, Darius, Ezra's commission, strange wives — full."}
+    },
+    {
+      "book": "Nehemiah",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Wall rebuilt in 52 days against Sanballat/Tobiah, Law read, reforms — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Memorable 'trowel and sword' emblem; covers the substance well."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Cupbearer, night survey, building under threat, 52 days, Law read, covenant sealed, dedication — full."}
+    },
+    {
+      "book": "Esther",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "God unnamed yet providential, Haman's plot, deliverance, Purim — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Nice 'snared in their own work' moral; calls Mordecai 'uncle' (commonly cousin/guardian)."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Vashti, virgins, Esther, Haman, sceptre, banquets, the king's sleepless night, gallows, Purim — full."}
+    },
+    {
+      "book": "Job",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Suffering, three friends, whirlwind, repentance, twofold restoration — accurate."},
+      "Gemini": {"correctness": 5, "style": 4, "completeness": 3, "note": "Moving pastoral application; 'in his ashes he layout his faith' is garbled; light on the structure."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Satan's wager, losses, wife, friends, Elihu, whirlwind/Behemoth/Leviathan, restoration — full and accurate."}
+    },
+    {
+      "book": "Psalms",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "150 psalms, Davidic/Asaph authorship, range of devotion — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Beautiful 'anatomy of the Christian soul'; ties to cathedral use; fitting."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Cites Pss 51, 23, 22, 2, 110, messianic suffering/exaltation — richest treatment."}
+    },
+    {
+      "book": "Proverbs",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Solomonic wisdom, fear of the Lord, strange woman, virtuous woman — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Vivid London-streets application; less of the book's actual content listed."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Wisdom crying out, fear of the Lord, soft answer, sluggard, virtuous woman, the seven things hated — full."}
+    },
+    {
+      "book": "Ecclesiastes",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Vanity, search under the sun, fear God conclusion — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Good 'penitential sermon of Solomon's old age' framing; brief on content."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Vanity, seasons, two-better-than-one, remember thy Creator, dust/spirit return, the conclusion — full."}
+    },
+    {
+      "book": "Song of Solomon",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Christ/Church allegory, 'many waters cannot quench love' — accurate for the era."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Period-perfect chaste allegorical reading; well expressed."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Allegory plus many actual lines (kisses, 'all fair', 'my beloved is mine', love strong as death) — full."}
+    },
+    {
+      "book": "Isaiah",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Kings dated, judgment, Immanuel/Suffering Servant, new heavens — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "'Fifth Evangelist' and anti-Socinian framing apt; narrower on the book's breadth."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Sinful nation, Assyria/Babylon, child born, suffering servant, fall of Babylon, new heavens, woes — full."}
+    },
+    {
+      "book": "Jeremiah",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Called from the womb, Babylon, persecution/dungeon, new covenant — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "'Iron pillar' imagery and new-covenant focus strong; fewer events."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Called from womb, broken cisterns, potter, 70 years, letter to captives, new covenant, dungeon, fall — full."}
+    },
+    {
+      "book": "Lamentations",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Five acrostic elegies, 'great is Thy faithfulness' — accurate."},
+      "Gemini": {"correctness": 5, "style": 4, "completeness": 4, "note": "Powerful 1666 parallel; 'patterns of contrition' is a typo for 'pattern'."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Opens with the actual text, weaves 3:22-26 and the closing — rich and faithful."}
+    },
+    {
+      "book": "Ezekiel",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Chariot-throne, judgment, new heart, dry bones, restored Temple — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Glory departing/returning and dry bones well handled in cleric voice."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Chebar vision, eating the roll, siege-acting, Tammuz, shepherd, dry bones, new temple/waters — full."}
+    },
+    {
+      "book": "Daniel",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Court tales and apocalyptic visions, Son of Man, resurrection — accurate."},
+      "Gemini": {"correctness": 4, "style": 5, "completeness": 3, "note": "Strong anti-infidel framing; 'mathematical certainty' on the 70 weeks is an interpretive overstatement."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Pulse, the image, furnace, the writing on the wall, lions' den, four beasts, 70 weeks — full."}
+    },
+    {
+      "book": "Hosea",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Unfaithful wife as Israel, call to repentance, betrothal in righteousness — accurate."},
+      "Gemini": {"correctness": 5, "style": 4, "completeness": 4, "note": "Tender mercy theme good; 'mixtureth' is a coinage/typo."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Gomer, 'sow wind reap whirlwind', 'how shall I give thee up', return/lily — well quoted."}
+    },
+    {
+      "book": "Joel",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Locusts, Day of the Lord, rend your hearts, Spirit poured out — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Rightly links the outpouring to Pentecost; good coverage."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Locusts, rend-your-heart, Spirit on all flesh, sun to darkness/moon to blood — full."}
+    },
+    {
+      "book": "Amos",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Herdsman of Tekoa, social injustice, famine of the word, tabernacle of David — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "'Sell the poor for a pair of shoes' and justice-as-stream well used."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Oracles against nations, judgment-as-waters, plumbline, summer fruit, raised tabernacle — full."}
+    },
+    {
+      "book": "Obadiah",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 5, "note": "Edom's pride and judgment, saviours on Zion — full for so short a book."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 5, "note": "Captures Edom's standing-aloof and the reversal succinctly."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Pride of the rock-dweller, eagle's nest, the day of the Lord, Zion's deliverance — full."}
+    },
+    {
+      "book": "Jonah",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Flight, fish, Nineveh's repentance, the rebuke — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Rightly notes the resurrection 'sign'; covers the arc."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Flight, lots, cast into sea, fish, prayer, preaching, repentance, gourd lesson — full."}
+    },
+    {
+      "book": "Micah",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Oppression denounced, Bethlehem prophecy, 'do justly, love mercy' — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Bethlehem prophecy and the 'golden words' well handled."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Samaria/Jerusalem, coveting fields, Bethlehem Ephratah, 6:8, sins cast into the sea — full."}
+    },
+    {
+      "book": "Nahum",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Burden of Nineveh, slow to anger yet just, fall of the city — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Comfort-to-the-Church angle apt; covers the theme."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Jealous/avenging God, whirlwind, opened river-gates, the harlot-city, no healing — full."}
+    },
+    {
+      "book": "Habakkuk",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Dialogue, Chaldeans raised up, 'just shall live by faith', closing song — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Rightly highlights 'the just shall live by faith' as a Protestant cornerstone."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Complaint, Chaldeans, faith, the woes, 'earth filled with knowledge', rejoicing song — full."}
+    },
+    {
+      "book": "Zephaniah",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Day of wrath, searching Jerusalem with candles, then the song of joy — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Malcham/strange-apparel detail shows close reading; good coverage."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Consuming the land, Baal/Chemarims, day of wrath, 'seek the Lord', rejoicing over thee — full."}
+    },
+    {
+      "book": "Haggai",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Rebuke for neglect, latter house glory, Zerubbabel/Joshua — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "'Ceiled houses' detail and Christ-entering fulfilment well noted."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Consider-your-ways, build the house, shaking of nations, signet of Zerubbabel — full."}
+    },
+    {
+      "book": "Zechariah",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Night visions, coming King on an ass, smitten Shepherd, pierced one — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Messianic detail (30 pieces, piercing, fountain) shows real knowledge of the text."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Myrtle horses, horns, measuring line, Joshua, candlestick, Branch, pierced one, Mount of Olives — full."}
+    },
+    {
+      "book": "Malachi",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Polluted offerings, divorce, tithes, Elijah to come — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Sun of Righteousness and Baptist-as-Elijah well handled."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Jacob loved/Esau hated, corrupt priests, putting away, the messenger, tithes, Sun of Righteousness — full."}
+    },
+    {
+      "book": "Matthew",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Genealogy, Sermon, parables, Passion/Resurrection, Great Commission — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Good Jewish-fulfilment framing; compresses the narrative considerably."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Genealogy, magi, Herod, Egypt, baptism, temptation, Sermon, parables, Peter's confession, Passion — full."}
+    },
+    {
+      "book": "Mark",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Brief/urgent, suffering Servant, authority over demons/disease/death — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Petrine-source tradition noted; few specific episodes."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "John, baptism, calling fishermen, feeding 5000, confession, transfiguration, Passion, Magdalene — full."}
+    },
+    {
+      "book": "Luke",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Theophilus, nativity canticles, Good Samaritan/Prodigal, Emmaus, friend of sinners — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Beloved-physician/Gentile-light framing apt; lighter on episodes."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Baptist's birth, annunciation, manger, Nazareth sermon, parables, last supper, ascension — full."}
+    },
+    {
+      "book": "John",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Logos prologue, I AM sayings, Lazarus, high-priestly prayer, purpose statement — accurate."},
+      "Gemini": {"correctness": 5, "style": 4, "completeness": 3, "note": "'Eagle-winged' framing excellent; 'soarers' is a typo for 'soareth'; thin on episodes."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Prologue, Cana, Nicodemus, Samaritan woman, I AMs, Lazarus, foot-washing, Passion, Thomas — full."}
+    },
+    {
+      "book": "Acts",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Pentecost, Stephen, Saul's conversion, journeys, Rome — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 3, "note": "Good 'pattern for our reformed Church' framing; compresses the journeys."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Ascension, Pentecost, lame man, Stephen, eunuch, Damascus road, Cornelius, Mars' hill, shipwreck, Rome — full."}
+    },
+    {
+      "book": "Romans",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "All have sinned, justification by faith, election, living sacrifice — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Solid Reformed reading of justification, imputation, election."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Gospel as power, all sinned, propitiation, Abraham, Spirit's witness, living sacrifice — full and apt."}
+    },
+    {
+      "book": "1 Corinthians",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Divisions, marriage/idol-meat, Supper, charity, resurrection — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Notes the burial-office use of ch.15; covers the issues."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Parties (Paul/Apollos/Cephas), cross's foolishness, Supper words, charity, resurrection victory — full."}
+    },
+    {
+      "book": "2 Corinthians",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Defence of apostleship, sufferings, thorn, giving, unequal yoke — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "'Treasure in earthen vessels' and strength-in-weakness well drawn."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "God of comfort, new creature, reconciliation, earthen vessels, light affliction, collection — full."}
+    },
+    {
+      "book": "Galatians",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Liberty vs circumcision, justification by faith, fruit of the Spirit — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "'Bulwark of Christian Liberty against Popery' is a perfect 1699 framing."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Another gospel, Paul's calling, curse of the law, fulness of time, stand fast in liberty — full."}
+    },
+    {
+      "book": "Ephesians",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Eternal purpose, grace through faith, Church as body, armour of God — accurate."},
+      "Gemini": {"correctness": 5, "style": 4, "completeness": 4, "note": "Election/adoption and armour well handled; 'soarers' typo recurs."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Spiritual blessings, chosen before foundation, dead-then-quickened, grace through faith, armour — full."}
+    },
+    {
+      "book": "Philippians",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Joy from prison, kenosis hymn, press toward the mark — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "'To live is Christ, to die is gain' and the humility-pattern well used."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Fellowship, furtherance of gospel, the great kenosis text, pressing to the mark, supply of need — full."}
+    },
+    {
+      "book": "Colossians",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Supremacy of Christ, warning against philosophy, things above — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Fulness of the Godhead and peace by the blood well captured."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Image of God, firstborn, all things created by Him, beware philosophy, risen with Christ — full."}
+    },
+    {
+      "book": "1 Thessalonians",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Earliest epistle, dead in Christ rise, caught up, exhortations — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Comfort about those asleep and the rapture well handled."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Faith/love/hope, gospel in power, the descent/trump, dead in Christ rise first — full."}
+    },
+    {
+      "book": "2 Thessalonians",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Day of the Lord not yet come, falling away, man of sin, stand fast — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Identifies the Man of Sin with the Roman Papacy — quintessentially 1699 Protestant."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Persecutions, falling away, man of sin/son of perdition, consumed by His coming, withdraw from disorderly — full."}
+    },
+    {
+      "book": "1 Timothy",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Church order, bishops/deacons, false teachers, 'Christ came to save sinners' — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "'Love of money the root of all evil' and office qualifications well noted."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "No other doctrine, charity, faithful saying, prayer everywhere, bishop's work, example to believers — full."}
+    },
+    {
+      "book": "2 Timothy",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Final imprisonment, 'preach the word', 'fought a good fight', crown — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Vivid 'cold dungeon... axe of Nero'; covers the charge well."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Lois/Eunice, spirit not of fear, all scripture inspired, preach the word, the finished course — full."}
+    },
+    {
+      "book": "Titus",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Crete, ordaining elders, sound doctrine, grace teaching sober living — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Grace-that-brings-salvation and blessed hope well handled."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Crete, elder qualifications, aged men/women, grace appeared, washing of regeneration — full."}
+    },
+    {
+      "book": "Philemon",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 5, "note": "Onesimus the runaway, brother-not-servant, Paul's offer to repay — full."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 5, "note": "Model of Christian courtesy; covers the whole short letter."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Onesimus begotten in bonds, once unprofitable now profitable, 'put it on mine account' — full."}
+    },
+    {
+      "book": "Hebrews",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Christ above angels/Moses/priesthood, better covenant, roll-call of faith — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Superiority of Christ and eternal High Priest well drawn."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Spoken by His Son, brightness of glory, above angels, impossible to please without faith, boldness to enter — full."}
+    },
+    {
+      "book": "James",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Faith without works dead, pure religion, the tongue, fervent prayer — accurate."},
+      "Gemini": {"correctness": 5, "style": 4, "completeness": 4, "note": "Sharp on faith-and-works against bare faith; 'bridleing' is a typo."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Count it joy, ask wisdom, doers not hearers, Abraham/Isaac, faith without works dead, fervent prayer — full."}
+    },
+    {
+      "book": "1 Peter",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Chosen generation/royal priesthood, suffering, roaring lion, feed the flock — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Fiery-trial endurance and 'fear God, honour the King' well noted."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Elect, lively hope, redeemed by precious blood, the just for the unjust, crown of glory — full."}
+    },
+    {
+      "book": "2 Peter",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Grow in grace, false teachers, scoffers, elements melt, new heavens — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Scripture's certainty and the thief-in-the-night day well handled."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "All things for godliness, the chain of virtues, false teachers, day as a thief, grow in grace — full."}
+    },
+    {
+      "book": "1 John",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "God is light/love, perfect love casts out fear, tests of faith — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Marks of passing from death to life and 'God is love' well drawn."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Word of life handled, God is light, confess sins, love the brethren, His Spirit witness — full."}
+    },
+    {
+      "book": "2 John",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 5, "note": "Elect lady, walk in truth, deceivers denying Christ in flesh, receive them not — full."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 5, "note": "Captures the whole brief letter accurately."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Elect lady, love one another, antichrist deceivers, receive not, full reward — full."}
+    },
+    {
+      "book": "3 John",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 5, "note": "Gaius's hospitality, Demetrius vs Diotrephes, follow good — full."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 5, "note": "Diotrephes-the-preeminence-lover well captured."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Gaius's health/truth, no greater joy, Diotrephes, Demetrius's good report — full."}
+    },
+    {
+      "book": "Jude",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Contend for the faith, crept-in ungodly men, OT judgments, doxology — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "'Filthy dreamers' turning grace to lasciviousness well drawn; omits the OT examples."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Contend for the faith, crept-in men, clouds without water/wandering stars, the doxology — full."}
+    },
+    {
+      "book": "Revelation",
+      "Deepseek": {"correctness": 5, "style": 5, "completeness": 4, "note": "Seven churches, seals/trumpets/vials, Lamb's triumph, New Jerusalem — accurate."},
+      "Gemini": {"correctness": 5, "style": 5, "completeness": 4, "note": "Identifies mystical Babylon with the Papacy — characteristically 1699 Protestant; well done."},
+      "Kimi-k": {"correctness": 5, "style": 4, "completeness": 5, "note": "Son of man among candlesticks, seven seals, four horsemen, trumpets, dragon, beast, vials, Gog/Magog, New Jerusalem — full."}
+    }
+  ]
+}

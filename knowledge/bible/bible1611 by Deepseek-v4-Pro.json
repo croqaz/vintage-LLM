@@ -1,0 +1,266 @@
+[
+  {
+    "book": "Genesis",
+    "summary": "Herein is set forth the sacred history of the world's beginning, wherein the Almighty did create the heavens and the earth and all that therein is, forming man in His own image. It relateth the grievous Fall of our first parents, the Deluge whereby God punished a wicked generation, and the calling of the Patriarchs Abraham, Isaac, and Jacob, with whom the Lord established His everlasting covenant. The book concludeth with the account of Joseph in Egypt, whose sufferings and exaltation prefigure the providence of God toward His chosen people."
+  },
+  {
+    "book": "Exodus",
+    "summary": "This book declareth the mighty deliverance of the children of Israel from their bondage in Egypt by the hand of Moses, whom the Lord raised up and sent with signs and wonders before Pharaoh. It setteth forth the institution of the Passover, the parting of the Red Sea, and the giving of the holy Law upon Mount Sinai amidst fire and thunder. Herein also is described the construction of the Tabernacle, according to the pattern shewed in the mount, wherein the Lord did dwell among His people."
+  },
+  {
+    "book": "Leviticus",
+    "summary": "A book most solemn and instructive, containing the laws of sacrifice, offering, and atonement whereby a sinful people might approach a holy God. Here are prescribed the duties of the Aaronic priesthood, the distinction between clean and unclean, and the appointed feasts of the Lord. The weighty injunction standeth at its heart: Ye shall be holy, for I the Lord your God am holy. It presenteth a shadow of that perfect sacrifice which was to come in the fulness of time."
+  },
+  {
+    "book": "Numbers",
+    "summary": "Herein is recorded the numbering of the tribes and the journeyings of Israel through the wilderness, wherein the people murmured against the Lord and against Moses, and were condemned to wander forty years. It relateth the rebellion of Korah, the sin of Moses at the waters of Meribah, and the prophecies of Balaam who blessed where he would have cursed. The book sheweth both the severity of divine judgment and the faithfulness of God's promise."
+  },
+  {
+    "book": "Deuteronomy",
+    "summary": "The fifth and final book of Moses, being a restating of the Law unto the new generation that should enter the Promised Land. Moses, standing upon the plains of Moab, rehearseth the commandments, statutes, and judgments of the Lord, exhorting the people unto obedience and warning them against apostasy. It containeth the Shema, that great confession of faith, and concludeth with the death of Moses upon Mount Nebo, having seen the land from afar."
+  },
+  {
+    "book": "Joshua",
+    "summary": "This book narrateth the conquest and division of the land of Canaan under the leadership of Joshua, the servant of the Lord. It beginneth with the charge to be strong and of good courage, relateth the fall of Jericho, the battle at Ai, and the subduing of the nations. The land is divided among the twelve tribes, and the book concludeth with Joshua's solemn covenant at Shechem: Choose you this day whom ye will serve; but as for me and my house, we will serve the Lord."
+  },
+  {
+    "book": "Judges",
+    "summary": "A dark and tumultuous chronicle of the generations after Joshua, wherein Israel repeatedly forsook the Lord, fell under the hand of oppressors, cried out in distress, and were delivered by judges whom God raised up. Herein are the deeds of Deborah, Gideon, Jephthah, and Samson, men of valour yet flawed in their nature. The book concludeth with the mournful observation that there was no king in Israel, and every man did that which was right in his own eyes."
+  },
+  {
+    "book": "Ruth",
+    "summary": "A most tender and beautiful narrative set in the days of the Judges, relating how Ruth the Moabitess, through love and loyalty to her mother-in-law Naomi, came to Bethlehem and was redeemed by Boaz, a kinsman of her deceased husband. It sheweth the providence of God working through ordinary faithfulness, and endeth with the genealogy that leadeth unto David the king, through whose line the Messiah Himself should come."
+  },
+  {
+    "book": "1 Samuel",
+    "summary": "This book recounteth the transition of Israel from the rule of judges unto the establishment of the monarchy. It beginneth with the birth of Samuel, the faithful prophet, and proceedeth unto the people's demand for a king. Herein is the tragic reign of Saul, anointed of the Lord yet rejected for his disobedience, and the rise of David, the shepherd boy who slew Goliath, won the hearts of the people, and was anointed as the Lord's chosen, though sorely pursued by a jealous king."
+  },
+  {
+    "book": "2 Samuel",
+    "summary": "Herein is continued the history of David's reign, from his lamentation over Saul and Jonathan unto his establishment as king over all Israel. It relateth his conquest of Jerusalem, the bringing up of the Ark of the Covenant, and the Lord's promise of an everlasting throne. Yet it also recordeth David's grievous sin with Bathsheba, the rebellion of Absalom his son, and the sorrows that followed hard upon his transgressions, shewing that even the man after God's own heart is subject to fall."
+  },
+  {
+    "book": "1 Kings",
+    "summary": "This book openeth with the aged David and the accession of Solomon his son, whose wisdom was a gift of the Lord and whose building of the Temple in Jerusalem was the crown of his reign. Yet Solomon's heart was turned away by strange wives, and after his death the kingdom was rent in twain. The narrative proceedeth through the divided monarchy, with special note of the prophet Elijah, who withstood the wickedness of Ahab and Jezebel, calling down fire from heaven upon Mount Carmel."
+  },
+  {
+    "book": "2 Kings",
+    "summary": "A continuation of the chronicle of the divided kingdoms, relating the translation of Elijah and the ministry of Elisha his successor, who wrought many signs among the people. It recordeth the steady decline of both Israel and Judah, the reforms of good King Josiah, and the ultimate calamity: the fall of Samaria to Assyria and the destruction of Jerusalem by Nebuchadnezzar, with the people carried away captive into Babylon, even as the prophets had warned."
+  },
+  {
+    "book": "1 Chronicles",
+    "summary": "This book beginneth with an extensive genealogy from Adam through the tribes of Israel, establishing the lineage of the chosen people and especially the house of David. It then recounteth the reign of David, with particular emphasis upon the preparations for the building of the Temple, the ordering of the Levitical service, and the establishment of worship according to the ordinances of the Lord. It presenteth David as the ideal king whose heart was fixed upon the house of God."
+  },
+  {
+    "book": "2 Chronicles",
+    "summary": "Herein is set forth the history of the kings of Judah from Solomon unto the Babylonian captivity, viewed through the eye of the priestly chronicler. It giveth extended treatment to the reigns of the reforming kings Asa, Jehoshaphat, Hezekiah, and Josiah, who sought the Lord and restored true worship. The book endeth with the destruction of Jerusalem and the proclamation of Cyrus, king of Persia, permitting the exiles to return and rebuild the house of the Lord."
+  },
+  {
+    "book": "Ezra",
+    "summary": "This book recordeth the return of the Jewish exiles from Babylon under the decree of Cyrus king of Persia, and the rebuilding of the altar and the Temple in Jerusalem amidst opposition from the surrounding peoples. It relateth the ministry of Ezra the scribe, who came with a second company of returning captives and led the people in a solemn reformation, putting away strange wives and renewing the covenant with the God of their fathers."
+  },
+  {
+    "book": "Nehemiah",
+    "summary": "A narrative of courage and devotion, recounting how Nehemiah, cupbearer to the Persian king, obtained leave to return unto Jerusalem and rebuild its ruined walls in the face of scorn and conspiracy. Despite Sanballat and Tobiah, the wall was finished in fifty and two days. The book also relateth the public reading of the Law by Ezra, the great confession of the people, and Nehemiah's zealous reforms to restore the sanctity of the Sabbath and the house of God."
+  },
+  {
+    "book": "Esther",
+    "summary": "A singular book wherein the name of God is never spoken, yet His providential hand is everywhere manifest. It telleth how Esther, a Jewish maiden, became queen of Persia, and how she and her cousin Mordecai delivered their people from the wicked plot of Haman the Agagite, who sought to destroy all the Jews throughout the empire. The deliverance is commemorated in the feast of Purim, a testimony to the hidden sovereignty of the Almighty over the affairs of men."
+  },
+  {
+    "book": "Job",
+    "summary": "A profound and majestic poem treating of the great question of human suffering. Job, a man perfect and upright, is afflicted with the loss of children, wealth, and health, and must endure the disputations of his three friends who insist that his calamity must be punishment for sin. Job maintaineth his integrity, and at the last the Lord answereth out of the whirlwind, declaring His unfathomable wisdom. Job repenteth in dust and ashes, and the Lord restoreth his fortunes twofold."
+  },
+  {
+    "book": "Psalms",
+    "summary": "The Psalter, that great treasury of Hebrew devotion, containing an hundred and fifty songs of praise, lamentation, thanksgiving, and wisdom. Penned chiefly by David the sweet singer of Israel, with contributions from Asaph, the sons of Korah, and others, these sacred poems give voice to every motion of the soul toward God. From the cry of penitence in the fifty-first Psalm unto the exultant Hallelujahs of the closing songs, no book of Holy Writ hath more sustained the faithful through the ages."
+  },
+  {
+    "book": "Proverbs",
+    "summary": "A collection of wise sayings and moral instructions, chiefly from the pen of Solomon the son of David, to whom God gave wisdom exceeding all the men of the East. The fear of the Lord is declared to be the beginning of knowledge, and the reader is exhorted to seek wisdom as silver and understanding as hid treasure. Herein are precepts for the young, warnings against the strange woman, and the famous description of the virtuous woman whose price is far above rubies."
+  },
+  {
+    "book": "Ecclesiastes",
+    "summary": "The meditations of the Preacher, the son of David, who applied his heart to search out all things done under the sun and found them vanity and vexation of spirit. With sombre eloquence he declareth that wisdom, pleasure, labour, and riches alike pass away, and that all men go unto the same end. Yet at the last he giveth the conclusion of the whole matter: Fear God and keep His commandments, for this is the whole duty of man, and God shall bring every work into judgment."
+  },
+  {
+    "book": "Song of Solomon",
+    "summary": "The Song of Songs, which is Solomon's, a lyric poem of surpassing beauty celebrating the love between the bridegroom and the bride. Interpreted by the faithful as an allegory of the love between Christ and His Church, its passionate imagery hath comforted and elevated the souls of believers who find therein the tender communion of the Redeemer with His redeemed. Many waters cannot quench love, neither can the floods drown it."
+  },
+  {
+    "book": "Isaiah",
+    "summary": "The greatest of the writing prophets, Isaiah the son of Amoz saw visions concerning Judah and Jerusalem in the days of Uzziah, Jotham, Ahaz, and Hezekiah. His book openeth with thunderous denunciation of sin and calls to repentance, yet shineth with the brightest Messianic promises in all the Old Testament: the virgin shall conceive and bear Immanuel; unto us a child is born; He was wounded for our transgressions. The latter chapters breathe comfort to the exiles and proclaim the new heavens and the new earth."
+  },
+  {
+    "book": "Jeremiah",
+    "summary": "The weeping prophet, called from his mother's womb to speak the word of the Lord unto a rebellious nation. Jeremiah prophesied through the final days of Jerusalem, warning of the coming of Nebuchadnezzar and urging submission to the yoke of Babylon, for which he was persecuted, imprisoned, and cast into a miry dungeon. Yet in the midst of judgment he proclaimed the new covenant, when the Law should be written upon the heart, and the Lord would remember their sin no more."
+  },
+  {
+    "book": "Lamentations",
+    "summary": "Five mournful elegies over the destruction of Jerusalem, composed in a meter of sorrow, each verse beginning with a successive letter of the Hebrew alphabet. The prophet weepeth over the city that once was great among the nations but now sitteth solitary. In the midst of desolation riseth a cry of hope: It is of the Lord's mercies that we are not consumed, because His compassions fail not; they are new every morning: great is Thy faithfulness."
+  },
+  {
+    "book": "Ezekiel",
+    "summary": "The prophecies of Ezekiel the priest, carried captive to Babylon, who saw visions of God by the river Chebar. His book openeth with the stupendous vision of the chariot-throne of the Almighty, borne by living creatures full of eyes. He pronounceth judgment upon Jerusalem and the nations, yet proclaimeth the promise of a new heart and a new spirit, the resurrection of the dry bones, and the vision of the restored Temple from which living waters flow, bringing healing to the nations."
+  },
+  {
+    "book": "Daniel",
+    "summary": "The book of Daniel, a prophet and statesman in the courts of Babylon and Persia, who interpreted the dreams of kings and was delivered from the den of lions. The first part relateth the faithfulness of Daniel and his companions in a heathen land: Shadrach, Meshach, and Abednego in the fiery furnace, and the handwriting on the wall at Belshazzar's feast. The latter part containeth visions of the rise and fall of empires, the coming of the Son of Man, and the promise of resurrection unto everlasting life."
+  },
+  {
+    "book": "Hosea",
+    "summary": "The word of the Lord that came unto Hosea, whose marriage to an unfaithful wife became a living parable of God's love for wayward Israel. Though the people had committed whoredom in departing from the Lord, yet He would allure her and speak comfortably unto her, betrothing her unto Himself in righteousness and judgment. The prophet calleth for repentance, declaring that the ways of the Lord are right, and the just shall walk in them."
+  },
+  {
+    "book": "Joel",
+    "summary": "The prophecy of Joel, occasioned by a devastating plague of locusts which he declareth to be a portent of the great and terrible Day of the Lord. He calleth the people to rend their hearts and not their garments, and to turn unto the Lord with fasting and weeping. Yet he also foretelleth the outpouring of the Spirit upon all flesh, when sons and daughters shall prophesy, and whosoever calleth on the name of the Lord shall be delivered."
+  },
+  {
+    "book": "Amos",
+    "summary": "The words of Amos, a herdsman of Tekoa, whom the Lord called to prophesy against the nations and against Israel in a time of prosperity and corruption. With fearless plainness he denounceth the oppression of the poor, the bribery of judges, and the empty worship of those whose hearts are far from God. He declareth a famine not of bread but of hearing the words of the Lord, yet concludeth with the promise that the tabernacle of David shall be raised up and Israel planted in her land forever."
+  },
+  {
+    "book": "Obadiah",
+    "summary": "The brief but weighty vision of Obadiah concerning Edom, the descendants of Esau, who rejoiced at the calamity of their brother Jacob and stood aloof when strangers carried away his substance. The prophet declareth the judgment of the Lord upon their pride and cruelty, and foretelleth the day when saviours shall come upon Mount Zion to judge the mount of Esau, and the kingdom shall be the Lord's."
+  },
+  {
+    "book": "Jonah",
+    "summary": "The remarkable history of Jonah the son of Amittai, who fled from the presence of the Lord rather than preach repentance unto Nineveh, that great city of the Assyrians. Swallowed by a great fish and delivered after three days, he at length obeyed the divine commission, and the Ninevites repented in sackcloth and ashes. The story endeth with the Lord's rebuke to the pouting prophet, shewing the breadth of divine mercy even unto the heathen who cannot discern their right hand from their left."
+  },
+  {
+    "book": "Micah",
+    "summary": "The word of the Lord that came to Micah the Morasthite, who prophesied against both Samaria and Jerusalem, denouncing the oppression of the poor by the rich, the false prophets who cry peace when they have wherewith to bite, and the corrupt rulers who build up Zion with blood. Yet he foretold that out of Bethlehem should come a Ruler in Israel whose goings forth have been from everlasting, and he concludeth with the glorious promise of a God who delighteth in mercy and will cast all our sins into the depths of the sea."
+  },
+  {
+    "book": "Nahum",
+    "summary": "The burden of Nineveh, a prophecy of unrelieved judgment against the capital of the Assyrian empire, whose cruelty had long afflicted the nations. Nahum declareth the Lord slow to anger and great in power, yet who will by no means clear the guilty. With vivid imagery he describeth the siege and fall of that proud city, whose wickedness had passed continually, and whose destruction none should mourn."
+  },
+  {
+    "book": "Habakkuk",
+    "summary": "The burden which Habakkuk the prophet did see, a dialogue of deep searching between the prophet and his God. He cryeth out against the violence and injustice that go unpunished, and the Lord answereth that He will raise up the Chaldeans, a bitter and hasty nation, to execute judgment. The prophet trembleth at the vision yet concludeth with a matchless confession of faith: Though the fig tree shall not blossom, yet will I rejoice in the Lord; I will joy in the God of my salvation."
+  },
+  {
+    "book": "Zephaniah",
+    "summary": "The word of the Lord by Zephaniah in the days of good King Josiah, prophesying the great Day of the Lord, a day of wrath and trouble and distress, when the Lord shall search Jerusalem with candles and punish the men that are settled on their lees. Yet the tone changeth to one of glorious hope: the Lord is in the midst of thee, a mighty one who will save; He will rejoice over thee with joy; He will rest in His love; He will joy over thee with singing."
+  },
+  {
+    "book": "Haggai",
+    "summary": "The prophecies of Haggai, delivered in the second year of Darius, exhorting the returned exiles to arise and build the house of the Lord, which lay neglected while every man dwelt in his own ceiled house. He declareth that the silver and the gold are the Lord's, and that the glory of this latter house shall be greater than the former. His words, accompanied by the leadership of Zerubbabel and Joshua, stirred the people to complete the second Temple."
+  },
+  {
+    "book": "Zechariah",
+    "summary": "The visions of Zechariah, companion of Haggai, speaking to the returned exiles. His book openeth with a series of night visions: the man among the myrtle trees, the four horns and four carpenters, the flying roll, the woman in the ephah. He prophesieth of the coming King, lowly and riding upon an ass, who shall speak peace unto the nations. He foretelleth the smiting of the Shepherd and the scattering of the sheep, and the day when they shall look upon Him whom they have pierced."
+  },
+  {
+    "book": "Malachi",
+    "summary": "The final prophetic voice of the Old Testament, a series of disputations between the Lord and a people grown weary and negligent in their worship. Malachi rebuketh the priests for offering polluted bread upon the altar, condemneth the treachery of divorce, and calleth the people to bring the tithes into the storehouse. He foretelleth the coming of Elijah the prophet before the great and dreadful day of the Lord, and so the canon closeth with a promise and a warning, awaiting the dawn of the new dispensation."
+  },
+  {
+    "book": "Matthew",
+    "summary": "The Gospel according to Saint Matthew, written primarily for the Hebrew people, shewing how Jesus of Nazareth fulfilleth all the prophecies of the Old Testament concerning the Messiah. It beginneth with the genealogy from Abraham, relateth the Sermon on the Mount with its beatitudes, and setteth forth the parables of the kingdom. It giveth full account of the Passion, death, and glorious Resurrection of our Lord, and concludeth with the Great Commission: Go ye therefore and teach all nations, baptizing them in the name of the Father, and of the Son, and of the Holy Ghost."
+  },
+  {
+    "book": "Mark",
+    "summary": "The Gospel of Saint Mark, the most brief and urgent of the four, portraying our Lord as the suffering Servant who came not to be ministered unto but to minister. It moveth swiftly from the baptism in Jordan through the Galilean ministry of healing and exorcism unto the final week in Jerusalem. The narrative is vivid and immediate, shewing forth the authority of the Son of God over demons, disease, and death itself, and recounting His betrayal, Crucifixion, and triumphant rising from the tomb."
+  },
+  {
+    "book": "Luke",
+    "summary": "The Gospel according to the beloved physician, Saint Luke, addressed to the most excellent Theophilus, being a careful and orderly account of the life and ministry of our Saviour. It alone preserveth the beautiful nativity canticles, the parables of the Good Samaritan and the Prodigal Son, and the story of the disciples on the road to Emmaus. Luke presenteth Christ as the compassionate friend of sinners, the seeker and saviour of the lost, whose salvation is prepared before the face of all people, a light to lighten the Gentiles."
+  },
+  {
+    "book": "John",
+    "summary": "The Gospel of Saint John, the disciple whom Jesus loved, soaring in its theological heights above the synoptics as an eagle above the earth. It openeth with the sublime declaration that in the beginning was the Word, and the Word was with God, and the Word was God. Herein are the great I AM sayings of our Lord, the discourse on the bread of life, the raising of Lazarus, and the high-priestly prayer in the upper room. It was written that ye might believe that Jesus is the Christ, the Son of God, and that believing ye might have life through His name."
+  },
+  {
+    "book": "Acts",
+    "summary": "The Acts of the Apostles, penned by the same Luke, recordeth the birth of the Christian Church at Pentecost, when the Holy Ghost descended as a rushing mighty wind and tongues of fire sat upon the disciples. It followeth the early preaching of Peter in Jerusalem, the martyrdom of Stephen, and the conversion of Saul of Tarsus who became Paul, the great apostle to the Gentiles. The narrative of his three missionary journeys, his trials before governors and kings, and his voyage to Rome concludeth with him preaching the kingdom of God with all confidence, no man forbidding him."
+  },
+  {
+    "book": "Romans",
+    "summary": "The epistle of Paul to the church at Rome, the most comprehensive exposition of Christian doctrine in all Scripture. The apostle declareth that all have sinned and come short of the glory of God, and that a man is justified by faith without the deeds of the law. He unfoldeth the doctrines of election, sanctification, and the future of Israel, and he concludeth with practical exhortations to present your bodies a living sacrifice, holy and acceptable unto God. To God only wise be glory through Jesus Christ forever."
+  },
+  {
+    "book": "1 Corinthians",
+    "summary": "Paul's first epistle to the church at Corinth, a congregation rent by divisions and beset by carnality, yet rich in spiritual gifts. The apostle addresseth questions of marriage, meats offered to idols, the Lord's Supper, and the resurrection of the dead. In the thirteenth chapter he giveth that peerless hymn to charity which surpasseth all knowledge and prophecy. Throughout he exhorteth the brethren to do all things decently and in order, and to stand fast in the faith."
+  },
+  {
+    "book": "2 Corinthians",
+    "summary": "The second epistle to Corinth, the most personal of Paul's letters, written in defence of his apostolic authority against false teachers who had troubled the church. He openeth his heart concerning his sufferings, his thorn in the flesh, and his sincere love for the brethren. He commendeth the grace of giving, warneth against being unequally yoked with unbelievers, and boasteth in his infirmities that the power of Christ may rest upon him. The grace of the Lord Jesus Christ and the communion of the Holy Ghost be with you all."
+  },
+  {
+    "book": "Galatians",
+    "summary": "An epistle of fierce urgency, wherein Paul contendeth for the liberty of the Gospel against those who would impose circumcision and the yoke of the Mosaic Law upon Gentile believers. He declareth that a man is not justified by the works of the law but by the faith of Jesus Christ, and that in Christ there is neither Jew nor Greek, bond nor free, male nor female. The fruit of the Spirit is set against the works of the flesh, and the believer is exhorted to walk in newness of life."
+  },
+  {
+    "book": "Ephesians",
+    "summary": "A sublime epistle treating of the eternal purpose of God to gather together in one all things in Christ. Paul declareth that we are saved by grace through faith, not of works, and unfoldeth the mystery of the Church as the body of Christ and the temple of the Holy Ghost. The latter portion containeth the armour of God, that the believer may stand against the wiles of the devil. Peace be to the brethren, and love with faith, from God the Father and the Lord Jesus Christ."
+  },
+  {
+    "book": "Philippians",
+    "summary": "The epistle of joy, penned by Paul from his bonds in Rome unto the beloved church at Philippi. He rejoiceth that Christ is preached, whether in pretence or in truth, and setteth forth the great kenosis: Christ Jesus, being in the form of God, made Himself of no reputation and became obedient unto death. He exhorteth the brethren to rejoice in the Lord always, to be careful for nothing, and to press toward the mark for the prize of the high calling of God in Christ Jesus."
+  },
+  {
+    "book": "Colossians",
+    "summary": "An epistle exalting the supremacy of Christ, who is the image of the invisible God, by whom all things were created and in whom all fulness dwelleth. The apostle warneth against philosophy and vain deceit, the worship of angels, and the traditions of men. He exhorteth the Colossians to set their affections on things above, to put off the old man with his deeds, and to let the word of Christ dwell in them richly in all wisdom."
+  },
+  {
+    "book": "1 Thessalonians",
+    "summary": "The earliest of Paul's epistles, written to a young church suffering persecution and troubled by questions concerning those who had fallen asleep in the Lord. The apostle comforteth them with the assurance that the dead in Christ shall rise first, and that we which remain shall be caught up together with them in the clouds to meet the Lord in the air. He exhorteth them to holiness, to study to be quiet, and to comfort one another with these words."
+  },
+  {
+    "book": "2 Thessalonians",
+    "summary": "A brief epistle correcting misunderstandings concerning the Day of the Lord, which some believed had already come. Paul teacheth that a falling away must first occur and the man of sin be revealed before that great day. He exhorteth the brethren to stand fast and hold the traditions they have been taught, and to withdraw themselves from every brother that walketh disorderly. The Lord of peace Himself give you peace always by all means."
+  },
+  {
+    "book": "1 Timothy",
+    "summary": "The first pastoral epistle, wherein Paul instructeth his son in the faith, Timothy, concerning the ordering of the church at Ephesus. He giveth qualifications for bishops and deacons, warneth against false teachers and fables, and prescribeth the proper conduct of men and women in the congregation. This is a faithful saying and worthy of all acceptation, that Christ Jesus came into the world to save sinners, of whom I am chief."
+  },
+  {
+    "book": "2 Timothy",
+    "summary": "The swan song of the aged apostle, written from his final imprisonment in Rome when the time of his departure was at hand. Paul exhorteth Timothy to stir up the gift of God, to endure hardness as a good soldier, and to preach the word in season and out of season. He declareth that he hath fought a good fight, finished the course, and kept the faith, and that henceforth there is laid up for him a crown of righteousness. The Lord Jesus Christ be with thy spirit."
+  },
+  {
+    "book": "Titus",
+    "summary": "A pastoral letter to Titus, left in Crete to set in order the things that were wanting and to ordain elders in every city. Paul giveth instruction for aged men and women, young men, and servants, exhorting all to adorn the doctrine of God our Saviour in all things. He declareth that the grace of God that bringeth salvation hath appeared to all men, teaching us to live soberly and righteously in this present world, looking for that blessed hope and glorious appearing of the great God and our Saviour Jesus Christ."
+  },
+  {
+    "book": "Philemon",
+    "summary": "The briefest of Paul's epistles, a personal letter of exquisite tact and charity unto Philemon, a beloved fellow labourer, on behalf of Onesimus, a runaway slave whom Paul had converted in his Roman bonds. The apostle beseecheth Philemon to receive Onesimus no longer as a servant but as a brother beloved, offering to repay any debt from his own hand. It is a living demonstration of the power of the Gospel to transform the bonds of master and servant into the communion of saints."
+  },
+  {
+    "book": "Hebrews",
+    "summary": "An epistle of matchless eloquence, shewing forth the surpassing glory of Christ above the angels, above Moses, and above the Aaronic priesthood. The author declareth that Christ is the mediator of a better covenant, established upon better promises, having entered once for all into the holy place by His own blood. The eleventh chapter is the great roll-call of faith, and the twelfth exhorteth us to run with patience the race set before us, looking unto Jesus, the author and finisher of our faith."
+  },
+  {
+    "book": "James",
+    "summary": "The epistle of James, the Lord's brother, practical and penetrating, addressed to the twelve tribes scattered abroad. He teacheth that faith without works is dead, and that pure religion is to visit the fatherless and widows in their affliction and to keep oneself unspotted from the world. He warneth against the unbridled tongue, against respect of persons, and against the love of riches. The effectual fervent prayer of a righteous man availeth much."
+  },
+  {
+    "book": "1 Peter",
+    "summary": "The first epistle of Peter, the apostle who denied his Lord and was restored, written to the suffering churches of Asia Minor. He comforteth them with the assurance that they are a chosen generation, a royal priesthood, a holy nation, and exhorteth them to endure suffering with patience after the example of Christ, who suffered for us, the just for the unjust. He warneth that the devil walketh about as a roaring lion seeking whom he may devour, and calleth the elders to feed the flock of God."
+  },
+  {
+    "book": "2 Peter",
+    "summary": "The swan song of the aged Peter, written shortly before his martyrdom, as a parting exhortation to grow in grace and knowledge. He warneth against false teachers who privily bring in damnable heresies, and he answereth the scoffers who ask where is the promise of His coming. The heavens and the earth which are now are reserved unto fire against the day of judgment, but we, according to His promise, look for new heavens and a new earth wherein dwelleth righteousness."
+  },
+  {
+    "book": "1 John",
+    "summary": "The first epistle of John the beloved, breathing the air of intimate communion with God. He declareth that God is light and in Him is no darkness, that God is love, and that perfect love casteth out fear. He giveth the tests of true faith: confession of Christ come in the flesh, love of the brethren, and the indwelling witness of the Spirit. These things are written that ye may know that ye have eternal life, even unto you that believe on the name of the Son of God."
+  },
+  {
+    "book": "2 John",
+    "summary": "A brief epistle from the elder unto the elect lady and her children, a message of love and warning. He rejoiceth that they walk in truth and exhorteth them to love one another. He solemnly warneth that many deceivers are entered into the world who confess not that Jesus Christ is come in the flesh, and biddeth the faithful not to receive such into their houses, lest they be partakers of their evil deeds."
+  },
+  {
+    "book": "3 John",
+    "summary": "A personal letter unto the wellbeloved Gaius, commending his hospitality toward the travelling brethren who went forth for the name's sake. The elder contrasteth the faithful service of Demetrius with the pride of Diotrephes, who loveth to have the preeminence and receiveth not the brethren. Beloved, follow not that which is evil but that which is good; he that doeth good is of God."
+  },
+  {
+    "book": "Jude",
+    "summary": "A short but fervent epistle from Jude, the brother of James, exhorting the faithful to contend earnestly for the faith once delivered unto the saints. He warneth against ungodly men who have crept in unawares, turning the grace of God into lasciviousness, and he setteth forth the fearful judgments that befell the unbelieving Israelites, the fallen angels, and the cities of Sodom and Gomorrha. Now unto Him that is able to keep you from falling, to the only wise God our Saviour, be glory and majesty, dominion and power, both now and ever."
+  },
+  {
+    "book": "Revelation",
+    "summary": "The Revelation of Jesus Christ given unto Saint John the Divine upon the isle of Patmos, the only book of prophecy in the New Testament. It openeth with letters to the seven churches of Asia, proceedeth through visions of seals and trumpets and vials of wrath, and cometh unto the final triumph of the Lamb: the marriage supper, the binding of Satan, the great white throne judgment, and the descent of the New Jerusalem, that holy city wherein God shall dwell with men and wipe away all tears. The Spirit and the bride say, Come. Even so, come, Lord Jesus."
+  }
+]

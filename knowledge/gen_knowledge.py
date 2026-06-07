@@ -3,9 +3,10 @@ import json
 import random
 
 from base_knowledge import KNOWLEDGE
+from books import BOOKS
 from medieval_qa import MEDIEVAL
 from memory import MEMORY
-from transformers import AutoTokenizer
+from quotes import QUOTES
 
 TOK_VERSION = 't-v3'
 DEFAULT_SEED = 42
@@ -44,6 +45,8 @@ def format_jsonl(knowledge: list[dict[str, str] | list[dict[str, str]]], system_
 def format_chat_template(
     knowledge: list[dict[str, str] | list[dict[str, str]]], tok_version: str, system_prompt: str | None = None
 ) -> list[str]:
+    from transformers import AutoTokenizer
+
     tokenizer = AutoTokenizer.from_pretrained(f'tokenizers/{tok_version}')
     lines = []
     for item in knowledge:
@@ -102,7 +105,7 @@ def main():
     )
     args = parser.parse_args()
 
-    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(KNOWLEDGE + MEDIEVAL + MEMORY)
+    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(KNOWLEDGE + MEDIEVAL + MEMORY + BOOKS + QUOTES)
 
     if not args.no_shuffle:
         random.seed(args.seed)
