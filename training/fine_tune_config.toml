@@ -12,11 +12,11 @@ attn_implementation = "sdpa"
 
 [data]
 # ── Source (choose one) ─────────────────────────────────────────────────────
-dataset_path = "./fine-data/knowledge.jsonl"
+dataset_path = "./fine-data/math.jsonl"
 
 # ── Split ───────────────────────────────────────────────────────────────────
 # Fraction held out for validation (train_test_split applied to the full file)
-val_fraction = 0.05
+val_fraction = 0.025
 
 # ── Sequence length ─────────────────────────────────────────────────────────
 # Must be <= model.max_position_embeddings.

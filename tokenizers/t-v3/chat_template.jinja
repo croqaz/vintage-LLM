@@ -1,7 +1,7 @@
-{%- for message in messages %}
-  {{- bos_token + '<|' + message['role'] + '|>\n' + message['content'].strip() + eos_token + '\n'}}
-{% endfor -%}
+{%- for message in messages -%}
+  {{- bos_token + '<|' + message['role'] + '|>\n' + message['content'].strip() + eos_token + '\n' -}}
+{%- endfor -%}
 
-{%- if add_generation_prompt %}
-  {{- bos_token + '<|assistant|>\n'}}
-{% endif -%}
+{%- if add_generation_prompt -%}
+  {{- bos_token + '<|assistant|>\n' -}}
+{%- endif -%}

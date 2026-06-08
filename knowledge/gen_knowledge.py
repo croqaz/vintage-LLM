@@ -2,11 +2,10 @@ import argparse
 import json
 import random
 
-from base_knowledge import KNOWLEDGE
-from books import BOOKS
 from medieval_qa import MEDIEVAL
 from memory import MEMORY
 from quotes import QUOTES
+from math_qa import MATH
 
 TOK_VERSION = 't-v3'
 DEFAULT_SEED = 42
@@ -105,7 +104,7 @@ def main():
     )
     args = parser.parse_args()
 
-    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(KNOWLEDGE + MEDIEVAL + MEMORY + BOOKS + QUOTES)
+    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(MATH)  # + MEDIEVAL + MEMORY + BOOKS + QUOTES)
 
     if not args.no_shuffle:
         random.seed(args.seed)

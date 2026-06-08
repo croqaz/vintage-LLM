@@ -232,7 +232,7 @@ for _ in range(10):
     quote = _pick_quote(author)
     QUOTES.append(
         {
-            'question': f'Name a philosopher who said something like: "{quote[:60]}..."',
+            'question': f'Name a philosopher who said something like: "{quote}"',
             'answer': f'That sounds like something {author} would say.',
         }
     )
