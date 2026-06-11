@@ -8,6 +8,7 @@ import glob as glob_module
 import io
 import json
 import os
+import time
 import timeit
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -54,46 +55,73 @@ def process_single_page(page_no: int, base64_img: str, suggested_words: str, arg
     else:
         headers = {'Content-Type': 'application/json'}
 
-    for attempt in range(1, 4):
+    max_attempts = args.retries
+    last_error = 'Unknown error'
+
+    for attempt in range(1, max_attempts + 1):
         if attempt > 1:
-            print(f'Retrying page {page_no} (attempt {attempt}/3) ...')
+            # Exponential backoff before retrying: 2s, 4s, ...
+            backoff = 2 ** (attempt - 1)
+            print(f'Retrying page {page_no} (attempt {attempt}/{max_attempts}) after {backoff}s ...')
+            time.sleep(backoff)
         else:
             print(f'Fixing page {page_no} ...')
 
-        result = {}
+        # 1. Make the request.
         try:
-            response = requests.post(args.api_url, json=payload, headers=headers, timeout=60)
+            response = requests.post(args.api_url, json=payload, headers=headers, timeout=args.timeout)
             response.raise_for_status()
             result = response.json()
         except Exception as err:
-            err_msg = str(err)
+            last_error = str(err)
             if getattr(err, 'response', None) is not None:
-                err_msg = f'Code {err.response.status_code}: {err.response.text}'
-            print(f'Error processing {page_no} on attempt {attempt}/3: {err_msg}')
-            if attempt == 3:
-                return {'page': page_no, 'error': err_msg}
+                last_error = f'Code {err.response.status_code}: {err.response.text}'
+            print(f'Error requesting page {page_no} on attempt {attempt}/{max_attempts}: {last_error}')
+            continue
 
-        if not result:
-            return {'page': page_no, 'error': 'Empty response from API'}
+        # 2. Parse the response.
         try:
-            if not result['choices'][0]['message'].get('content'):
-                return {'page': page_no, 'error': 'No content in response'}
-            extracted_text = result['choices'][0]['message']['content']
+            if not result:
+                raise ValueError('Empty response from API')
+            content = result['choices'][0]['message'].get('content')
+            if not content:
+                raise ValueError('No content in response')
             in_tokens = result.get('usage', {}).get('prompt_tokens', 0)
             out_tokens = result.get('usage', {}).get('completion_tokens', 0)
             print(f'Received response for page {page_no}. Used: {in_tokens} / {out_tokens} tokens.')
-            return {'page': page_no, 'text': extracted_text, 'in_tokens': in_tokens, 'out_tokens': out_tokens}
+            return {'page': page_no, 'text': content, 'in_tokens': in_tokens, 'out_tokens': out_tokens}
         except Exception as err:
-            err_msg = str(err)
-            print(f'Error parsing page {page_no} on attempt {attempt}/3: {err_msg}')
-            if attempt == 3:
-                return {'page': page_no, 'error': err_msg}
+            last_error = str(err)
+            print(f'Error parsing page {page_no} on attempt {attempt}/{max_attempts}: {last_error}')
+            continue
+
+    print(f'Giving up on page {page_no} after {max_attempts} attempts. Last error: {last_error}')
+    return {'page': page_no, 'error': last_error}
 
 
 def process_ebook_files(xml_path: str, zip_path: str, output_path: str, args: argparse.Namespace):
     proc_start = timeit.default_timer()
     print(f'Processing XML file: {xml_path} ...')
     print(f'Processing ZIP file: {zip_path} ...')
+
+    # Resume support: collect page numbers already present in an existing output
+    # file, so we only download the missing pages and append them at the end.
+    done_pages = set()
+    if os.path.exists(output_path):
+        with open(output_path, 'r', encoding='utf-8') as existing_f:
+            for line_no, line in enumerate(existing_f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    print(f'Warning: skipping malformed line {line_no} in existing output {output_path}')
+                    continue
+                # Only count pages that were successfully extracted (have text).
+                if 'page' in rec and 'text' in rec:
+                    done_pages.add(rec['page'])
+        print(f'Found existing output {output_path} with {len(done_pages)} completed pages. Will resume.')
 
     tasks = []
 
@@ -124,6 +152,9 @@ def process_ebook_files(xml_path: str, zip_path: str, output_path: str, args: ar
 
             if args.pages and page_no > args.pages:
                 break
+
+            if page_no in done_pages:
+                continue
 
             jp2_name = base_name + '.jp2'
             matching_zip_file = next((f for f in zip_files if f.endswith(jp2_name)), None)
@@ -159,24 +190,38 @@ def process_ebook_files(xml_path: str, zip_path: str, output_path: str, args: ar
 
             tasks.append((page_no, base64_img, suggested_words))
 
-    print(f'Prepared {len(tasks)} valid pages to process.')
+    if done_pages:
+        print(f'Prepared {len(tasks)} missing pages to process (skipped {len(done_pages)} already done).')
+    else:
+        print(f'Prepared {len(tasks)} valid pages to process.')
 
     total_prompt_tokens = 0
     total_completion_tokens = 0
 
-    with open(output_path, 'w', encoding='utf-8') as out_f, ThreadPoolExecutor(max_workers=4) as executor:
+    # Append mode so an existing output is preserved and missing pages are added at the end.
+    open_mode = 'a' if done_pages else 'w'
+    with open(output_path, open_mode, encoding='utf-8') as out_f:
+        executor = ThreadPoolExecutor(max_workers=args.workers)
         futures = [executor.submit(process_single_page, *p, args=args) for p in tasks]
 
-        for future in as_completed(futures):
-            resp = future.result()
-            if 'error' not in resp:
-                total_prompt_tokens += resp['in_tokens']
-                total_completion_tokens += resp['out_tokens']
-                out_f.write(json.dumps(resp, ensure_ascii=False))
-                out_f.write('\n')
-                out_f.flush()
-            else:
-                print(f'Failed to process page {resp["page"]} entirely: {resp["error"]}')
+        try:
+            for future in as_completed(futures):
+                resp = future.result()
+                if 'error' not in resp:
+                    total_prompt_tokens += resp['in_tokens']
+                    total_completion_tokens += resp['out_tokens']
+                    out_f.write(json.dumps(resp, ensure_ascii=False))
+                    out_f.write('\n')
+                    out_f.flush()
+                else:
+                    print(f'Failed to process page {resp["page"]} entirely: {resp["error"]}')
+            executor.shutdown(wait=True)
+        except KeyboardInterrupt:
+            print('\nProcess interrupted by user (Ctrl+C). Stopping...')
+            for future in futures:
+                future.cancel()
+            executor.shutdown(wait=False)
+            os._exit(130)
 
     proc_end = timeit.default_timer()
     print(f'Output successfully written to: {output_path}')
@@ -194,7 +239,10 @@ if __name__ == '__main__':
     parser.add_argument('--pages', type=int, required=False, help='Limit number of pages to process')
     parser.add_argument('--api_url', default='http://127.1:1234/v1/chat/completions', help='URL of the chat completion API')
     parser.add_argument('--api_key', help='(Optional) API key for authentication if required by the API')
+    parser.add_argument('--timeout', type=int, default=90, help='Timeout in seconds for API requests')
+    parser.add_argument('--retries', type=int, default=3, help='Number of retries for API requests in case of failure')
     parser.add_argument('--model', help='(Optional) Model name to use for the API, e.g. "gemini-2.5-flash" or "gpt-5.4-mini"')
+    parser.add_argument('--workers', type=int, default=4, help='Number of parallel workers to process pages concurrently')
     args = parser.parse_args()
 
     xml_path = args.xml

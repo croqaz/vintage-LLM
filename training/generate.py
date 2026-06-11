@@ -46,6 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--temperature', type=float, default=0.8)
     parser.add_argument('--top-p', type=float, default=0.9)
     parser.add_argument('--top-k', type=int, default=25)
+    parser.add_argument('--min-p', type=float, default=0.01)
     parser.add_argument('--repetition-penalty', type=float, default=1.1)
     parser.add_argument('--seed', type=int, default=1337)
     parser.add_argument('--device', default='auto', choices=('auto', 'cpu', 'cuda', 'mps'))
@@ -111,6 +112,7 @@ def main() -> None:
             temperature=args.temperature if do_sample else None,
             top_p=args.top_p if do_sample else None,
             top_k=args.top_k if do_sample else None,
+            min_p=args.min_p if do_sample else None,
             repetition_penalty=args.repetition_penalty,
             eos_token_id=tokenizer.eos_token_id,
         )

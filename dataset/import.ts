@@ -31,9 +31,9 @@ const BATCH_SIZE = 512; // LevelDB batch flush size
 const SENTENCE_RE = new RegExp('((?:[.!?][\\"\']?)\\s+(?=[A-Z\\"\'])|(?:[\\n\\r]{2,}\\s*(?=[a-zA-Z\\"\'])))', 'g');
 const VOWEL_RE = /[aeiouy]/i;
 const ALPHA_TOKEN_RE = /^[A-Za-z][A-Za-z'’\-]*$/;
+
 // Characters that almost never appear in clean prose. All are in the BMP, so we
 // can match on UTF-16 code units (charCodeAt) without decoding full codepoints.
-
 // TODO TODO TODO :: analyze my dataset !!
 const NOISE_CODES = new Set(Array.from('•▪■□●○◦·※†‡§¶¤¦¨¬¯´¸×÷=~^|\\{}<>@#$%&*_+', c => c.charCodeAt(0)));
 
