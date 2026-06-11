@@ -1485,7 +1485,7 @@
     "subject": "Grammar",
     "number": 9,
     "question": "Give a complete classification of the noun and the pronoun.",
-    "answer": null
+    "answer": "NOUNS. PROPER, COMMON. PRONOUNS. Class, Abstract, Collective, Verbal, Personal, Possessive, Relative, Interrogative. PROPERTIES. GENDER. Masculine, Feminine, Neuter, Common. PERSON. First, Second, Third. NUMBER. Singular, Plural. CASE. Nominative, Possessive, Objective, Absolute."
   },
   {
     "subject": "Grammar",
@@ -2712,6 +2712,48 @@
     "answer": "Enallage is the use of one part of speech or of one form of a word for another. Ex. We, for I. Methinks, for I think."
   },
   {
+    "subject": "Grammar",
+    "number": 214,
+    "question": "Write ten figures of rhetoric, and illustrate each.",
+    "answer": "Simile: '' He is like a giant: '' Allegory: Bunyan's Pilgrims' Progress; Metonymy: ''Intemperance kills more than the sword;'' Personification: ''Joy gave him happiness; '' Irony: '' Sure, Brutus is an honorable man; '' Hyperbole: '' Then, swift as light, their swords flashed; '' Synecdoche: gold, for money; Antithesis : '' Virtue ennobles, vice debases; '' Epigram '' Nothing so fallacious as facts, except figures; '' Paralipsis : '' I will not call him villain, for it would be unparliamentary.''"
+  },
+  {
+    "subject": "Grammar",
+    "number": 215,
+    "question": "What is versification? Define verse.",
+    "answer": "Versification is the art of making verse. Verse is the musical arrangement of words, according to some regular accent."
+  },
+  {
+    "subject": "Grammar",
+    "number": 216,
+    "question": "What is a poetic foot?",
+    "answer": "A poetic foot is a collection of syllables, one of which is accented."
+  },
+  {
+    "subject": "Grammar",
+    "number": 217,
+    "question": "Name the principal poetic feet. Illustrate.",
+    "answer": "The Iambus, two syllables, second accented, enthrall; the Trochee, two syllables, first accented, raven; the Anapest, three syllables, the last accented, countersign; the Dactyl, three syllables, the first accented, principal."
+  },
+  {
+    "subject": "Grammar",
+    "number": 218,
+    "question": "State the difference between rhyme and blank verse.",
+    "answer": "Rhyme is a similarity of sound between successive lines or lines at regular intervals. Blank verse is verse without rhyme."
+  },
+  {
+    "subject": "Grammar",
+    "number": 219,
+    "question": "What is a stanza?",
+    "answer": "A stanza is a combination of lines constituting a division of a poem."
+  },
+  {
+    "subject": "Grammar",
+    "number": 220,
+    "question": "What is a caesural pause?",
+    "answer": "A caesural pause is a slight pause made in or near the middle of poetic lines"
+  },
+  {
     "subject": "Geography",
     "number": 1,
     "question": "Define Geography. How divided?",
@@ -2799,7 +2841,7 @@
     "subject": "Geography",
     "number": 15,
     "question": "Into what zones is the earth's surface divided? What is the width of each in degrees?",
-    "answer": "Into one torrid, two temperate, and two frigid zones. The torrid is 47 degrees in width, the tempertemperate zones are each 43 degrees wide, and the frigid zones are 23 1/2 degrees respectively."
+    "answer": "Into one torrid, two temperate, and two frigid zones. The torrid is 47 degrees in width, the temperate zones are each 43 degrees wide, and the frigid zones are 23 1/2 degrees respectively."
   },
   {
     "subject": "Geography",
@@ -3213,7 +3255,7 @@
     "subject": "Geography",
     "number": 84,
     "question": "State the location of the following colleges: Yale, Harvard, Brown University, Dartmouth, Vassar, William and Mary College.",
-    "answer": "Yale, New Haven, Ct.; Harvard University, Cambridge, Mass.; Brown University, Providence, R. I.; Dartmouth, Hanover, N. H.; Vassar, Poughkeepsie, N. Y.; William and Mary College Williams-burg, Va."
+    "answer": "Yale, New Haven, Ct.; Harvard University, Cambridge, Mass.; Brown University, Providence, R. I.; Dartmouth, Hanover, N. H.; Vassar, Pough-keepsie, N. Y.; William and Mary College Williams-burg, Va."
   },
   {
     "subject": "Geography",
@@ -4359,7 +4401,7 @@
     "subject": "Geography",
     "number": 275,
     "question": "Describe the Suez Canal. Who constructed it?",
-    "answer": "Sea. It has a depth of twenty-six feet, and was opened in 1869. It was constructed by M. Lesseps, a French engineer."
+    "answer": "The Suez canal, ninety-two miles long, connects Port Said on the Mediterranean, with Suez on the Red Sea. It has a depth of twenty-six feet, and was opened in 1869. It was constructed by M. Lesseps, a French engineer."
   },
   {
     "subject": "Geography",
@@ -4384,6 +4426,24 @@
     "number": 279,
     "question": "Three persons separate in St. Louis, January 1, 1883. A starts eastward to go round the world; B journeys west, also to go round the world, and C remains in St. Louis. On the evening of December 31, 1883, they meet again in St. Louis, A and B having just completed the circuit of the world. How many days has each seen in the year?",
     "answer": "A, 366 days; B, 364; and C, 365. (See question 112)."
+  },
+  {
+    "subject": "Geography",
+    "number": 280,
+    "question": "A vessel goes from Chicago to Shanghai by way of the Suez Canal; name the waters upon which she sails.",
+    "answer": "Lake Michigan, Strait of Mackinaw, Lake Huron, St. Clair River, Lake St. Clair, Detroit River, Lake Erie, Welland Canal, Lake Ontario, St. Lawrence River, Canal around St. Lawrence Rapids, Gulf of St. Lawrence, Atlantic Ocean, Strait of Gibraltar, Mediterranean Sea, Suez Canal, Red Sea, Strait of Babel-Mandeb, Gulf of Aden, Arabian Sea, Indian Ocean, Strait of Malacca, China Sea, Formosa Channel, and Blue Sea."
+  },
+  {
+    "subject": "Geography",
+    "number": 281,
+    "question": "(a) Explain what is meant by \"standard time.\" (b) By whom and when adopted? (c) How many and what divisions of time in the United States?",
+    "answer": "(a) Standard time is the uniformity of time for all places situated seven and one-half degrees east and west of a given standard meridian. (b) It was adopted by nearly all the American railroads November 18, 1883. (c) Five divisions are provided for the United States, with the following meridians passing through their centers: Intercolonial, 60th meridian; Eastern, 75th meridian; Central, 90th meridian; Mountain, 105th meridian; Pacific, 120th meridian."
+  },
+  {
+    "subject": "Geography",
+    "number": 282,
+    "question": "Name three important cities of the Mississippi Valley having nearly the same standard and local time.",
+    "answer": "St. Louis, Memphis, and New Orleans."
   },
   {
     "subject": "Physical Geography",
@@ -4810,6 +4870,60 @@
     "number": 71,
     "question": "Name the principal food plants of the tropics.",
     "answer": "Rice, dates, cocoa-nuts, bananas and plantains, cassava, bread-fruit, sago, and yams."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 72,
+    "question": "From what is chocolate prepared?",
+    "answer": "From the seed of the cocoa-tree."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 73,
+    "question": "Name the countries which excel in the production of the following metals: iron, copper, tin, zinc, lead, gold, silver.",
+    "answer": "Iron, Great Britain; Copper, Chili; Tin, England; Zinc, Germany; Lead, Spain; Gold, the United States; Silver, the United States."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 74,
+    "question": "What forms the basis for the distribution of animal life ? Why ?",
+    "answer": "The distribution of heat, moisture, and vegetation forms the basis for the distribution of animal life, because animals derive their sustenance either directly or indirectly from plants."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 75,
+    "question": "What difference in the variety, beauty, and size of terrestrial and marine fauna may be observed in passing from the equator toward the poles ?",
+    "answer": "As a rule, the luxuriance and variety of terrestrial animal life decrease as we pass from the equator toward the poles. This law of distribution is reversed in marine animal life, both the number and size of the species increasing from the equator toward the poles."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 76,
+    "question": "How does the coal-field area of the United States compare with that of Europe ?",
+    "answer": "The area of the coal fields of the United States is over six times as great as that of Europe."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 77,
+    "question": "Explain the cause of the limited amount of rain in California, Peru, and Bolivia during the summer and fall.",
+    "answer": "The prevailing winds of California during the summer and fall are from the east, which are deprived of their moisture in crossing the continent. The Pacific shores of Peru and Bolivia are rainless for a similar reason."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 78,
+    "question": "What is the origin of the solar and planetary systems according to the Nebular hypothesis? Who was its author? To what credence is it entitled?",
+    "answer": "The Nebular hypothesis assumes that the matter of which the bodies belonging to the solar and planetary systems is composed, once existed in space as a great, chaotic, nebulous and highly heated mass of gas or vapor, endowed with a kind of whirlpool motion, which, gradually condensing through the mutual attraction of its particles, formed the countless suns; that the planets were formed by the condensation of rings of matter successively thrown off by the central mass, and the satellites by the condensation of matter thrown off in like manner by the planets. It was invented by Laplace, a French astronomer, in the latter part of the last century. All recent observations and discoveries seem to prove its correctness."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 79,
+    "question": "What is the zodiac? Into what parts divided?",
+    "answer": "An imaginary belt in the heavens, extending nine degrees on each side of the ecliptic, or celestial equator. Within its limits are contained the orbits of all the planets except some of the minor planets. It is divided into twelve parts, called signs, of 30° each, as follows: Aries, Taurus, Gemini, Cancer, Leo, Virgo, Libra, Scorpio, Sagittarius, Capricornus, Aquarius, Pisces."
+  },
+  {
+    "subject": "Physical Geography",
+    "number": 80,
+    "question": "Name the planets in their order from the sun.",
+    "answer": "Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune."
   },
   {
     "subject": "United States History",
@@ -5750,7 +5864,7 @@
   {
     "subject": "United States History",
     "number": 157,
-    "question": "When, by whom, and by what means was steam first practically applied to navigation? QUESTIONS. ON UNITED STATES HISTORY.",
+    "question": "When, by whom, and by what means was steam first practically applied to navigation?",
     "answer": "In August, 1807, by Robert Fulton, who made the voyage from New York to Albany in the first steamboat, the Clermont."
   },
   {
@@ -6288,6 +6402,66 @@
     "answer": "In Massachusetts, Bunker Hill; in New York, Saratoga; in Pennsylvania, Gettysburg; in Maryland, Antietam; in Virginia, Yorktown; in Tennessee, Nashville, and Murfreesboro; in Georgia, battles before Atlanta; in Mississippi, battles in vicinity of Vicksburg; in Arkansas, Pea Ridge; in Kentucky, Perryville."
   },
   {
+    "subject": "United States History",
+    "number": 247,
+    "question": "What general is said never to have lost a battle?",
+    "answer": "General George H. Thomas."
+  },
+  {
+    "subject": "United States History",
+    "number": 248,
+    "question": "(a) How many attempts were made to lay the Atlantic cable. (b) To whom was the success due?",
+    "answer": "(a) Four; viz., 1857, 1858, 1865, and accomplished in 1866. (b) Cyrus W. Field."
+  },
+  {
+    "subject": "United States History",
+    "number": 249,
+    "question": "Explain briefly the distinctions between the Articles of Confederation and the Constitution.",
+    "answer": "1st. The Articles of Confederation constituted a mere bond of union between independent States; — the Constitution is the expression of a people constituting and establishing themselves an independent and indivisible nation. 2nd. The power of Congress, under the articles of Confederation was only delegated power, the States reserving the sovereignty to themselves; — the power of Congress, under the Constitution comes direct from the people. 3rd. Under the Articles of Confederation, Congress could merely recommend, leaving the sovereign States to act as their local interests might dictate; — under the Constitution, Congress, representing the will of the people, authorizes, and the executive enforces. 4th. Congress, under the Articles of Confederation, could apportion the general debt among the States, and recommend that each pay its just share; — under the Constitution, the national debt is paid by appropriations from the national treasury."
+  },
+  {
+    "subject": "United States History",
+    "number": 250,
+    "question": "When, and for what purpose, was the first paper money used in America?",
+    "answer": "During King William's War Massachusetts issued bills of credit to pay the expense of Governor Phipp's expedition against Canada."
+  },
+  {
+    "subject": "United States History",
+    "number": 251,
+    "question": "Name, three orators of America, three statesmen, three poets, three historians, three novelists, three inventors.",
+    "answer": "Three orators: Patrick Henry, Clay and Webster; statesmen: Hamilton, Madison and W. H. Seward; poets: Longfellow, Bryant, and Whittier; historians: Bancroft, Prescott, and Motley; novelists: Cooper, Irving, and Hawthorne; inventors: Eli Whitney, Morse, and Edison."
+  },
+  {
+    "subject": "United States History",
+    "number": 252,
+    "question": "Give the names of ten of the most prominent signers of the Declaration of Independence.",
+    "answer": "John Hancock, John Adams, Benjamin Franklin, Robert Morris, Roger Sherman, Thomas Jefferson, Eldridge Gerry, Richard Henry Lee, Charles Carroll, Samuel Adams."
+  },
+  {
+    "subject": "United States History",
+    "number": 253,
+    "question": "What persons have held the offices of General and Lieutenant-General respectively?",
+    "answer": "The rank of General has been held by George Washington, U. S. Grant, W. T. Sherman and P. H. Sheridan; Lt. General by Washington, Grant, Sherman, and Sheridan, — Scott, by brevet."
+  },
+  {
+    "subject": "United States History",
+    "number": 254,
+    "question": "In whom was the American executive power vested from 1787 to 1789?",
+    "answer": "Under the Articles of Confederation no such officer was provided as President. The Constitution, which succeeded the Articles of Confederation, was completed by the convention, September 17, 1787, but owing to the delay in its ratification by the requisite number [9] of States, it did not go into effect until March 4, 1789; during the interim both executive and legislative powers were exercised by Congress."
+  },
+  {
+    "subject": "United States History",
+    "number": 255,
+    "question": "Name five important national events since the Rebellion.",
+    "answer": "The purchase of Alaska, the Centennial Celebration, settlement of the fishery dispute, the railroad riots, and the assassination of President Garfield."
+  },
+  {
+    "subject": "United States History",
+    "number": 256,
+    "question": "What important decision was rendered by the United States Supreme Court in 1883?",
+    "answer": "November 15, 1883, the United States Supreme Court decided that the first and second sections of the Act of Congress of March 1, 1877, entitled \"An act to protect all citizens in their civil and legal rights” were unconstitutional. These acts refer to granting colored persons equal accommodations in hotels, railroad cars, and theatres."
+  },
+  {
     "subject": "Civil Government",
     "number": 1,
     "question": "Define government as applied to communities.",
@@ -6706,6 +6880,66 @@
     "number": 70,
     "question": "State the extent of power given the President over pardons and reprieves.",
     "answer": "\" He shall have power to grant reprieves and pardons for offenses against the United States, except in the cases of impeachment.\""
+  },
+  {
+    "subject": "Civil Government",
+    "number": 71,
+    "question": "Define the following terms: Ambassador, Minister, Consul.",
+    "answer": "An Ambassador is an officer employed by government to represent, and to manage its interests, at the seat of government of some other government. A Minister has the same duties as an Ambassador, but is regarded as inferior in rank. A Consul is an officer whose duty it is to protect the rights, commerce, merchants and seamen of his government in the country to which he may be appointed, and to aid any commercial transactions between his own and such foreign country."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 72,
+    "question": "What officers constitute the President's cabinet?",
+    "answer": "Secretary of State, Secretary of the Treasury, Secretary of War, Secretary of the Navy, Secretary of the Interior, Postmaster-General, and Attorney-General."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 73,
+    "question": "Name the instances in our history in which the Vice-President has been called to fill the unexpired term of the President.",
+    "answer": "1. John Tyler succeeded William Henry Harrison, who died April 4, 1841. 2. Millard Fillmore succeeded Zachary Taylor, who died July 9, 1850. 3. Andrew Johnson succeeded Abraham Lincoln, who was assassinated April 14, 1865. 4. Chester A. Arthur succeeded James A. Garfield, who died September 19, 1881."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 74,
+    "question": "What special propriety is there in prescribing the election of Vice-President by the Senate, in case the electors fail in electing that officer?",
+    "answer": "This provision seems to be designed as a compliment to the Senate on account of the position the Constitution provides for the Vice-President in the Senate."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 75,
+    "question": "In what respect do the duties of the President of the Senate differ from those of the Speaker of the House?",
+    "answer": "The Speaker of the House has the appointment of standing committees; but since the President of the Senate is not a member of that body, he has no such privilege unless granted by the Senate."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 76,
+    "question": "How is the Supreme Court of the United States established, and how organized? Of how many judges does it consist?",
+    "answer": "The supreme court of the United States is established by the Constitution and organized by Congress. The judges of the Supreme Court are one Chief Justice and eight associate justices."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 77,
+    "question": "How is a person having a claim against a State to obtain relief?",
+    "answer": "He may petition the Legislature for redress, unless courts of claims are established for such purposes, in which case he may present his claim by petition or otherwise."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 78,
+    "question": "Name the various offices and bureaus in charge of the Department of the Interior.",
+    "answer": "The Patent Office, Census Office, Land Office, Bureaus of Mines, Indian Affairs, Pensions, Education."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 79,
+    "question": "Explain what is meant by \"minority represen-tation.\"",
+    "answer": "In the case of election of representatives in some States, each qualified voter may cast as many votes for one candidate as there are representatives to be elected, or may distribute the same, or equal parts thereof, among the candidates, as he shall see fit."
+  },
+  {
+    "subject": "Civil Government",
+    "number": 80,
+    "question": "Name some exceptions to universal suffrage in the several States.",
+    "answer": "In Connecticut and Massachusetts those who are unable to read an article in the Constitution are excluded from voting. Seven States exclude paupers from suffrage. Georgia, Nevada, Massachusetts and New Hampshire make the payment of taxes a requisite for voting, except in certain cases."
   },
   {
     "subject": "Botany",
@@ -7170,6 +7404,36 @@
     "answer": "The carbonic acid exhaled by animals if left to accumulate would in time destroy all animal life upon the globe. The necessities of the plant demand this gas, and in the very process of its appropriation the life-giving oxygen, so essential to animal existence, is returned by the plant to the atmosphere."
   },
   {
+    "subject": "Botany",
+    "number": 78,
+    "question": "Explain the principles upon which the \"natural system\" of plant classification is based.",
+    "answer": "The natural system is based upon the natural affinities and resemblances of plants by which nature has distinguished them into groups and families."
+  },
+  {
+    "subject": "Botany",
+    "number": 79,
+    "question": "Contrast the characteristic differences between Dicotyledons and Monocotyledons.",
+    "answer": "Dicotyledons grow by new layers external to the wood, but inside of the bark; their leaves are net-veined, flowers rarely three-parted, seeds with two or more cotyledons, and with an axial root extending downward from the radicle. Monocotyledons grow by scattered, internal wood bundles; their leaves are parallel veined, flowers generally three-parted, seeds with one cotyledon, while the radicle never produces an axial root."
+  },
+  {
+    "subject": "Botany",
+    "number": 80,
+    "question": "Name fruits belonging to the following orders: Rosaceæ, Saxifragaceæ, Ebenaceæ, Artocarpaceæ, Crassulaceæ.",
+    "answer": "Rosaceæ: cherry, apricot, plum, almond, peach. Saxifragaceæ: hydrangea. Ebenaceæ, persimmon. Artocarpaceæ: fig, osage orange, mulberry. Crassulaceæ: currant, gooseberry."
+  },
+  {
+    "subject": "Botany",
+    "number": 81,
+    "question": "To what natural orders do the sunflower, pea, lettuce, parsley, and sweet potato belong?",
+    "answer": "The sunflower belongs to the order of Compositæ; the pea, to the Leguminosæ; lettuce, to the Compositæ; parsley, to the Umbelliferæ; the sweet potato to the Convolvulaceæ."
+  },
+  {
+    "subject": "Botany",
+    "number": 82,
+    "question": "What is the fruit of the strawberry plant?",
+    "answer": "It consists of the entire inflorescence developed into a mass of united pericarps."
+  },
+  {
     "subject": "Physiology",
     "number": 1,
     "question": "Define the terms Anatomy, Physiology, and Hygiene.",
@@ -7221,7 +7485,7 @@
     "subject": "Physiology",
     "number": 9,
     "question": "Draw an outline showing the relative position of the different bones in the human skeleton.",
-    "answer": null
+    "answer": "The Head. The Cranium. Frontal bone. Two Parietal bones. Two Temporal bones. Sphenoid bone. Ethmoid bone. Occipital bone. The Face. Two Superior Maxillary bones. Inferior Maxillary bone. Two Malar bones. Two Lachrymal bones. Two Turbinated bones. Two Nasal bones. Vomer. Two Palate bones. The Ears. Hammer. Anvil. Stirrup. The Trunk. The Spinal Column. Cervical Vertebræ. Dorsal Vertebræ. Lumbar Vertebræ. The Ribs. True Ribs. False Ribs. The Sternum. The Os Hyoides. The Pelvis. Two Innominata. Sacrum. Coccyx. The Limbs. The Upper Limbs. The Shoulder. Clavicle (2). Scapula (2). The Arm. Humerus. Radius and Ulna. The Hand. 8 Carpal bones. 5 Metacarpal bones. 14 Phalanges. The Lower Limbs. The Leg. Femur. Patella. Tibia and Fibula. The Foot. 7 Tarsal bones. 5 Metatarsal bones. 14 Phalanges."
   },
   {
     "subject": "Physiology",
@@ -7726,6 +7990,30 @@
     "number": 93,
     "question": "State the office of perspiration.",
     "answer": "It regulates the temperature of the body. When exercise warms the body the perspiration is exuded upon the skin and its evaporation reduces the temperature and keeps the system from being overheated."
+  },
+  {
+    "subject": "Physiology",
+    "number": 94,
+    "question": "What deleterious effects result from having the air too dry in occupied rooms?",
+    "answer": "When the confined air is warm and dry it absorbs too much of the moisture from the lungs and skin, and produces a dry and feverish condition of the system."
+  },
+  {
+    "subject": "Physiology",
+    "number": 95,
+    "question": "State briefly some important directions regarding the manner of dressing most conducive to health.",
+    "answer": "All garments should be as light as is consistent with the warmth and comfort of the wearer. Two or three thicknesses of flannel is warmer than double the weight of cotton or linen; and in a climate subject to sudden and extreme changes, flannel is preferable at all seasons of the year."
+  },
+  {
+    "subject": "Physiology",
+    "number": 96,
+    "question": "What effect does the loss of sleep have upon the body and the mind?",
+    "answer": "Continued loss of sleep produces debility of the nervous system, nervous excitability, disturbed breathing, palpitation of the heart, and dyspepsia; while insanity, particularly in those engaged in absorbing mental labor, frequently follows as the final punishment for disregarding Nature's laws."
+  },
+  {
+    "subject": "Physiology",
+    "number": 97,
+    "question": "Show in what manner bathing is beneficial?",
+    "answer": "The skin becomes covered with a mixture of oil, dust, etc., which if permitted to remain interferes with the excretory powers of the skin. In addition to removing this accumulation, water, if moderately cool, throws the blood back upon the internal organs, quickens the action of the heart and communicates the stimulus to the whole system; reaction sets in, and a return of the blood to the surface invigorates the vital powers to an extent unknown by him who never indulged the luxury."
   },
   {
     "subject": "Zoology",
@@ -8265,7 +8553,7 @@
     "subject": "Zoology",
     "number": 90,
     "question": "Name and define the seven orders of insects, and give two examples of each.",
-    "answer": "1. Hymenoptera (membrane-winged), bees, wasps. 2. Lepidoptera (scaly-winged), butterflies, moths. 3. Diptera (two-winged), flies, mosquitoes. 4. Coleoptera (sheath-winged), beetles, weevils. 5. Orthoptera (straight-winged), grasshoppers, crickets. 6. Hemiptera (half-winged), bugs, cicadas. 7. Neuroptera (nerve-winged), lace-wings, ant-lions."
+    "answer": "1. Hymenoptera (membrane-winged), bees, wasps. 2. Lepidoptera (scaly-winged), butterflies, moths. 3. Diptera (two-winged), flies, mosquitoes. 4. Coleoptera (sheath-winged), beetles, weevils. 5. Hemiptera (half-winged), harvest-flies, bugs. 6. Orthoptera (straight-winged), locusts, crickets. 7. Neuroptera (nerve-winged), dragon-flies, ant-lion."
   },
   {
     "subject": "Zoology",
@@ -8308,6 +8596,66 @@
     "number": 97,
     "question": "Name the orders of Crustacea according to the most general authority, and give examples of each.",
     "answer": "Decapoda, ten-footed, as lobsters, crabs, and shrimp; Tetradecapoda, fourteen-footed, as wood-lice and sand-fleas; Entomostraca, insect-like, as horse-shoe crabs and barnacles."
+  },
+  {
+    "subject": "Zoology",
+    "number": 98,
+    "question": "State the different methods by which worms multiply.",
+    "answer": "Most worms multiply by eggs; some by self-division, called germination or fission; while a few are viviparous."
+  },
+  {
+    "subject": "Zoology",
+    "number": 99,
+    "question": "How does the earth-worm benefit the soil?",
+    "answer": "The earth or angle worm eats the organic mat-ter found in the earth. The rejected worm casts together with the burrowing and working of the worms over the soil often converts barren wastes into pro-ductive land."
+  },
+  {
+    "subject": "Zoology",
+    "number": 100,
+    "question": "(a) Explain how the tape-worm is nourished. (b) How it grows. (c) How it is developed in the human system.",
+    "answer": "(a) The tape worm is without digestive organs or alimentary canal, hence all nourishment is absorbed through the walls of its body. (b) The worm grows by increase in the number of joints near the head, the older ones, containing eggs, ripening and falling away. (c) The detatched joints escaping to the world scatter the eggs, which enter the system of other animals, usually some omnivorous feeder like the hog. Here only the eggs will hatch. The embryo pierces the flesh and becomes hydatids. The meat of such tainted hogs, containing, the larvæ of these is eaten raw or insufficiently cooked, and develop in the human system the tape worm."
+  },
+  {
+    "subject": "Zoology",
+    "number": 101,
+    "question": "How do Mollusks differ from the higher branches?",
+    "answer": "Mollusks are neither jointed nor radiated in their internal structure, but are composed of yielding tissues of great contractile power enveloped by a mus-cular skin called the mantle. In most cases the mol-lusk is protected by a hard shell."
+  },
+  {
+    "subject": "Zoology",
+    "number": 102,
+    "question": "Describe the circulatory system of Mollusks.",
+    "answer": "The circulatory system of the higher orders of the Mollusca consists of a distinct heart, having an auricle and a ventricle, arteries and veins. The auricle receives the colorless aerated blood from the gills, while the ventricle drives it through the body."
+  },
+  {
+    "subject": "Zoology",
+    "number": 103,
+    "question": "Name and briefly describe the commonly recognized classes of Mollusca.",
+    "answer": "1st. The Cephalopoda have muscular appendages or arms around the head, two stout horny jaws; two large eyes; and the body is sometimes covered by a shell. 2nd. The Gasteropoda have the abdomen provided with a single foot by which all movements are effected. While some are naked, most live in an univalve shell. 3rd. The Acephala or Lamellibranchiata have no apparent head, and live in a shell composed of two valves. 4th. The Tunicata or Ascidians have a soft, elastic covering instead of a shell. 5th. The Brachiopoda (arm-footed) have two ciliated arms, the shell composed of two valves, one above and one below opening by a system of muscles instead of hinge ligaments as in the oyster. 6th. The Polyzoa grow in clusters, hence the name (many animals). They resemble plants in their general appearance so much as to be sometimes called mass-animals."
+  },
+  {
+    "subject": "Zoology",
+    "number": 104,
+    "question": "What is the structure of the Radiata?",
+    "answer": "The Radiata diverge in all directions from a central axis, — they are without ends or sides. The lateral symmetry observed in the higher forms is here replaced by a circular symmetry from the center, similar to the growth of plants, from which resemblance the radiates are often called plant-animals."
+  },
+  {
+    "subject": "Zoology",
+    "number": 105,
+    "question": "Describe the digestion of the Asteroids.",
+    "answer": "The Asteroids force their prey into a cavity on the under side by means of tentacles, when the stomach by a peristaltic movement protrudes and envelopes the food, which by the action of the fluids secreted by the animal, goes through the process of digestion."
+  },
+  {
+    "subject": "Zoology",
+    "number": 106,
+    "question": "What is the simplest form of animal which has been discovered?",
+    "answer": "The Bathybius, belonging to the Monera, a structureless living albuminous jelly."
+  },
+  {
+    "subject": "Zoology",
+    "number": 107,
+    "question": "Classify the following animals by naming the Subkingdom, Class, Order, and Family to which they severally belong: Orang-outang, Jaguar, Otter, Goat, Zebra, Mole, Armadillo, Swallow, River Tortoise, Frog, Salmon, Butterfly, Locust, Scorpion, Hair-snake, Slug, Oyster, Madrepore, Jelly-fish, Deer, Sperm Whale, Rat, Sparrow, Hawk, Quail, Pelican, Alligator, Katydid, Cuttle-fish, Sea Urchin.",
+    "answer": "Consult TENNY's Elements of Zoology or STEEL's Fourteen Weeks in Zoology."
   },
   {
     "subject": "Philosophy",
@@ -8856,6 +9204,30 @@
     "answer": "The piston will move with a force of (8 X 100) 800 lbs. The area of the cylinder being 240 times greater than that of the piston, the weight will be 240 times 800 lbs., or 192000 lbs., or 96 tons."
   },
   {
+    "subject": "Philosophy",
+    "number": 92,
+    "question": "The temperature of a school-room, as shown by a Fahrenheit's thermometer, is 68 deg., what temperature would be indicated by a Centigrade thermometer? By Reaumer's thermometer?",
+    "answer": "The differences between the freezing and boil- ing points of Fahrenheit's, the Centigrade, and Reau- mer's thermometers are respectively (212—32) 180°, 100° and 80° ; hence, 1° Fahr. = ⁵⁄₉ C. and ⁴⁄₉ R. Subtracting 32° from 68°, we have 36° Fahr. above the freezing point. ⁵⁄₉ of this equals 20° C., and ⁴⁄₅ of it equals 16° R."
+  },
+  {
+    "subject": "Philosophy",
+    "number": 93,
+    "question": "What is the specific gravity of a piece of metal which weighs 88.19 ounces in air, and when placed in a vessel even full of water displaces 11 ounces of the liquid?",
+    "answer": "88.19 ounces ÷ 11 = 8.01 = specific gravity."
+  },
+  {
+    "subject": "Philosophy",
+    "number": 94,
+    "question": "A 16-ounce ball weighs 7 ounces in water, but upon being transferred to another liquid, weighs 11 ounces; what is the specific gravity of the second liquid?",
+    "answer": "16 oz. — 7 oz. = 9 oz. ; 16 oz. — 11 oz. = 5 oz. 5 ÷ 9 = ⁵⁄₉. Ans."
+  },
+  {
+    "subject": "Philosophy",
+    "number": 95,
+    "question": "Find the specific gravity of a piece of ice from the following conditions: a lump of ice weighing 8 lbs. is tied to 16 lbs. of lead. In water the lead alone weighs 14.6 lbs., while the lead and ice in water weigh 13.712 lbs.",
+    "answer": "Combined weight in air, 24 lbs. Combined weight in water, 13.712 lbs. Weight of water displaced by ice and lead, 10.288 lbs. Weight of water displaced by lead, 1.4 lbs. Weight of water displaced by ice, 8.888 lbs. Specific gravity of ice (8 ÷ 8.888) = .9+. Ans."
+  },
+  {
     "subject": "Theory and Practice of Teaching",
     "number": 1,
     "question": "Give a comprehensive definition of education.",
@@ -9021,7 +9393,7 @@
     "subject": "Theory and Practice of Teaching",
     "number": 28,
     "question": "Give the successive steps usually taken in teaching the Word Method.",
-    "answer": "The attention of the pupils is called to some familiar object, upon which many questions are asked. As soon as the children's attention is secured and interest aroused a picture of the object is displayed, or drawn upon the board. The picture is discussed for some minutes, when the name of the object is printed beside the picture, and the children are informed that this too is a picture,—a word-picture. After holding their attention to this for a few moments they are directed to find other word-pictures like this on the chart. This comprises the first lesson. The pupils are dismissed to their seats and directed to copy the"
+    "answer": "The attention of the pupils is called to some familiar object, upon which many questions are asked. As soon as the children's attention is secured and interest aroused a picture of the object is displayed, or drawn upon the board. The picture is discussed for some minutes, when the name of the object is printed beside the picture, and the children are informed that this too is a picture,—a word-picture. After holding their attention to this for a few moments they are directed to find other word-pictures like this on the chart. This comprises the first lesson. The pupils are dismissed to their seats and directed to copy the word-picture. At a later lesson other words are treated as the first, and words previously learned are reviewed, hunted for on the chart and formed into sentences. All words learned are printed on the board by the teacher and copied by the pupils, at first in Roman and afterward in script, until their forms become familiar."
   },
   {
     "subject": "Theory and Practice of Teaching",
@@ -9298,5 +9670,17 @@
     "number": 74,
     "question": "Who was the author of “Emile?” What was the object of its publication?",
     "answer": "\"Emile\" was written by Rousseau (born in 1712), in which he portrays an ideal education accord- ing to his peculiar views. The book attracted much attention at the time of its publication, but the atheist- ical tendencies of the author's writings and his general erratic conduct brought condemnation upon this as upon his other works."
+  },
+  {
+    "subject": "Theory and Practice of Teaching",
+    "number": 75,
+    "question": "For what is Roger Ascham chiefly noted?",
+    "answer": "Roger Ascham was Queen Elizabeth's teacher of Greek and Latin. His only educational work of importance was the \"School Master\" [Scholemas- ter], in which he advocated a milder and more careful training of youth than that in vogue at his time. The work deals mainly with the teaching of Latin and Greek."
+  },
+  {
+    "subject": "Theory and Practice of Teaching",
+    "number": 76,
+    "question": "State briefly the more prominent characteristics of Pestalozzi's educational principles. To what extent have these principles influenced the education of the present time?",
+    "answer": "Pestalozzi's principles of education were founded upon natural development. He considered and taught that the end of education is the harmoni- ous development of all the natural powers. Recog- nizing the existence of a certain order of growth and activity, he taught that all instruction should harmon- ize with this order in time and character. He has exerted a greater influence over the general theory and practice of teaching than any man of modern times."
   }
 ]
