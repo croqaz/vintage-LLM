@@ -1,0 +1,1620 @@
+
+HOW TO STUDY LITERATURE
+
+A GUIDE TO THE INTENSIVE STUDY OF LITERARY MASTERPIECES
+
+BY
+
+BENJAMIN A. HEYDRICK, A.B. (HARV.)
+PROFESSOR OF ENGLISH LITERATURE, STATE NORMAL SCHOOL,
+MILLERSVILLE, PA.
+
+THIRD EDITION, REVISED AND ENLARGED
+
+HINDS & NOBLE, Publishers
+31-33-35 WEST 15TH STREET, NEW YORK CITY
+
+COPYRIGHT 1901, 1902, 1903,
+By BENJAMIN A. HEYDRICK.
+
+The publishers invite your opinion of this book, and inquire whether it will fit into your course as a text book for your pupils.
+
+REVISED EDITION - First edition published last year, immediately adopted by hundreds of schools, which continue using it successfully.
+
+This book is intended to aid in the study of literature. It is generally conceded that the best method is to take up certain literary masterpieces. But how shall a masterpiece be studied? A play of Shakespeare's is before the class. The text-book is provided with an introduction and notes. The introduction gives the date and the sources of the play; the notes explain difficult words and allusions. It is easy to assign lessons on this basis, and very easy to set examinations on it. Yet a class may know introduction and notes thoroughly, and still be far from appreciating or even understanding the play as a piece of literature. For the introduction deals with facts of literary history; the notes with philology, grammar, and manners and customs of the time. This information is valuable, it is indispensable, but it is, after all, only a means to an end, and that end is the appreciation and enjoyment of a literary masterpiece.
+
+The aim of this manual is to facilitate the systematic, careful, and appreciative study of literature as literature. It concentrates attention upon the text itself, not upon editorial explanation or comment. It furnishes means by which the student may ascertain for himself the chief characteristics of the book studied. It acquaints him with the fundamental principles of literary construction, and asks him to decide for himself how far these principles have been observed. Not to present ready-made opinions for his acceptance, but to teach him to see for himself and to judge for himself is the aim throughout.
+
+Further, each book is treated as a type, a representative of a class, so that the study of a few books may open the way to the appreciation of many. The suggestions for comparative study, the collateral reading recommended, all have this object in view, that through the medium of a few volumes the student may gain an outlook upon the world of literature.
+
+Outlines are given for the study of six literary types: in poetry, the epic, lyric, and drama; in prose, fiction, the essay, and the oration. These classes include practically all the books prescribed for the college entrance examinations and those studied in the first years of college work. In most secondary schools the study of literature is pursued for several years, three or four classics being taken up each year. This manual is not intended to supplant any of the texts used, but to supplement them, to be used with them as a guide.
+
+The lists of critical terms given are intended to aid the student to say exactly what he means. It is often the case that a beginner feels the beauty or power of a masterpiece as fully as an older reader, but, lacking words to express himself, he falls back upon a general term like "fine," which may mean any one of twenty things. Yet if the terms are at hand, he can select the one he wants; he understands the meaning of the words, but they are not a part of his working vocabulary. To supply this lack, carefully selected lists of the commoner critical terms have been provided.
+
+It is not intended that the outlines shall be followed rigidly in every detail. With a certain poem noted for the beauty and variety of its imagery, that section of the outline will be emphasized, the one on character-study, perhaps, abridged. On the other hand, if a class is already able to distinguish the figures of speech, and the poem studied is not noteworthy in this respect, that section of the outline may be omitted. This is, perhaps, only saying that this book does not pretend to take the place of the intelligent teacher.
+
+B. A. H. MILLERSVILLE, PA.
+
+LITERATURE, in the broadest sense, includes all written or printed books. Yet one would hardly speak of an arithmetic as a work of literature. A play of Shakspere's, even though bound in paper covers, is literature, while a city directory, bound in leather, is not. It is necessary to distinguish two classes of books : those which aim merely to give information, and those which move us by their beauty or their power. Books of the latter class are called literature. The arithmetic and other text-books, the directory, encyclopaedia, and other reference works, are books to which we go to find out facts. They are not literature, in the narrower sense of the word. But a novel we read not for facts, but because it is interesting : it holds us by its beauty or power, and therefore it is literature.
+
+As literature appears under various forms, it is divided into several classes. The most obvious division is that of poetry and prose. To define poetry is a task which has puzzled the poets themselves. It is possible, however, to point out some of the essential differences between poetry and prose. In the first place, they differ in form. Poetry is arranged in short lines; these lines usually rime,¹ and, further, the accented syllables are so arranged as to form a regular rhythm : they can be read in a sing-song way. This regular rhythm is called metre. But form alone is not sufficient.
+
+Thirty days hath September,
+April, June, and November.
+
+That couplet has the form of poetry; it has rime and rhythm, but it is not poetry, it is not even literature. The lines merely help one to remember facts : there is neither beauty nor power in them. Now take two lines of true poetry:
+
+Night's candles are burnt out, and jocund day
+Stands tiptoe on the misty mountain tops.
+— Romeo and Juliet.
+
+Here is not only form, but beauty. What is the fact told in these lines? That it is morning. That is the prose way of saying it. But the poet sees things imaginatively : to him the paling stars are the dying candles of night, and day is a living being, merry and eager.
+
+¹ Formerly, but less correctly, spelled rhyme. See the Century, Standard, or International Dictionary.
+
+Instead of stating a plain fact, he appeals to our imagination with pictures. Poetry, then, differs from prose in being more imaginative.
+
+Again, take a familiar line from Gray's "Elegy":
+The lowing herd winds slowly o'er the lea.
+
+There is one word in that line, "lea," that would not be used in prose. Nor would we find "o'er" for "over." Poetry, then, has a slightly different vocabulary from prose.
+To sum up, poetry differs from prose in possessing metre, and usually rime, in using a slightly different vocabulary, and—most important of all—in being more imaginative.
+
+Poetry is divided into classes, of which the chief ones are narrative, lyric, and dramatic. Narrative poetry is defined by its name; it is usually story-telling poetry, dealing with acts and events. If these events are of a lofty nature, and the poem extends to a considerable length, such as Homer's Iliad, it is called an epic. If the poem is short and spirited, such as Longfellow's "Skeleton in Armor," it is called a ballad.
+
+In narrative poetry the writer relates the deeds of other men. But if a poet writes of himself, telling his own thoughts and feelings, and thus dealing with emotions instead of action, the result is lyric poetry. Lyric poetry may be described as feeling expressed in musical words. This feeling may be patriotic, as in our national hymn; it may be a feeling of grief, of love, of delight in the beauty of nature; the essential thing is that the writer puts his own feelings into verse.
+
+Dramatic poetry is that which is written to be acted. It is like narrative poetry in that it deals with acts and events.
+
+In a similar way prose is divided into certain general classes. If an author tells of the deeds of other men, he is writing history, or possibly a historical novel. If the characters are wholly imaginary, he is writing fiction. If he presents his own opinions and judgments in prose, the result is an essay. And finally, if what he writes is intended, not to be read, but to be spoken—just as a drama is written to be acted—we have oratory. These six classes, narrative, lyric, and dramatic poetry, fiction, the essay, and the oration, include nearly all books that come within the definition of literature.
+
+For a discussion of literature in general, with helpful suggestions as to what and how to read, see Ruskin's Sesame and Lilies, Part I; Frederic Harrison's The Choice of Books (Macmillan); Emerson's essay on "Books," in Society and Solitude; James Baldwin's Book-Lover (McClurg) and Van Dyke's Counsel upon the Reading of Books (Houghton).
+
+OUTLINE FOR THE STUDY OF NARRATIVE POETRY
+
+(See Specimen Study, Part II, p. 73)
+
+I. Mastery of Subject-matter
+
+THE first step in the study of a literary work of any kind is to gain an idea of it as a whole. This can best be done by a single rapid reading, at a sitting, if possible. Do not stop to look up words nor to refer to the notes; you can understand enough of the work to gain a general idea of it. This done, the book should be read a second time, more carefully, in connection with the notes. These notes are not to be memorized; they are intended merely to help one to understand the text. After the work has been read in this way, take up the questions in the outline and answer them, with reference to the text when necessary. This mastery of subject-matter, the comprehension of the work as a whole, must precede any study of parts or of particular characteristics.
+
+II. Classification
+
+The chief classes of narrative poetry are :
+(a) The Epic, a long poem treating a heroic theme in a dignified style, as Paradise Lost.
+(b) The Metrical Romance, a long story in verse, less lofty in theme and style than the Epic; often a love-story. Examples : Tennyson's Princess; Scott's Marmion.
+(c) The Metrical Tale, resembling the Metrical Romance, but briefer; sometimes of a humorous nature. Examples: Chaucer's Canterbury Tales; Tennyson's "Enoch Arden"; Burns's "Tam O' Shanter."
+(d) The Ballad, a short and spirited narrative poem in a simple style. Examples : Longfellow's "Wreck of the Hesperus"; Coleridge's "Ancient Mariner."
+(e) The Descriptive Poem. This deals with objects instead of events. There are often characters in it as in a tale, but there is little or no action. Example, Goldsmith's "Deserted Village." If the poem deals with rural life, it is called a Pastoral. Examples : Burns's "Cotter's Saturday Night," and Whittier's "Snow-Bound."
+(f) The Allegory, a poem aiming to teach a lesson, in which the characters and events have a double significance. Examples : Spenser's Faerie Queene, and Dryden's "Absalom and Achitophel."
+(g) The Mock-Epic, or mock-heroic poem, a form of parody in which the grand style of Epic poetry is applied to events of a trivial nature. Example, Pope's "Rape of the Lock."
+Sometimes a poem exhibits characteristics of more than one of these classes. Lowell's "Vision of Sir Launfal" is a tale, yet it contains so much description that Stedman calls it a landscape poem. An allegory may be an epic, as Dante's *Divine Comedy*, or may be a metrical romance, as *The Faerie Queene*.
+To which of the foregoing classes does the poem studied belong ?
+
+III. Purpose
+
+A narrative poem may be written merely to entertain with an interesting and beautifully told story; it may elevate the mind by telling of heroic deeds; it may set forth the author's opinions upon some important subject; it may be written to enforce a moral, or to teach a spiritual truth.
+(a) What purpose or purposes does this poem serve?
+(b) If the poem aims to set forth the author's beliefs, or to teach a lesson of any kind, state this purpose in your own words.
+(c) Is this purpose definitely stated, or merely implied? If stated, where?
+
+IV. Plot
+
+(a) Is the story perfectly clear, or are there parts that you did not understand at the first reading? Where?
+(b) Considered simply as a story, is it interesting? Is there any place where the interest flags?
+(c) The climax of a narrative is the place where the interest is at the highest pitch. Where is the climax here?
+(d) Is the story probable, as a whole? Are any of the incidents improbable? If so, does this improbability make the poem less enjoyable?
+(e) Has it unity? A plot has unity when it deals with a single event, or with a series of events so closely related that they form one story.
+(f) An episode is an incident told at some length, perhaps several pages, which does not have any direct connection with the main story. In giving an outline of the plot, episodes would be omitted. They are most frequent in Epic poetry. Are there any episodes here? Do they affect the unity of the poem? What do they add, or why were they introduced at all?
+(g) Is the plot original? If borrowed, what was the source? If possible, read the original story. Did the writer add to this, or alter it? What was the purpose of the changes?
+
+V. Characters
+
+(a) Are there many? i.e. many mentioned by name? Are they clearly distinguished, or do the minor characters talk and act about alike?
+(b) Lifelike? Vividly drawn? Can you see them?
+(c) Does the author describe in detail the appearance of his characters?
+(d) Is there a hero? What are the chief traits of his character?
+(e) Is there a heroine? What are her chief charac- teristics?
+(f) Do men or women occupy the chief place?
+(g) Are there any supernatural characters, — ghosts, angels, etc.? Is their use effective?
+
+Characters may be stationary or developing. If stationary, they may suffer changes in fortune, etc., but their natures remain the same. If developing, the ex- periences they go through change their characters, so that they become more serious, more tolerant, more generous, etc., than at the beginning.
+
+(g) Are the characters stationary or developing? If developing, do you think the experiences they go through are adequate to produce such changes?
+
+VI. Setting
+(a) Where are the events told supposed to occur? At what time in history, approximately?
+(b) Are the time and place or places definitely stated, or do you infer them from allusions?
+(c) Is there much description in the poem? Are the descriptions detailed, or does the author usually mention only one or two particulars about a scene or an object? Point out a description of each kind.
+(d) Is there much description of nature? Select the best description of a landscape, a sunrise or a sunset, a bird or an animal. Are the descriptions of nature accurate? Does the author make them more vivid by personifying objects, speaking of "hungry waves," "timid flowers," etc.?
+(e) Does the author introduce objects, expressions, customs, or details of costume peculiar to the place described? This is called local color.
+(f) Are the descriptive passages kept secondary to the story, or are there places where the author seems more interested in description than anything else, giving more than necessary?
+(g) Study carefully several of the longer descriptions to answer the following questions:
+Does the author usually give the form of objects? The color?
+Does he use general terms, as calling the sky "red," or is he specific, as calling it "a deep crimson"? Does he usually mention sounds in his descriptions? Odors? Is there usually motion in his pictures? Quote passages to illustrate answers. (h) Does the author's strength lie chiefly in narration, in description, or in character drawing?
+
+VII. Contrast
+
+Contrast is one of the most effective devices in art. It may be in the plot, as where a defeat is closely followed by a victory; or in character, two persons being introduced, one just the opposite of the other in certain respects; or there may be a contrast between the same person's actions on different occasions; there may be contrast in the descriptions; and there may be contrast in the mood or tone of the poem, as where a tragic passage is followed by one in a lighter or even a humorous vein. Point out, if possible, an example of each. Note any other ways in which contrast is used.
+
+VIII. Style
+
+A. Style in General
+
+1. Are there pathetic passages? Where? Is there humor in the poem? Where? Is the humor quiet or broad?
+2. Select from the following list the word or words that best describe the style of the whole poem. If none of these words apply, suggest others.
+Clear, direct, concise;
+Obscure, tedious, verbose;
+Fresh, natural;
+Awkward, stiff, harsh;
+Melodious, musical, sonorous.
+
+3. Are there any parts of the poem you would de- scribe as:
+Graphic, animated?
+Earnest, dignified, grand, sublime?
+Strong, intense, impassioned?
+Delicate, brilliant?
+Give reference to passages where found.
+
+B. Diction
+
+1. Select the two or three terms from this list, or of your own choosing, that best describe the language of the poem:
+Simple, colloquial, idiomatic;
+Elevated, polished, ornate (over-ornamented);
+Smooth, strong, terse, elliptical.
+2. Is the language different from that of prose? Markedly so? Give examples of poetic diction, — exexpressions peculiar to poetry, as "oft" for "often," "vasty deep" for "ocean," etc.
+3. Are there examples of Biblical expressions?
+
+C. Figures of Speech
+
+Select several pages for careful study to answer the questions given below. For definitions and examples of figures of speech, see Appendix A, p. 108.
+1. Is the poem notable for a profusion of figures of speech? Which kind of figure is most common?
+2. Does the author use the simile? the metaphor? personification? metonymy? Is the Homeric simile found? Give examples of each.
+3. Are many of the figures new, or are they familiar, like "red as a rose," "black as night," etc.? Give examples of original figures if found.
+
+IX. Metre
+
+(a) What is the metre of the poem? (See Appendix B, p. 111.) The metre of the great Epic in English is iambic pentameter; other narrative poetry is sometimes written in this metre, but more frequently in stanzas.
+(b) Are there any variations from the normal metre, such as substitution of other feet, or changes in the stanza-form? (For variations in iambic pentameter, see Dramatic Poetry, Sec. VIII, p. 35.) What is the purpose of these changes?
+(c) Are any parts of the poem written in an entirely different metre, as the lyrics in The Princess? What metre is used here? Why is the new form introduced?
+(d) Write out the scansion of twenty lines.
+
+X. Characteristics of Author
+
+With very few exceptions, authors put their own personality into their works, so that it is possible to infer from any book some of the characteristics of the man who wrote it. In answering the questions below, do not expect to find indications of all or of many of the characteristics enumerated. Some will probably be apparent at once; others will disclose themselves after a little study.
+
+(a) Judging from the book alone, would you infer that the author was:
+Earnest, sympathetic, broad-minded, philanthropic ?
+Flippant, cynical, prejudiced, misanthropic ?
+Cheerful, optimistic? or grave, melancholy, pessimistic ?
+Independent, original, a reformer ?
+Positive in his opinions ?
+Conventional, conservative? democratic?
+A man of high ideals ? patriotic ? devout ?
+In each case tell upon what passages you base your reply.
+(b) Do his writings indicate that he possessed:
+A vivid imagination ?
+A keen sense of humor ?
+A philosophical turn of mind, shown in a tendency to generalize, or to seek for causes ?
+(c) Was he a man who had evidently had a wide experience of life ?
+A man of much learning, scholarship ?
+A man of broad culture, familiar with music, painting, literature, etc. ?
+A lover of nature ?
+What were his favorite books ?
+(d) Apart from his fame as an author, would you like to know him ? To have him for a friend ?
+(e) Write a theme upon the character of the author as shown in his works, quoting passages to illustrate your points.
+
+XI. Memory Passages
+
+(a) What do you consider the finest parts of the poem? Select a passage of fifteen or twenty lines and memorize it.
+(b) Are there single lines or couplets, notable for their beauty or power, which may serve as quotations? Select, and memorize some of these.
+
+XII. Life of Author
+
+(a) Read a brief biography of the author. For British authors, the “Dictionary of National Biography” is the standard work of reference. Fuller treatment is given in the volumes of the English Men of Letters series (Harpers), and the Great Writers series (W. Scott). For American authors, consult the American Men of Letters series (Houghton). If possible, get a volume of his letters and read them: the true nature of a man usually comes out in his letters.
+(b) What circumstances in his life seem to have influenced his literary work?
+(c) Compare the characteristics of the man as given in his biography with your inferences drawn from his works.
+
+XIII. Critical Opinion¹
+
+(a) Read several of the best criticisms of this poem. Compare their statements with the results obtained by your study under Sections IV, V, VI, and VIII.
+(b) Consult a standard history of literature to ascertain the position of this author, how he ranks with others of his age, and how this poem compares with other poems of the same class. Books that will be useful here are, for English literature, Saintsbury's Elizabethan Literature (Macmillan), Gosse's Eighteenth Century Literature (Macmillan), Perry's Eighteenth Century Literature (Harpers), Stedman's Victorian Poets (Houghton), Saintsbury's Nineteenth Century Literature (Macmillan). For American literature, consult Stedman's Poets of America (Houghton), Richardson's American Literature (Putnam), Barrett Wendell's Literary History of America (Scribners).
+
+¹ Sections XIV and XV are intended for advanced classes.
+
+XIV. Comparative Study
+
+Choose another narrative poem of the same class, if possible one already studied or read, and run over it to compare it with this one in the chief points of the outline. Note particularly points in which there is a marked difference. Is this due to : the time in which the authors wrote? their subjects? or are the differences due to the men themselves? The comparison of the two poems might be made the subject of a theme.
+
+XV. Collateral Reading
+
+(a) Epic Poetry. Milton's Paradise Lost and Paradise Regained stand alone in English as examples of the great Epic. The Epic poems of other literatures are accessible in translations. Homer's Iliad has been translated in verse by Pope, Chapman, Lord Derby, and Bryant; Vergil's Æneid by Dryden and by Conington; Dante's Divine Comedy by Cary, by Longfellow, and by Norton.
+
+(b) Other Forms of Narrative Poetry. Some of the best examples have already been mentioned in Section II. To this list may be added Tennyson's Idylls of the King, William Morris's Earthly Paradise, Keats's "Isabella" and "The Eve of St. Agnes," and Matthew Arnold's "Sohrab and Rustum." Extended lists of narrative poems, with a discussion of the characteristics of this class of poetry, may be found in Baldwin's English Literature (B. F. Johnson), or in Arnold's Manual of English Literature (Ginn).
+
+OUTLINE FOR THE STUDY OF LYRIC POETRY
+
+(See Specimen Study, Part II, p. 79)
+
+I. Mastery of Subject-matter
+
+READ the poem or poems to be studied. It is best to read it first as a whole, not stopping to refer to notes. Then read it a second time, referring to notes and looking up new words. When the meaning of the poem is clear, take up the questions following.
+
+II. Classification
+
+By definition, lyric poetry deals with emotion. As this emotion may be of various kinds, lyrics are divided into various classes, as follows :
+Love Lyric, as Burns's "Highland Mary," Browning's "One Way of Love."
+Patriotic Lyric, as Key's "Star-Spangled Banner," Thomson's "Rule Britannia."
+Sacred Lyric, as Milton's "Ode on the Nativity," Tennyson's "Crossing the Bar."
+Lyric of Grief, as Hood's "Bridge of Sighs," Shelley's "Adonais."
+Lyric of Supplication, as Wordsworth's sonnet "To Sleep"; Shelley's "To the Night."
+Lyric of Praise, which may celebrate an individual, as Matthew Arnold's sonnet on Shakspere, or a class, as Whittier's "The Ship Builders."
+Reflective Lyric, as Milton's sonnet on his blindness, George Eliot's "Choir Invisible."
+Descriptive Lyric, as Wordsworth's "Daffodils," Byron's "She Walks in Beauty."
+Battle Lyric, as Campbell's "Battle of the Baltic," Scott's "Pibroch of Donuil Dhu."
+Lyric of Fancy, as Ariel's songs in The Tempest, Keats's "Ode to a Nightingale."
+Convivial Lyric, as Burns's "Rattlin', Roarin' Willie," Keats's "The Mermaid Tavern."
+Humorous Lyric, as Burns's "Duncan Gray," Carey's "Sally in Our Alley."
+Society Verse (Vers de Société), lyrics which treat of society themes in a graceful way, as Holmes's "The Last Leaf," Dobson's "A Dead Letter."
+
+A lyric may combine feeling of several kinds : "High-land Mary" expresses grief as well as love, but one feel-ing usually predominates.
+
+(a) To which of the foregoing classes does the poem studied belong?
+
+Lyrics are also classified in another way, according to their form, as Songs, Odes, and Sonnets. The Song includes the greater number of lyric poems. It is not restricted to compositions intended to be sung, but includes most short lyrics, except the Sonnet. It is characterized by brevity, and by simplicity in thought and language. Examples are Collins's "How Sleep the Brave," Scott's "Hunting Song," and Ariel's songs in The Tempest.
+The Ode is longer than the Song, is more enthusiastic or exalted in mood, usually has a complicated metrical structure, and deals progressively with a dignified theme. Examples are Milton's "Ode on the Nativity," Dryden's "Alexander's Feast," and Wordsworth's "Intimations of Immortality."
+The Sonnet is a poem of fourteen lines, written in iambic pentameter, and usually riming in a fixed order. (See Appendix B, p. 111.) It deals with a single idea or sentiment. Examples are the sonnets of Shakspere.
+(b) Does the poem studied belong to any of the foregoing classes?
+
+III. Central Theme
+
+Every lyric poem has a central thought. It is built up about some emotion as a core. The nature of this emotion was roughly indicated by the classification under Section II.
+It now remains to state this emotion, or central theme, more definitely. A love lyric may express a mother's love for her child; a patriotic lyric may have for its theme patriotism conquering the fear of death, and so on.
+(a) State definitely the central theme of the poem.
+(b) Has it a secondary theme? If so, state it.
+(c) Does the poem possess unity?
+
+IV. Mood
+
+The emotion underlying a lyric poem may be treated in various ways. A love lyric may be light and graceful, or deep and tender, or sad.
+Select one or two words which best describe the mood of the poem, or choose adjectives of your own if none of these apply:
+Tender, dreamy, sentimental, vague;
+Strong, intense, passionate, extravagant;
+Earnest, grave, sad, tragic, morbid;
+Light, fanciful, cheerful, reckless;
+Serene, exalted, triumphant, spiritual, solemn;
+Humorous, witty, satirical, pathetic, dramatic.
+Is contrast used, part of the poem being in a different mood from the rest?
+
+V. Movement
+
+Read the poem aloud and decide which of the following terms best express its movement:
+Smooth, slow, dignified, stately, solemn;
+Light, swift, impetuous, rippling, rollicking;
+Easy, graceful, spirited, powerful, regular;
+Varied, irregular, uneven, halting.
+
+VI. Sound
+
+(a) As read aloud, is it pleasing to the ear? Is it musical?
+(b) Is the music notable for its sweetness, its power, or its delicacy?
+(c) Are there any harsh words or lines? Can you see why they are used?
+(d) Are there any imitative words, where the sound is an echo to the sense, such as "hiss," "puff," etc.? Are there lines whose movement is imitative, suggesting the thought?
+(e) Are there examples of alliteration, i.e. words close together beginning with the same sound?
+(f) Does the author use the refrain, i.e. the repetition of a word or a line at the end of each stanza? If a line is repeated, with slight changes, as the next line, it is called a repetend. Example:
+
+But our thoughts they were palsied and sere,
+Our memories were treacherous and sere.
+
+Does this occur?
+
+VII. Style
+
+A. Diction
+Select the two or three terms from this list that best describe the language of the poem :
+Simple, colloquial, idiomatic ;
+Elevated, polished, ornate (over-ornamented) ;
+Smooth, strong, terse, elliptical.
+
+B. Style in General
+1. What terms best describe the style of the poem :
+Clear, direct, graphic, animated?
+Obscure, awkward, verbose (too many words) ?
+2. Is it characterized by:
+Freshness, naturalness, originality?
+Strength, intensity, passion?
+Delicacy, variety, brilliancy?
+Grace, dignity, grandeur?
+Beauty of sentiment? Beauty of description?
+Profusion of imagery?
+
+VIII. Structure
+
+(a) What is the stanza form? The rime order? The metre? (See Appendix B, p. 112.)
+Lyric poetry is varied in metrical structure. It is often impossible to reduce the song and the ode to any definite metrical scheme.
+(b) Are there any marked changes in the metre? Can you see why they were made, i.e. what effect is produced?
+
+IX. Characteristics of Author
+
+This question should be left until a number of poems by the same author have been studied; then taking them as a group, turn to the outline for Narrative Poetry, Sec. X, p. 14, and answer the questions given there.
+
+X. Memory Passages
+
+Short lyrics should be committed entire; with poems like Wordsworth's "Intimations of Immortality," the best stanzas may be selected for memorizing.
+
+XI. Life of Author
+
+As the lyric, more than any other form of poetry, expresses the author's personality, a knowledge of the man's life is more necessary here. See suggestions for study under Narrative Poetry, Sec. XII, p. 16.
+
+XII. Critical Opinion ¹
+
+(a) Read several of the best criticisms of this poem. Compare their statements with the results obtained by your study under Sections IV, V, VI, and VIII.
+¹ Sections XII and XIII are intended for advanced classes.
+
+(b) Consult a standard history of literature to ascertain the position of this author, how he ranks with others of his age, and how this poem compares with other poems of the same class. For a list of books that will be useful for this purpose, see the references given under Narrative Poetry, Sec. XIII, (b), p. 16.
+
+XIII. Comparative Study
+
+Select a group of lyrics by another author, such as the lyrics in Tennyson's Princess, or Shakspere's lyrics, or Poe's shorter poems, and compare them with the group just studied, according to the directions given under Narrative Poetry, Sec. XIV, p. 17.
+
+XIV. Collateral Reading
+
+(a) Collections of Lyric Poetry. Palgrave's Golden Treasury, First Series (Macmillan), contains the best lyric poetry written during three centuries of English literature. It is a book which every student of literature should own. The Golden Treasury, Second Series, is selected from writers of the Victorian period. Other valuable books are Carpenter's English Lyric Poetry (Scribners), and Schelling's Elizabethan Lyrics (Ginn). Both volumes contain selected poems, with scholarly introductions and notes.
+(b) Individual Authors. Nearly all the great English poets have written lyrics. There are some, however, who stand out as distinctively lyric poets. Such are Burns and Herrick and Shelley. Other writers who have attained high eminence in lyric poetry are Tennyson, Swinburne, and Poe. The great sonnet writers in English literature are Shakspere, Milton, Wordsworth, and Dante G. Rossetti, and E. B. Browning. For recommended reading in these authors, see Appendix C, p. 123.
+
+OUTLINE FOR THE STUDY OF DRAMATIC POETRY
+
+(See Specimen Study, Part II. p. 81)
+
+I. Mastery of Subject-matter
+
+THE first step in the study of a literary work of any kind is to gain an idea of it as a whole. This can best be done by a single rapid reading, at a sitting, if possible.
+Do not stop to look up words nor to refer to the notes; you can understand enough of the work to gain a general idea of it.
+This done, the book should be read a second time, more carefully, in connection with the notes. These notes are not to be memorized; they are intended merely to help one to understand the text.
+After the work has been read in this way, take up the questions in the outline and answer them, with reference to the text when necessary.
+This mastery of subject-matter, the comprehension of the work as a whole, must precede any study of parts or of particular characteristics.
+
+II. Classification
+
+Plays are divided into the following classes: Tragedy, in which the ending is sad; the principal characters meet disaster or death. Example, Macbeth. Comedy, presenting a cheerful or humorous view of life. Example, As You Like It. Reconciling Drama, which, as the name implies, unites some of the characteristics of both the above. The tone is prevailingly serious, but there are scenes of comedy; a tragic ending is threatened, but averted, and the play ends happily. Example, The Merchant of Venice. To which class does this play belong?
+
+III. Plot
+
+Plots may be simple or complex. The simple plot is illustrated in Julius Cæsar. This play deals with the contest between Cæsar's friends and Cæsar's enemies. All the characters are included in these groups, and the whole plot deals with the strife between them. The complex plot is illustrated by The Merchant of Venice. Here there is a main story, that of the pound of flesh; also a secondary story, the elopement of Jessica. The episodes of the caskets and of the rings still further complicate the main action. If the plot is not a single story, but several stories told side by side, it is called complex.
+
+(a) Is the plot of this play simple or complex? If complex, how many threads, or separate stories, are there?
+(b) Are all the events probable? If not, does the improbability make the play less enjoyable?
+(c) Is the story of the play easy to follow, or is it sometimes confusing? Plays are written to be acted, not read, and are more easily understood when seen on the stage.
+
+(d) Source. Is the plot of the play original or borrowed? If possible, read the original story. Shakspere took the materials for his Greek and Roman plays from Plutarch's Lives; his English historical plays are largely based upon Holinshed's Chronicle. Both books are accessible. Morley's edition of the plays, in Cassell's National Library, gives the source of each play in the appendix.
+
+(e) What alterations have been made in the original story? What additions? Why were these changes made? (This may form the subject of a theme.)
+
+IV. Setting
+
+(a) At what time in history are the events of the play supposed to occur? How much time do they occupy?
+(b) At what place or places is the action carried on? Are these places real or imaginary?
+(c) In minor details of costume, manners, etc., is the play true to history? If not, does this affect its merit as a play?
+(d) Is there much description? Select the best description of a person; of a scene or place.
+(If a fuller study of description is desired, see ques-tions under Narrative Poetry, Sec. VI, p. 10.)
+
+V. Characters
+
+(a) Who is the central figure of the play? What characters are associated with him, forming a group? Is there another group of characters? Who is the cen-tral figure here? How are these groups connected, thus giving unity to the plot?
+(b) Are the characters clearly distinguished, or do you have some trouble in keeping them apart?
+(c) Are they lifelike: do they stand out in your mind as real people? Are they vividly drawn: can you see them?
+(d) Do men or women occupy the chief place?
+Ruskin says: “Shakspere has no heroes; he has only heroines . . . The catastrophe of every play is caused always by the folly or fault of a man; the redemption, if there be any, is by the wisdom and virtue of a woman.”
+Sesame and Lilies: Of Queens' Gardens.
+Is this true of the play read?
+
+(e) Are there any humorous characters in the play? Name them.
+
+(f) Study of Principal Characters. Take up the chief personages, one at a time, and follow them through the play to discover their chief traits of character. For example, in *Julius Caesar*, when Brutus first appears he does not care to witness the sports, and says he is “not gamesome”; this indicates a sober disposition. He does not give an answer at once to Cassius’s urging, showing him to be deliberate. Go through the play in this manner, noting every time the person acts, speaks, or is spoken of, and see whether any trait of character is thereby shown. At the end make a summary of the traits found. This is one of the most stimulating parts of the study. One or two lessons should be given to each of the principal characters. Characters may be stationary or developing. If stationary, they may suffer changes in fortune, etc., but their natures remain the same. If developing, the experiences they go through change their characters, so that they become more serious, more tolerant, more generous, etc., than at the beginning.
+
+(g) Are the characters stationary or developing? If developing, do you think the experiences they go through are adequate to produce such changes?
+
+VI. Structure
+
+Purpose of Scenes. Every scene in a well-written play serves a definite purpose. It may give us the situation, making us acquainted with facts necessary to comprehend what is to follow; it may merely carry forward the action, i.e., continue the story; it may serve to indicate charac- ter; it may be introductory, preparing us for a scene to follow; it may serve as a contrast to a preceding scene; or it may deepen the effect of a preceding scene, as in Julius Cæsar the murder of Cinna shows to what a frenzy the mob had been wrought by Antony's speech.
+(a) Go through the play and state briefly the purpose or purposes of each scene.
+
+(Questions *b* to *d* inclusive apply to tragedy only.)
+The essential element in tragedy is conflict. The chief character wishes to accomplish some end; he is op- posed by another, or by something within himself, or by fate, and so a conflict ensues.
+
+(*b*) Who is the principal character? What does he wish to accomplish? What is his motive for this? This motive is called the exciting force of the tragedy.
+(*c*) Where is the climax of the play — the point where interest is at the highest pitch?
+
+In the first half of the play the chief character advances toward the end he has in view; this is called the "rising action," and continues to the turning-point, where he is nearest success.
+(d) Where does the "rising action" begin? (It is usually where the exciting force enters.) Where is the turning-point? (Note that this is not the climax.)
+After the turning-point, the opposing force proves stronger, and the chief character is gradually borne down by it. This is called the "falling action," and continues to the catastrophe, where the chief character meets ruin or death.
+(e) Where is the "falling-action" first manifest, i.e., with what event does the decline begin?
+Dramatic foreshadowing is the letting fall of hints to prepare us for a coming event, usually of a tragic nature, as Calpurnia's bad dreams before the murder of Cæsar.
+(f) Look through one or two scenes immediately preceding an important event, and see if there are any hints of it.
+
+VII. Contrast
+
+(a) Contrast is one of the most effective devices in art. It may be in the plot, as where a defeat is closely followed by a victory; or in character, two persons being introduced, one just the opposite of the other in certain respects; or there may be a contrast between the same person's actions on different occasions; there may be contrast in the descriptions; and there may be contrast in the mood or tone of the poem, as where a tragic pas- sage is followed by one in a lighter or even a humorous vein. Point out, if possible, an example of each. Note any other ways in which contrast is used.
+
+(b) Allied to contrast is the principle of parallelism, or introducing characters or incidents that are similar in many respects. For example, in The Merchant of Venice, Bassanio's wooing is paralleled by Gratiano's; both win their wives by the same lot, both receive rings, and both give them away. This is parallel of incident. Does the play studied contain examples of parallelism, either in incident or character?
+
+VIII. Metre
+
+(For explanation of metrical terms, see Appendix B, p. 112.)
+
+The normal metre of the drama is iambic pentameter, without rime, and hence called blank verse. This is varied in the following ways :
+By varying the place of the cæsura.
+By the substitution of trochaic, spondaic, or pyrrhic feet.
+By the addition of an unaccented syllable at the end of a line, or sometimes following a pause within the line.
+By the addition of a sixth foot, making what is called an Alexandrine line.
+By the use of incomplete lines, usually in dialogue.
+By the use of lines divided between two speakers.
+By the use of rimed couplets, often at the end of a scene.
+By the alternation of end-stopt and run-on lines. (See Appendix B, p. III.)
+By the introduction of lyrics, as Ophelia's songs in Hamlet.
+By the use of prose for certain parts.
+(a) Scan twenty lines, noting the occurrence of any of the points mentioned. What proportion of the lines are run-on?
+(b) Are there any lyrics in the play? What is the metre of these?
+(c) Are any scenes entirely in prose? Why is prose used here? Find a scene in which both prose and verse occur. What is the reason for the change from one to the other? Does it depend upon the speaker, or the nature of the discourse?
+
+IX. Style
+
+(a) Is the language of the play always clear? If obscure, is this due to the words, which are no longer in use, or to the thought, which is not clearly expressed?
+(b) Are there allusions to the Bible, or any echoes of Biblical style in the play?
+(c) Point out examples of poetic diction, i.e., words or phrases that would not be found in prose.
+(d) Is any part of the play written in dialect? What is gained by its use?
+(e) Is there humor in the play? Are any scenes chiefly humorous? What purpose does humor serve in a tragedy?
+(f) Is there pathos? Point out examples.
+(g) Is the style of the play at the same level throughout, or are there places where the author rises to a higher poetic level? Give examples.
+
+X. Memory Passages
+
+(a) What do you consider the finest parts of the play? Select a passage of fifteen or twenty lines and memorize it.
+(b) Are there single lines, or couplets, notable for their beauty or power, which may serve as quotations? Select and memorize some of these.
+
+XI. Life of Author
+
+For a brief life of Shakspere, consult Dowden's Shakspere Primer, Chap. II (Am. Bk. Co.), or Wendell's William Shakspere, Chap. II (Scribners). For a fuller treatment, see the Life, by Sydney Lee (Macmillan). If other books are consulted, be careful to separate fact from tradition. In reading about his life, note particularly the events which influenced his work as a writer of plays.
+
+XII. Critical Opinion
+
+Read what is said of the play in Dowden's Shakspere, His Mind and Art (Harpers), or read the views of critics in the introduction to Rolfe's edition of the play (Am. Bk. Co.), or in the appendix to Furness's Variorum (Lippincott). Compare briefly with the results of your study. What new points are brought out?
+
+XIII. Comparative Study
+
+Choose another play of the same class, if possible one already studied or read, and run over it to compare it with this one in the chief points of the outline. Note particularly points in which there is a marked difference. The comparison of the two plays might be made the subject of a theme.
+
+XIV. Collateral Reading
+
+The careful study of one play makes the reading of others a greater pleasure. There are some of Shakspere's plays which every educated person is supposed to have read. Such are The Merchant of Venice, Hamlet, Macbeth, Romeo and Juliet, King Lear, Julius Cæsar,
+
+Othello, and As You Like It. In addition, the following may be recommended: The Tempest, King Henry IV, King Henry V, Taming of the Shrew, Midsummer Night's Dream, Merry Wives of Windsor, and Winter's Tale.
+
+OUTLINE FOR THE STUDY OF FICTION
+
+(See Specimen Study, Part II, p. 92)
+
+I. Mastery of Subject-matter
+
+Read the story rapidly, not stopping for introduction nor notes. The purpose of this is to gain a knowledge of the plot, and to receive an impression of the book as a whole.
+
+II. Title
+
+The title of a story may name the principal character, as in David Copperfield; or it may suggest the plot, as Kidnapped; or name the scene, as Middlemarch; or the time, as Ninety-Three; or mention some significant object, as The Scarlet Letter; or indicate the nature of the story, whether tragic or the reverse, as The Light That Failed; or the title may be merely fantastic, chosen to arouse curiosity, as Kipling's .007. Sometimes a title serves several purposes: The Last Days of Pompeii gives fiction both place and time; Sentimental Tommy names the chief character and suggests the tone of the story. Modern titles often aim at this suggestiveness, as The Choir Invisible, The End of the Passage, etc.
+What purpose or purposes does the title serve?
+
+III. Purpose
+
+Fiction may be written simply to entertain, as Robinson Crusoe; it may present a historical picture, as Ivanhoe; or teach a moral lesson, as Romola; or advocate a cause, as Uncle Tom's Cabin; or set forth the author's views upon certain subjects, as Meredith's The Egoist; or present a faithful picture of life as it is, as Howells's A Woman's Reason. Many books serve more than one of these purposes, yet one is usually dominant.
+(a) What was the author's purpose in writing this book?
+(b) If the book aims to teach a lesson, state this lesson in your own words. Is this lesson definitely stated in the book, or merely implied? If stated, where? (Read the preface.)
+(c) If the book has a purpose beyond entertainment, is this purpose made too prominent, so that it injures the book as a story?
+
+IV. Plot
+
+(a) Is the story interesting? Does the interest flag at any point? Where?
+(b) Is it probable as a whole? Are any incidents improbable? Would the story be better without them?
+Plots may be simple or complex. The simple plot deals with one character or a single group of characters, and follows their fortunes to the conclusion. This is usually the method of the short story. The complex plot has several groups; the story deals with one, then takes up another, then returns to the first, etc. This is the method of the romance and usually that of the novel.
+
+(c) Is the plot here simple or complex? If complex, how many threads, or stories of different groups? How are these threads united, so that the whole plot is a unit instead of a number of unconnected stories? What characters serve as connecting links?
+
+(d) Would you describe the movement of the story, the way events succeed each other, as slow, rapid, or usual? Point out passages where the movement is slow, where it is rapid. Is it retarded by much description? By the author's stopping to explain his characters?
+
+(e) Does the story progress steadily from the beginning, or does it open with some event, and then in a later
+
+chapter go back and tell what happened before? This is called reverting narration.
+
+(f) Does it rise to a climax, a point where the interest is at the highest pitch? Where is this?
+(g) Does the author employ suspense, breaking off the story at a critical point to take up another group of people? Point out instances.
+(h) Does the author prepare you for important events by letting fall hints beforehand? Give instances.
+(i) Does the story end happily or unhappily? Would you prefer a different ending? What?
+(j) Select the best chapters or the best pages.
+
+V. Characters
+
+(a) Many or few? Did you occasionally get them confused? Too many?
+(b) Drawn from what classes of society? If from several, with which is the author most successful?
+(c) Does the author succeed best with men or women? Successful with children?
+(d) Are the characters lifelike?
+(e) Are they like real people, or are they exceptional, being braver, more fortunate, more beautiful, or more villainous than people usually are in real life?
+(f) Is there any tendency to exaggerate certain traits of character, so making caricatures?
+
+(g) Are any of the characters historical? If so, does the novelist present them in the same light as historians do? This may be made the subject of a theme.
+(h) Can you separate the characters easily into two groups, — good people and wicked people, — or are good and evil traits mingled in the same person, the good people sometimes yielding to temptation, and even the worst characters having some redeeming traits?
+(i) Are the characters consistent, or do they sometimes surprise you by doing something you think they would not do?
+Characters may be stationary or developing. If stationary, they may suffer changes in fortune, etc., but their natures remain the same. If developing, the experiences they go through change their characters, so that they become more serious, more tolerant, more generous, etc., than at the beginning.
+(j) Are the characters stationary or developing? If developing, do you think the experiences they go through are adequate to produce such changes?
+There are two methods of characterization: the dramatic and the analytic. In the dramatic we form our opinions of the characters from what they do and say; in the analytic method, the author comments upon the characters, explaining their motives, etc.
+(k) Which method is usually employed here? Most authors combine the two. Point out examples of char-acterization by each method.
+
+(l) Who is the hero? What are the chief traits of his character, the things for which you admire him? Who is the heroine, and what are her chief traits?
+
+(m) In general, what qualities or traits of character does the author represent as most admirable? What do you think his ideal man would be like? Which of his characters comes nearest this? This may be made the subject of a theme.
+(n) Are there any supernatural characters, as ghosts, etc.? Is their use effective, or would the story be better without them?
+(o) Do men or women occupy the chief place in the story?
+
+(p) In the older type of stories, the author used to call up all his characters in the last chapter and say a few words about the final fortunes of each one. Realistic fiction — that which aims to present life as it is — usually omits this general dismissal at the close. Which method is followed here?
+
+VI. Classification
+
+Fiction includes the romance and the novel. In the romance the incidents are often improbable or unusual;
+
+the chief characters are not ordinary people; the chief interest is in the plot: you read it for the story. In the novel the incidents are probable, the characters taken from every-day life, and you are interested in the characters as much as in the plot.
+Is this a romance or a novel?
+
+VII. Description
+(a) Are there any long passages of description? Do they interfere with the progress of the story? Were you tempted to skip them?
+(b) Is there much description of nature? Did you like it? Is it accurate? Select the best description of a landscape, a sunrise, or a sunset.
+(c) Does the author introduce objects or details of costume, etc., peculiar to the locality he is describing? This is called local color.
+(d) Sometimes description is used for dramatic background, as when a fight takes place during a storm, or lovers meet by moonlight; the surroundings harmonizing with the action, or sometimes contrasting with it. Are there examples of this?
+
+1 In the old romance, of Scott and Dumas, the characters are usually types: the soldier, the priest, the noble, etc., embodying the characteristics of a class, but not sharply individualized. In the modern romance, of Stevenson, the characters are individualized.
+In describing people, various methods may be used: Exaggeration of some particular trait or feature; giving a character some peculiarity, and always mentioning this when the character appears, so that it becomes a means of identifying him.
+Enumeration: mentioning many details of appearance, dress, manners, etc.
+Selected details: mentioning only two or three details, but these so well chosen that you have a clear picture of the person.
+(e) Note where the principal characters first appear, and see which method is followed in describing them.
+(f) Does the author's strength lie chiefly in narration, in character drawing, or in description?
+(If a fuller study of description is desired, other questions will be found under Narrative Poetry, Sec. VI, p. 10.)
+
+VIII. Contrast
+
+Contrast is one of the most effective devices in art. It may be in the plot, as where a defeat is closely followed by a victory; or in character, two persons being introduced, one just the opposite of the other in certain respects; or there may be a contrast between the same person's actions on different occasions; there may be contrast in the descriptions; and there may be contrast in the mood or tone of the story, as where a tragic passage is followed by one in a lighter or even a humorous vein. Point out, if possible, an example of each. Note any other ways in which contrast is used.
+
+IX. Style
+
+A. Style in General
+
+1. Does it possess individuality, i.e. is it markedly different from that of other writers, so that you could recognize a book by this writer if you did not know who wrote it?
+2. Does the author have the power of making epigrams, i.e. short, striking sentences, full of meaning, that may serve as quotations ? Select and memorize some of these.
+3. Is there any humor? Is it quiet or broad? Is it one of the strong points of the book? Give examples.
+4. Are there pathetic passages? Are they affecting? Select the best. Is pathos one of the strong points of the book?
+5. Would you describe the style as:
+Clear, direct, animated, brilliant?
+Balanced, stiff, artificial, bookish, dull?
+Eccentric, confused, disjointed, obscure?
+Quote passages in illustration, and say which of these qualities are characteristic of the style, which are occasional.
+
+6. Of the three chief qualities of style, clearness, force and beauty, which is most notable in this book?
+
+B. Diction
+
+1. Does the author use any words that are unfamiliar? Many? Give examples.
+2. Is dialect used? Is it hard to understand? What is gained by its use?
+3. In the dialogues, do the characters talk like ordinary people, or is the conversation rather stiff and bookish ? Or are they too clever, always saying bright things ?
+4. Which of these terms best describe the diction :
+  Simple, idiomatic, colloquial?
+  Polished, elevated, dignified?
+  Terse, vigorous, picturesque?
+
+(If a fuller study of style is desired, see questions under Essay, Sec. V, p. 58.)
+
+X. Characteristics of Author
+
+With very few exceptions, authors put their own personality into their works, so that it is possible to infer from any book some of the characteristics of the man who wrote it. In answering the questions below, do not expect to find indications of all or of many of the characteristics enumerated. Some will probably be apparent at once, others will disclose themselves after a little study.
+
+(a) Judging from the book alone, would you infer that the author was :
+Earnest, sympathetic, broad-minded, philanthropic?
+Flippant, cynical, prejudiced, misanthropic?
+Cheerful, optimistic ; or grave, pessimistic ?
+Independent, original, a reformer ?
+Conventional, conservative ?
+A man of high ideals? patriotic? devout?
+In each case tell upon what passages you base your reply.
+
+(b) Do his writings indicate that he possessed :
+A vivid imagination?
+A keen sense of humor?
+A philosophical turn of mind, shown in a tendency to generalize, or to seek for causes?
+
+(c) Was he a man who had evidently had a wide ex-perience of life ?
+A man of much learning, scholarship ?
+A man of broad culture, familiar with music, paint-ing, literature, etc. ?
+A lover of nature ? What were his favorite books ?
+
+(d) Apart from his fame as an author, would you like to know him? To have him for a friend?
+(e) Write a theme upon the character of the author as shown in his works, quoting passages to illustrate your points.
+
+XI. Life of Author
+
+See Narrative Poetry, Sec. XII, p. 16.
+
+XII. Critical Opinion
+
+Read one or two good critical articles discussing this author. Lists of such articles are given in Clark's English Prose Writers (Scribners). Consult a standard history of literature to learn the historical importance of this writer; how he ranks with others of his time; how he compares with other great novelists. See references under Narrative Poetry, Sec. XIII, b, and add the following: The Development of the English Novel, Cross (Macmillan), and The English Novel, Raleigh (Scribners). The latter book follows the history of fiction only to 1814. The Evolution of the English Novel, Stoddard (Macmillan) is a recent book of value in the study of fiction.
+
+XIII. Comparative Study
+
+Choose a story recently read, if possible, one of a different type, as a novel instead of a romance, and go over it to compare with this in the chief points of the outline, noting particularly where there are marked differences. Are these due to the time in which the men wrote, the subject, the nature of the story, — whether romance or novel, — or to differences in the authors? This comparison may be made the subject of a theme.
+
+XIV. Collateral Reading
+
+The present is the age of the novel as truly as the Elizabethan period was the age of the drama. The student of literature should read at least one book by each of the masters of English fiction. Defoe, Goldsmith, Jane Austen, Scott, Dickens, Thackeray, George Eliot, R. L. Stevenson, Rudyard Kipling; and Cooper, Hawthorne, Poe, and W. D. Howells may be mentioned as a suggestive list. For recommended readings in these authors, see Appendix C, p. 123. The supply of fiction is so constant to-day that the temptation is strong to read the book of the day, usually of very slight significance, and speedily forgotten. Emerson's rule never to read any book that is not a year old will save one from much trash.
+
+OUTLINE FOR THE STUDY OF THE ESSAY
+
+(See Specimen Study, Part II, p. 98)
+
+I. Mastery of Subject-matter
+
+The first step in the study of a literary work of any kind is to gain an idea of it as a whole. This can best be done by a single rapid reading, at a sitting if possible. Do not stop to look up words nor to refer to the notes ; you can understand enough of the work to gain a general idea of it. This done, the book should be read a second time, more carefully, in connection with the notes. These notes are not to be memorized ; they are intended merely to help one to understand the text. After the work has been read in this way, take up the questions in the outline and answer them, with reference to the text when necessary. This mastery of subject-matter, the comprehension of the work as a whole, must precede any study of parts or of particular characteristics.
+
+II. Classification
+
+Essays may be classified, according to the manner in which the subject is treated, into:
+
+Narrative Essays, those which relate a series of events, as a biography or a historical sketch. Examples: Macaulay's "Warren Hastings"; De Quincey's "Flight of a Tartar Tribe."
+Critical Essays, usually dealing with questions of literature or art, as Lowell's Among My Books; Walter Pater's The Renaissance.
+Reflective, or Wisdom Essays, dealing with general subjects, and usually didactic. Example, Bacon's Essays, and Emerson's.
+Personal Essays, which do not pretend to present new truths, nor great thoughts, but give the author's individual opinions of men and things. The personal essay is often humorous. Example, Lamb's Essays of Elia.
+Essays may belong to more than one of these classes. Macaulay's "Life and Writings of Addison" is partly narrative, partly critical. Yet one characteristic usually predominates.
+
+To which of the above classes does the essay belong?
+
+III. Structure
+
+The essay has no rigid laws of structure. In longer essays, however, such as Macaulay's, some plan is followed.
+
+(a) The Introduction. The opening paragraphs usually serve as an introduction. Where does the introduction end?
+This may serve several ends, as follows : To state clearly and fully the subject of the essay ; to arouse interest in this subject ; to give the author's reasons for choosing the subject ; to indicate the manner in which the subject is to be treated.
+(b) What purpose or purposes does this introduction accomplish?
+(c) The Body. What is the central theme of the essay, the principal subject treated? State this in a sentence. Is there more than one subject? If several, are they closely related? Then does the essay possess unity? (Essays are permitted more latitude in this respect than other literary forms.) Are there any digressions, places where the author speaks at some length, usually several pages, of matters not directly connected with the main subject? Do these violate the unity of the essay?
+(d) The Conclusion. Has the essay a formal conclusion? If so, where does it begin?
+This may serve to sum up the main points in the essay; to restate certain points for emphasis ; or to make a well-rounded close, leaving a favorable impression in the minds of the hearers.
+(e) What purpose or purposes does this conclusion serve?
+
+The Essay
+
+IV. Study of Essay as a Whole
+
+The method of study will depend upon the nature of the essay.
+
+A. Narrative Essay
+1. Are the events told in a logical order, so that the thought of the essay is easy to follow? What order is observed, that of time, or of cause and effect?
+2. Is there much description of places? Enough to give a clear idea of the situation? Too much? Select the best descriptive passages.
+3. Are the descriptions of people vivid? Have you a clear mental picture of them?
+4. If the essay is biographical, does the author succeed in presenting a complete picture of the man, — is he real to you?
+5. If the essay is biographical, read the account of the man given in an encyclopædia. Comparing this with the essay, is the essayist a hero-worshipper, presenting his subject in the most favorable light, or has he dwelt too much upon faults, lowering the man in our opinions? Or is the essay a frank setting-forth of the facts, without bias in either direction? If the latter, what was the essayist's motive in telling what was already known?
+6. If the essay is historical, compare it with the account given in a standard history. Judged by this, is the essay accurate in matters of fact? Is it more, or less, interesting, or vivid, than the history? Are any new facts brought out in the essay? If not, what was the aim of the essayist in restating facts already known?
+
+B. Critical Essay
+This usually deals with an author or a single book. Read the book first, then the essay.
+1. Does the essayist judge too harshly or praise too highly? Is he fair?
+2. Can you feel the merit of all that he praises? If not, does this show that the praise is misplaced?
+3. Is it the aim of the essayist to call attention to merits which have not been appreciated? To point out faults in a work that has been overestimated? Or to give a complete view of the work, showing merits and faults impartially? To answer this, read a criticism of the book by another author, and compare the two.
+
+C. Reflective Essay
+This demands careful study, sentence by sentence, to insure that the meaning is grasped. Difficult words and allusions should be looked up in an unabridged dictionary, not to commit the definitions, but to understand the use of the words in this place.
+
+D. Personal Essay
+To what extent does the author reveal himself in his work? Can you infer what his habits were? his likes and dislikes? his favorite books? See questions under Narrative Poetry, Sec. X, p. 14.
+
+V. Style
+
+A. Style in General
+1. Does it possess individuality, i.e. is the style markedly different from that of other writers, so that you might recognize a book of his even if you did not know the author?
+2. Is there any humor in the essay? Is it quiet or broad? Is humor one of the strong points of the book? Point out examples.
+3. Is pathos found? Is it effective?
+4. Does the author employ irony? ridicule? satire? Any of these to a marked degree?
+5. Are figures of speech used? frequently? Are they effective? Point out examples. (See App. A, p. 108.)
+6. Is the work characterized by accuracy of statement? logical power? keen analysis? sympathetic appreciation? depth of insight? sincerity? or by exaggeration? prejudice? untruth?
+7. Select such of the terms below or of your own choosing as apply to his style:
+Smooth, graceful, musical;
+Rough, plain, harsh, commonplace;
+Direct, animated, brilliant, stimulating;
+Balanced, rhetorical, stiff, bookish, dull;
+Clear, flexible, poetic, dignified;
+Obscure, rambling, confused, eccentric, pedantic.
+
+8. Of the three chief qualities of style, clearness, force, and beauty, which is the most marked here?
+9. Compare a few pages of an oration and note differences of style. What appear to be the distinguishing qualities of essay style?
+10. Write a theme on the style of this essay, giving quotations to illustrate the chief points.
+
+B. Quotation and Allusion
+
+1. Does the author quote other writers? Frequently? From what books does he quote oftenest? Does he quote accurately?
+An allusion is an indirect reference, the author taking for granted the reader's knowledge of the thing referred to. Thus to say, "I was plunged in a slough of despond," is to make an allusion to Pilgrim's Progress; "He poured out the vials of his wrath upon my head" is an allusion to Revelation. Allusions to the Bible are frequent, also to Shakspere, to Milton, and to classic mythology.
+2. Are there examples of allusion? What books are most frequently alluded to?
+
+C. Paragraphs
+1. Long, short, or of medium length? The average length of paragraphs in modern prose, unbroken by dialogue, is between 100 and 120 words.¹ Count ten consecutive paragraphs and get the average.
+2. Do they possess unity? The test for this is to state the substance of the paragraph in a sentence. Try ten paragraphs in this way to see whether any of them contain ideas not closely related to the main thought.
+3. Are the paragraphs usually linked together by some expression at the beginning, as “in the next place,” or by the repetition of a word used near the end of the preceding paragraph? Point out examples of linked paragraphs.
+4. If possible, make an outline of the essay, by paragraphs, stating the subject of each in a sentence. Do the paragraphs follow in logical order, one continuing the thought of the preceding paragraph, or are there some that seem out of place?
+
+¹ This statement is based on a count of thousands of examples taken from modern writers.
+
+D. Sentences
+
+1. Always clear? In structure, are they simple or much involved?
+2. Long, short, or of average length? The average sentence-length in modern prose is between twenty-five and thirty words.¹ Count twenty consecutive sentences and find the average.
+3. Do they sometimes contain several principal ideas, not closely related, and so lack unity?
+4. In structure, are they generally loose or periodic?
+5. Are balanced sentences used frequently? Give examples.
+6. Are exclamatory or interrogative sentences used frequently? What is gained by this form?
+7. Is antithesis used? Climax? Give examples.
+8. Does the author possess the power of making epi- grams, i.e. short, pithy sentences that may serve as quo- tations? Give examples.
+
+E. Words
+
+1. Are there any unusual words? many? are these words newly coined? slang? technical terms? foreign words? dialect? obsolete words? Give examples.
+2. Is the author's vocabulary copious? This is shown partly in the use of unfamiliar words, partly in the repeposition of ideas without repeating the words, partly in the choice of words, the author always having the right word to express his meaning.
+3. Does he use words precisely, showing an exact knowledge of their meanings?
+4. Does he prefer specific or general terms? Give examples.
+5. Are there examples of Biblical forms of speech? Give examples.
+6. Select the two or three words in the following list which best describe his diction :
+Clear, simple, idiomatic, colloquial, homely ;
+Learned, terse, polished, eloquent, ornate (over-ornamented) ;
+Obscure, quaint, grotesque, hackneyed, verbose (too many words).
+Quote passages which illustrate your answer. Distinguish between qualities that are characteristic of the author's style, and those which are shown occasionally.
+
+VI. Memory Passages
+
+Select the best passages in the essay. Do they appeal to you chiefly because of their beauty, or their truth, or their strength? Memorize one of these passages.
+Select and memorize single sentences that impress you.
+
+VII. Characteristics of Author
+See Narrative Poetry, Sec. X, p. 14.
+
+VIII. Life of Author
+See Narrative Poetry, Sec. XII, p. 16.
+
+IX. Critical Opinion
+Read one or two good critical articles discussing this author. Lists of such articles are given in Clark's English Prose Writers (Scribners). Consult a standard history of literature to learn the historical importance of this writer; how he ranks with other great essayists. Books that will be useful here are, for English literature: Gosse, Eighteenth Century Literature (Macmillan); Perry, Eighteenth Century Literature (Harpers); Saintsbury, Nineteenth Century Literature (Macmillan); Oliphant, Victorian Literature (Lovell). For American literature, Richardson, American Literature (Putnams); Wendell, Literary History of America (Scribners); Carpenter, American Prose (Macmillan.)
+
+X. Comparative Study
+Select an essay by another author, preferably one already studied or read, and compare with this. See Narrative Poetry, Sec. XIV, p. 17.
+
+XI. Collateral Reading
+
+The works of the great essayists present a rich field for the student. The following list is suggested: Bacon, Emerson, Macaulay, Addison, Lamb, Carlyle, Ruskin, De Quincey, Matthew Arnold, John Henry Newman, Lowell, John Burroughs. For recommended reading in these authors, see Appendix C, p. 123.
+
+OUTLINE FOR THE STUDY OF THE ORATION
+(See Specimen Study, Part II, p. 103)
+
+I. Mastery of Subject-matter
+See Essay, Sec. I, p. 53.
+
+II. Structure
+An oration may usually be divided into three parts: the introduction; the discussion, or handling of the theme; and the conclusion, or peroration. Can this oration be so divided? Where does the introduction end? The discussion?
+
+III. The Introduction
+This may serve several ends, as follows: To state clearly and fully the subject of the oration; to arouse interest in this subject; to give the orator's reasons for choosing the subject; to indicate the manner in which the subject is to be treated; to gain the good-will of the audience.
+
+What purpose or purposes does this introduction accomplish?
+
+IV. The Discussion
+
+An orator always has some definite aim. He may wish to persuade his hearers of some truth; or to move them to some action; or to lead them to honor some character. This motive forms the central theme of the oration, and to developing this the discussion is devoted.
+(a) What is the central theme here? State it clearly in a sentence. Where is this fully set forth? Why here rather than sooner or later?
+
+An orator aims to influence men's minds. He may do this by appealing to their intellect, presenting arguments, or appealing to their emotions, arousing their anger, pity, sympathy, etc.
+(b) Which method is employed most frequently? Point out examples of each, if possible. In passages which appeal to the intellect, does the orator usually make a statement and then give his reasons for it, or do the reasons come first, the statement following as a conclusion? Which order seems preferable?
+(c) If the orator is attempting to persuade his hearers to a certain course of action, does he take them on high moral grounds, appealing to their honor, their patriotism, their sense of justice, etc.; or does he rest his case upon expediency, showing that it would be easier, cheaper, more convenient, or more to their advantage, to act so?
+Give examples of appeals of each kind, if possible.
+(d) Are there any places where the orator turns aside and speaks at some length of matters which do not bear directly on the main thought? Can you justify these digressions?
+
+V. The Peroration
+
+This may serve to sum up the main points in the oration; to restate certain points for emphasis; or to make a well-rounded close, leaving a favorable impression in the minds of the hearers.
+(a) What purpose or purposes does this peroration serve?
+(b) Is the style of the peroration at all different from that of the introduction, or the discussion? In what respect?
+
+VI. Style
+
+See Essay, Sec. V, p. 58, and add to the questions there given the following, under Style in General:
+Euphony, or pleasing sound, is particularly desirable in an oration. Read the best passages aloud; note the rhythm of the sentences. Would they deliver well? Are there any unpleasant combinations of sounds?
+
+VII. Memory Passages
+
+Select the best passages in the oration. Do they appeal to you chiefly because of their beauty, or their truth, or their strength? Memorize one of these passages. Select and memorize single sentences that impress you.
+
+VIII. Characteristics of Author
+
+See Narrative Poetry, Sec. X, p. 14.
+
+IX. Life of Author
+
+See Narrative Poetry, Sec. XII, p. 16.
+
+X. Critical Opinion
+
+See Essay, Sec. IX, p. 63.
+
+XI. Comparative Study
+Select another oration, preferably one already studied or read, and compare with this according to suggestions given under Narrative Poetry, Sec. XIV, p. 17.
+
+XII. Collateral Reading
+(a) Illustrative Matter. Great orations are usually inspired by great crises in a nation's life, or deal with men who have made great achievements. To appreciate such orations fully, it is necessary to be familiar with the measures or the men discussed. Standard biographies, such as the American Statesmen Series, and the larger histories of the United States and England, will furnish means for this study.
+
+(b) Other Orations. The number of great orators whose speeches survive as literature is not large. Pitt, Burke, Fox, Sheridan, Clay, Calhoun, Webster, Everett, Lincoln, Sumner, and Phillips, are among the most important. The student who aims at public life, with its accompanying necessity for public speaking, will be helped by studying the models of oratory left by these men.
+
+
+PART II
+
+SPECIMEN STUDIES
+
+STUDY OF LOWELL'S "VISION OF
+SIR LAUNFAL"
+
+II. Classification
+Metrical Tale.
+
+III. Purpose
+(a) To entertain, and to teach a spiritual truth.
+(b) It teaches the true spirit of charity: that unless you give yourself with your gift, it is nothing.
+(c) This lesson is definitely stated in Part I, stanza 6, and in Part II, stanza 8.
+
+IV. Plot
+(a) The story is clear after the introduction of Sir Launfal, but in the first prelude it does not appear for some time what the poem is about.
+(b) It is interesting, though perhaps the interest flags in the long description in the second prelude.
+(c) The climax occurs in Part II, stanza 7, where the leper is transformed.
+(d) The story is probable, since the two meetings with the leper are represented as only a dream.
+(e) The poem has not perfect unity : the first prelude is not strictly a part of the story.
+(f) There are no episodes.
+(g) The plot is original.
+
+V. Characters
+
+(a) The characters are few, and clearly distinguished.
+(b) They are lifelike, though not very vividly drawn.
+(c) The hero is Sir Launfal. His character is marked at first by pride and scornfulness, later by humility and charity.
+(d, e) Women are absent from the poem.
+(f) The leper is a supernatural character, and effec- tively used.
+(g) The chief character is developing, as explained above. It is a question whether a dream would suffice to cause such a change.
+
+VI. Setting
+
+(a) The events are supposed to occur in England, probably during the Middle Ages, when chivalry flour- ished.
+(b) The time and place are not definitely stated.
+(c) There is much description in the poem. A de- tailed description is that of the June day, in the first prelude. Examples of brief description are those of the castle, Part I, stanza 2, and of the leper, Part I, stanza 5.
+(d) The poem is full of description of nature. Besides the long descriptions in the two preludes, there are brief ones in Part II, stanzas 1 and 3. Nearly all the similes are drawn from nature. Perhaps the best description is that of the June day. The descriptions are accurate, as where he speaks of the robin "plastering" his nest, and says that the river is bluer than the sky, showing close observation. Personification of natural objects is frequent, e.g. "Every clod feels a stir of might."
+(e) There is no local color, as there is no definite locality.
+(f) The descriptive passages in the preludes are as important as the story.
+(g) The author does not usually give the form of objects; he gives color, using general rather than specific terms. There is usually sound and motion in his descriptions. All these points are shown in the second prelude, stanza 2. He does not mention odors.
+(h) His strength lies chiefly in description.
+
+VII. Contrast
+
+There is contrast in station between the proud knight and the poor leper; there is contrast in character between Sir Launfal in Part I and in Part II. There is contrast in description between the two preludes. Minor contrasts are between the gloomy castle and the glad bright country around it; between the merry-making in the castle on Christmas eve and the cold and storm without.
+
+VIII. Style
+
+A. Style in General
+1. There is pathos in the figure of Sir Launfal turned away from his castle gate (Part II, stanza 2). There is no humor.
+2. The style as a whole is clear, fresh, and musical.
+3. The tone is earnest and dignified, especially in Part II. The description of the brook in the second prelude is delicate.
+
+B. Diction
+1. The diction is polished and elevated.
+2. It differs from that of prose. In the opening lines of the poem the words "list," "lay," and "doth" belong to the diction of poetry.
+3. Biblical expressions are found, e.g.,
+Himself the Gate whereby men can
+Enter the temple of God in man (II, 7).
+
+C. Figures of Speech
+1. The poem has a profusion of imagery: the most common figure is metaphor.
+
+Lowell's "Vision of Sir Launfal"
+2. Simile :
+    Like a locust shrills the imprisoned sap.
+Metaphor :
+    At the Devil's booth are all things sold.
+Personification :
+    Heaven tries earth if it be in tune.
+Metonymy :
+    For a cap and bells our lives we pay.
+The Homeric simile is not found.
+3. A number of the figures are original.
+    Examples :
+    His words were shed softer than leaves from the pine (II, 8).
+    The wanderer is welcome to the hall
+    As the hang-bird is to the elm-tree bough (II, 10).
+
+IX. Metre
+(a) The metre is iambic pentameter, with frequent substitution of anapests.
+(b) There are frequent changes in the metre. Occasional lines of three feet are found. In Part II, stanza 1, the closing lines move more slowly, to suit the thought. In Part II, stanza 8, the opening lines are anapestic, giving a soft, flowing movement, suited to the thought.
+(c) No.
+
+Lowell's "Vision of Sir Launfal"
+(d) Scansion.
+v _ _ | v _ _ _
+And what is so rare | as a day in June?
+_ v _ | v _ _ _
+Then, | if ever, | come perfect days;
+v _ _ | v _ _ _
+Then Heaven tries earth | if it be in tune,
+v _ _ | v _ _ _
+And over it softly | her warm ear lays
+_ v _ | v _ v _
+Whether we look, | or whether we listen,
+v _ _ | v _ v _
+We hear life murmur, | or see it glisten;
+v _ _ | v _ _ _
+Every clod | feels a stir of might,
+v _ _ | v _ _ _
+An instinct within it | that reaches and towers,
+v _ _ | v _ _ _
+And, | groping blindly above it for light,
+_ v _ | v _ _ _
+Climbs to a soul | in grass and flowers;
+
+X. Characteristics of Author
+(a) The poem shows that the author was earnest, sympathetic, philanthropic in spirit, and devout. Earnestness is shown in the general tone of the poem, and its evident lesson. Sympathy is shown in the way the leper is spoken of; philanthropy in the spirit that animates Sir Launfal after the vision. The transformation of the leper and his words to Sir Launfal show a devout spirit. A love of nature is shown in the descriptions, and in the constant use of imagery borrowed from nature.
+
+STUDY OF TENNYSON'S "BUGLE SONG"
+
+II. Classification
+(a) Love lyric.
+(b) Song.
+III. Central Theme
+(a) The central theme is the undying power of human love.
+(b) There is no secondary theme.
+(c) The poem has unity.
+IV. Mood
+The mood is tender, dreamy.
+V. Movement
+The movement is varied and graceful.
+VI. Sound
+(a) It is musical.
+(b) The music is notable for sweetness and delicacy.
+(c) There are no harsh words.
+(d) The closing lines of each stanza are imitative in movement. The first words must be pronounced explosively, suggesting the sudden blast of the bugle, while the last words, ending with an unaccented syllable, suggest the sound growing fainter.
+(e) Alliteration is found in "snowy summits," "long, light . . . lakes," etc.
+(f) The repetend is used, the closing lines of each stanza being repeated with slight variations.
+
+VII. Style
+
+(a) The diction is polished and elevated.
+(b) The style in general is clear and direct. The poem is characterized by grace, beauty of sentiment, and beauty of description.
+
+VIII. Structure
+
+(a) It is written in a six-line stanza riming x a x a b b, with internal rime in the x lines. The metre is chiefly iambic.
+(b) There is a marked change in metre in the last lines of each stanza, to suggest the sound of the bugle and its echoes.
+
+STUDY OF SHAKSPERE'S "HAMLET"
+
+II. Classification
+It is a tragedy.
+
+III. Plot
+(a) The plot is simple, dealing entirely with the affairs of Hamlet and those about him, except for the references to Fortinbras, which are hardly important enough to form a sub-plot.
+(b) The events are probable, except the appearance of the Ghost, which adds to the interest of the story.
+(c) The story is easy to follow.
+(d) The source is uncertain. The story is told in Belleforest's Histoires Tragiques, and there was probably an older play called "Hamlet." Shakspere may have used one or both of these sources.
+(e) In Belleforest's version, Hamlet is not killed by Laertes, but becomes king of Denmark, goes to England, marries two wives, and is finally slain in battle. The ending that Shakspere gives deepens the tragedy, and is dramatically much more effective.
+
+IV. Setting
+(a) The events of the play are supposed to occur in 1012 A.D. The time occupied is several months, as Hamlet says in I, 2, 138, that his father had been dead less than two months; in III, 2, 135, Ophelia says it is four months since the king's death, and there must be time after this for Hamlet's sea voyage and return.
+(b) The scene is laid at Elsinore, a Danish seaport.
+(c) The Danes were not Christians at this time, yet Marcellus speaks of celebrating the Saviour's birth (I, 1, 159). Cannon were not used there so early; they are mentioned in V, 2, 288. Yet these are minor matters, and do not affect the merit of the play.
+(d) There is little description in the play. The Ghost is described, I, 2, 200-241; also Hamlet as he appeared to Ophelia, II, 1, 78-100. The place of Ophelia's death is briefly described, IV, 7, 167-173.
+
+V. Character
+(a) Hamlet is the central figure; with him are associated Horatio and, at first, Ophelia. Another group is made up of the King and Queen, Polonius, Ophelia, and the others of the court. Ophelia and, to some extent, the Queen serve as connecting links, though the two groups are not really separate.
+(b) The characters are clearly distinguished, except Rosencrantz and Guildenstern, whom Shakspere purposely makes mere dummy men.
+(c) The characters are lifelike, so much like real people that we speak of Hamlet as familiarly as of Henry the Eighth : one is as real to us as the other.
+(d) Men are the chief characters here, and the catastrophe is through Hamlet's fault, or Hamlet's misfortune.
+(e) The First Gravedigger is a humorous character, and Polonius, unconsciously so.
+(f) Study of Hamlet's Character, Act I. His first speech (I, 2, 65-66) is bitter, sarcastic. His reply to the King (l. 68) shows him ready with a retort, and his words often have a double meaning : he is quick-witted. The Queen's speech tells us that he has mourned deeply his father's death, showing an affectionate nature. Line 76 shows that he is sincere in his feeling. This appears also in his attitude toward the King : Hamlet does not pretend any affection for him. His soliloquy (l. 129) shows first his melancholy ; he is weary of life, yet he is restrained from suicide by his conscience, showing a strong sense of right. His abhorrence of his mother's hasty marriage shows his own high standard of conduct. His greeting of Horatio (l. 162) shows cordiality, but the repeated questions as to why Horatio came, show perhaps a tendency to suspicion.
+In Scene 4, lines 8-20, his displeasure at the drunken revels of the court suggests that he himself was refined in nature and temperate in his habits. Lines 22-37 show a tendency to seek for causes, to speculate on various topics : marks of a philosophical turn of mind.
+In Scene 5, lines 29-30, he promises instant revenge to the Ghost, yet takes no steps to keep his promise. He lacks steadfastness of purpose. Lines 91-93 show him greatly moved by the Ghost's communication : his nature is highly emotional. Lines 131 and 165 show again his tendency to philosophize. In lines 188-189 he regrets the necessity for action, showing a tendency to shrink from responsibilities.
+(g) The chief characters in the play are stationary. The action is too short to allow time for character development.
+
+VI. Structure
+
+(a) Purpose of Scenes.
+
+ACT I
+Scene 1 is introductory, preparing us for what is to follow, and arousing interest.
+Scene 2 is also preparatory, giving the situation in Denmark, especially the relation of Hamlet to the King and Queen. It also gives indications as to the character of Hamlet.
+Scene 3 is also preparatory, giving Hamlet's relations to Ophelia, and the character of Ophelia.
+Scene 4 is preparatory: the appearance of the Ghost and its beckoning to Hamlet arouse our interest.
+Scene 5 practically begins the main action of the play, for here Hamlet learns of his father's murder, and vows revenge. This scene also reveals Hamlet's character.
+
+ACT II
+Scene 1. This gives the character of Polonius and Laertes. The action advances slightly, as we learn of Hamlet's visit to Ophelia, and the characters of both are shown.
+Scene 2 introduces a side-action: the employment of Rosencrantz and Guildenstern to spy upon Hamlet. The main action is carried forward by having the speech of the players arouse Hamlet to the need of action. The character of Hamlet is shown in his long soliloquy, and there is preparation for a following scene in his planning the play to catch the King.
+
+ACT III
+Scene 1 advances the action, as the King consents to see the play; also Hamlet breaks with Ophelia, and the King determines to send him to England. Hamlet's character is further revealed in his soliloquy.
+Scene 2 advances the action, as the King's guilt is made clear. Hamlet's character is shown in his talk with Horatio, and afterward to the Queen and others.
+Scene 3 advances the action and displays character in almost equal measure, when Hamlet has an opportunity to execute his vengeance, but turns away.
+Scene 4 contains more action than almost any previous scene. Hamlet kills Polonius, and wins the Queen to his side.
+
+ACT IV
+Scene 1 hastens the action, as the King, learning of Polonius's death, decides to act at once.
+Scene 2 carries forward the action, as Hamlet is summoned to the King.
+Scene 3 continues the action, Hamlet being ordered to depart for England. These three scenes all deal with a side-action of the play, — the sending away of Hamlet.
+Scene 4 hastens the main action : the sight of the soldiers spurs Hamlet on.
+Scene 5 deals with a side-action, — the madness of Ophelia and Laertes's rebellion. Both are results of Act III, Scene 4.
+Scene 6 advances the main action, telling of Hamlet's escape and return.
+Scene 7 also advances the action, as the King and Laertes plan the death of Hamlet.
+
+ACT V
+Scene 1. The first part is a relief scene, the humorous dialogue heightening, by contrast, what follows. The action advances, as Hamlet and Laertes are brought together.
+Scene 2 carries on the action by Hamlet's agreeing to the match; then events follow each other rapidly,—the death of the Queen, of the King, of Laertes, and of Hamlet.
+
+(b) Hamlet wishes to accomplish the death of his uncle; his motive is to avenge his father's murder. He is opposed by his own nature, his weakness of will, his fatal tendency to think instead of act.
+(c) The climax is in Act III, Scene 2, where Hamlet is convinced of the King's guilt.
+(d) The rising action begins in Act I, Scene 5. The turning-point is in Act III, Scene 3, where Hamlet lets slip the chance of killing the King.
+(e) The falling action is manifest in the close of Act III, Scene 5, where Hamlet appears willing to go to England, apparently forgetting all about his revenge.
+(f) Dramatic foreshadowing is seen in III, 4, 208, where we have a hint of the fate of Rosencrantz and Guildenstern; and in V, 2, 220, where Hamlet's own death is foreshadowed in the words, But thou wouldst not think how ill's all here about my heart.
+
+VII. Contrast
+
+(a) Contrast in character is shown between Hamlet and Laertes, — Hamlet thoughtful, slow to act; Laertes impulsive, acting without reflection. There is contrast also between Hamlet and Fortinbras in activity. King Claudius is contrasted strongly with the former king. There is contrast between Hamlet as he appears here and as he had been formerly. Contrast in mood is found in Act V, Scene 1, where the jesting of the gravediggers is followed by Ophelia's funeral.
+(b) Rosencrantz and Guildenstern are characters so closely parallel that it is hardly possible to distinguish them. There is parallel in incident in the fact that both Hamlet and Laertes lose a father.
+
+VIII. Metre
+
+(a) Scansion of lines 120-130, Act III, Scene 4 :
+Do not forget: | this visitation
+Is but to whet | thy almost blunted purpose.
+But, | look, | amazement on thy mother sits:
+O, | step between her | and her fighting soul:
+Conceit in weakest bodies | strongest works:
+Speak to her, | Hamlet.
+How is it with you, | lady ? 125
+Alas, | how is't with you,
+That you do bend your eye on vacancy
+And with the incorporeal air | do hold discourse ?
+Forth at your eyes | your spirits wildly peep ;
+And, | as the sleeping soldiers | in the alarm 130
+
+The position of the cæsura, marked thus | , is regular in the first two lines ; in line 122 it is in and after the first foot ; in line 123 it is in the first and in the third ; in line 124 it is in the fourth foot, and so on.
+Trochaic feet are substituted in lines 123, 125, 126, etc. Spondees are found in lines 120, 123, 125, etc. Pyrrhic feet occur in lines 120, 122, 123, etc. The extra syllable is found in line 121. Line 125 is divided between two speakers, and, as often in such cases, has extra syllables. Line 120 is run-on, the others end-stopt.
+(b) Lyrics in the play are Ophelia's songs, in Act IV, Scene 5, and the snatches of song sung by the clown in Act V, Scene 1.
+(c) Prose is used in Act II, Scene 2, and elsewhere where Hamlet feigns madness ; it is used in Act III, Scene 2, for Hamlet's advice to the players, which, being purely didactic, is hardly suited for poetic form ; when
+
+Horatio enters, however, the dialogue is on a higher level, more emotional, and naturally rises to blank verse. The play within the play, Act III, Scene 2, is written in rime, to distinguish it from the play proper.
+
+IX. Style
+
+(a) The language of the play is not always clear. Sometimes the obscurity is due to obsolete words, sometimes to the thought; but the meaning is usually clear after a little study.
+(b) Biblical allusions are found occasionally. In V, 2, 231, the saying "there's a special providence in the fall of a sparrow" is a reference to Matt. x. 29 : "Are not two sparrows sold for a farthing? and one of them shall not fall on the ground without your Father." Other examples are I, 2, 131, and V, 1, 40.
+(c) Examples of poetic diction are: "mine arm"; "thrice"; "oft"; "hath,"—all in II, 1, 90–110.
+(d) There is no marked use of dialect, though the opening of Act V, Scene 1, approaches it.
+(e) Humor occurs in the dialogue between Hamlet and Polonius, Act II, Scene 2; the dialogue between Hamlet and Rosencrantz and Guildenstern in Act III, Scene 2; and in the dialogue of the clowns in Act V, Scene 1. Here the humor serves to deepen the tragedy by contrast.
+(f) Pathos is found in the appearance of Ophelia in a state of madness, in Act IV, Scene 5.
+(g) The style is not at the same level throughout, but rises and falls with the speakers, or the nature of the discourse. In Act IV, Scene 4, the dialogue between Hamlet and the Captain is in a plain style, but Hamlet's soliloquy at the close is in a strain of exalted poetry.
+
+STUDY OF GEORGE ELIOT'S "SILAS MARNER"
+
+II. Title
+The title names the principal character.
+
+III. Purpose
+(a) To entertain, by presenting a faithful picture of human life, and to teach a moral lesson.
+(b) The lesson is that when men's hearts have been hardened by their wrongs, a little child is often the means of leading them back into natural human relations. It is stated at the close of Chapter XV.
+(c) The purpose is not made too prominent.
+
+IV. Plot
+(a) The story is interesting, and the interest does not flag.
+(b) It is probable.
+(c) The plot is complex. Silas and the poor folk of the village form one group, the Cass family another. The two groups are connected, first by Dunstan Cass, who robs Silas, then by Eppie.
+(d) The movement is usual. It is slow in the begin- ning of the book, but quickens in telling how Silas was accused of theft. It is sometimes retarded by description, as at the beginning of Chapter III, and by discussion of character, as at the close of that chapter.
+(e) The story progresses steadily from the beginning. There is a pause between Part I and Part II, but no break in the story.
+(f) The climax occurs where Silas brings Eppie into the ballroom, and Nancy asks Godfrey whose child it is. Minor climaxes are the theft of the gold and the finding of Dunstan Cass's body.
+(g) Suspense is used at the close of Chapter XII.
+(h) At the close of Chapter XVII the coming blow is foreshadowed.
+(i) The story ends happily for the chief characters.
+(j) The best chapters are VI, XI, and XIV.
+
+V. Characters
+(a) The characters are numerous, yet they are kept distinct.
+(b) They are drawn from the middle and lower classes of society ; perhaps the author is most successful with the lower classes.
+(c) The women are more fully drawn than the men: Nancy is clearer to us than Godfrey. The author shows great power in depicting children.
+(d) The characters in general are lifelike.
+(e) They are not exceptional people.
+(f) There is no tendency to caricature.
+(g) None of the characters are historical.
+(h) Both good and evil traits are shown in the same person, e.g. Godfrey Cass.
+(i) The characters are consistent.
+(j) Development is shown in the principal characters, notably in Silas Marner. At first trusting and affectionate, he becomes suspicious, selfish, miserly. Then by the coming of Eppie he is won back to his old self. The experiences he passes through are adequate to account for these changes.
+(k) Both the dramatic and the analytic methods are used here : the dramatic in the interview between the two brothers in Chapter III ; the analytic in the comment upon Godfrey at the close of this chapter.
+(l) The novel has no hero, in the old-fashioned sense. The principal character is Silas Marner ; his chief trait is his simple devotion, first to his friend, then to Eppie. There is no heroine.
+(m) The traits of character the author seems to admire most are fidelity to duty, moral courage, and kindness.
+(n) There are no supernatural characters.
+(o) Women occupy almost as prominent a place as men.
+(p) The story does not tell about the final fortunes of the characters.
+
+VI. Classification
+It is a novel.
+
+VII. Description
+(a) There are some long descriptive passages in the story, but they are so mingled with narrative, as in the account of the arrival of the guests in Chapter XI, that the interest is sustained.
+(b) There is almost no description of nature; touches are found in Chapters I and XVII.
+(c) There is little local color.
+(d) Description is used for dramatic background, when Silas appears at the ball with Eppie.
+(e) In describing people, the method used is that of selected details, as the description of Silas in Chapter I.
+(f) The author's strength lies in narration and character drawing.
+
+VIII. Contrast
+
+Contrast in plot is found in Chapters XI and XII. Just when Godfrey is at the ball, happy in Nancy's company, his wife is coming through the storm to expose and disgrace him. There is contrast in character between Silas Marner as a miser and Silas after the coming of Eppie.
+
+George Eliot's "Silas Marner"
+
+IX. Style
+A. Style in General
+1. The style is not strongly individual.
+2. Epigrams occur in the dialogue, e.g. "As I say, Mr. Have-your-own-way is the best husband, and the only one I'd ever promise to obey." (Chapter XI.)
+3. Humor, usually quiet, sometimes broad, is one of the strong points of the book. Good examples are found in Chapter VI.
+4. Pathos is found in the account of Silas's unjust condemnation (Chapter I), and in his grief at the loss of his gold (Chapter X).
+5. The style in general is direct, and at times animated, as in the dialogue between the brothers in Chapter III.
+6. It has clearness, force, and beauty ; it can hardly be said that one quality is more marked than another.
+
+B. Diction
+1. There are a few unfamiliar words, such as "distrain," "exiguity," "vicinage."
+2. Dialect is used, but it is not difficult to read. It makes the characters more real; they speak as you feel country people would speak.
+3. The conversation is natural.
+4. The diction, aside from the parts in dialogue, is elevated.
+
+X. Characteristics of Author
+Judging from this book alone, one might infer that the author was a person of high ideals, earnest, sympathetic, possessing a vivid imagination, a keen sense of humor, and having a tendency to philosophize.
+
+STUDY OF MACAULAY'S ESSAY ON SAMUEL JOHNSON
+II. Classification
+It is a narrative essay.
+III. Structure
+(a) There is no introduction: Macaulay takes up his subject in the first sentence.
+(b) The subject is the life, writings, and character of Samuel Johnson. The essay has unity, and there are no digressions.
+(c) The final paragraph serves as a conclusion. It is a summary, giving a final estimate of Johnson's writings and character.
+
+IV. Essay as a Whole
+
+A. Narrative Essay
+1. The thought is easy to follow. The events are told in the order of time.
+2. There is little description of places. Lichfield, Johnson's birthplace, is merely named. His home is briefly described in ¶ 40.
+3. The descriptions of persons are vivid and detailed: Examples are found in ¶ 1, 3, 5, 7.
+4. The author makes Johnson real to us: a good example is the closing paragraph.
+5. Macaulay perhaps dwells too much upon Johnson's shortcomings. This is seen by comparing this essay with Carlyle's essay on Boswell's Johnson.
+
+V. Style
+
+A. Style in General
+1. It possesses individuality.
+2. There is occasional quiet humor; e.g. "Indeed, the great man was sometimes provoked into fits of passion, in which he said things that the small man, during a few hours, seriously resented." (¶ 39.)
+3. Pathos is found in ¶ 5 and 51.
+4. Irony is occasionally found, e.g. "... an old lady named Williams, whose chief recommendations were her blindness and her poverty." (¶ 40.) Ridicule is found in the description of Mrs. Johnson, ¶ 7.
+5. Figures of speech are frequent, and add force to the style. Example : "... an absent awkward scholar, . . . who dressed like a scarecrow and ate like a cormorant." (¶ 19.) See other examples in ¶ 22 and 43.
+6. The essay is marked by occasional exaggeration, e.g. when he says of Johnson's Shakspere, "It would be difficult to name a more slovenly, a more worthless, edition of any great classic." (¶ 37.) Prejudice is seen in ¶ 13, where Macaulay's Whig tendencies appear.
+7. The style is direct, animated, balanced, rhetorical, and clear.
+8. Clearness and force are the qualities most marked.
+
+B. Quotation and Allusion
+1. There are but few quotations in the essay. Aside from Johnson himself, the only author quoted is Ossian. (¶ 41.)
+2. Allusion is found. In ¶ 13, in the words, "such as inflamed the Capulets against the Montagues" there is an allusion to Romeo and Juliet. Other examples are found in ¶ 25 and 33.
+
+C. Paragraphs
+1. The paragraphs are long, averaging over two hun- dred words.
+2. They usually possess unity, though ¶ 1, 38, and 40 lack it.
+3. They are usually linked, e.g. ¶ 15 and 16.
+4. They follow in logical order.
+
+D. Sentences
+1. His sentences are always clear, and seldom involved in structure.
+2. They are rather short, averaging twenty-six words.
+3. They possess unity.
+4. They are generally loose, about one-third being periodic.
+5. Balanced sentences are used frequently, e.g. "Garrick now brought Irene out, with alterations sufficient to displease the author, yet not sufficient to make the piece pleasing to the audience." (¶ 22.) "The Dictionary, although it raised Johnson's fame, added nothing to his pecuniary means." (¶ 29.)
+6. Exclamation and interrogation are not found.
+7. Antithesis is very common; the sentences quoted under No. 5 above are examples. Climax is infrequently used. An example is found in ¶ 13: ". . . A writer who had taken but one-tenth part of the license allowed to him would have been pillored, mangled with the shears, whipped at the cart's tail, and flung into a noisome dungeon to die."
+8. Epigrams are rare. Example: ". . . the place of books in the public estimation is fixed not by what is written about them, but by what is written in them." ¶ 42.
+
+E. Words
+1. There are almost no unusual words. "Sponging-house" is an example of a word now obsolete.
+2. The author's vocabulary is copious.
+3. He uses words precisely, as in ¶ 27, "a show of zealous and at the same time of delicate and judicious kindness."
+4. He prefers specific to general words, e.g., in ¶ 16. "Richard Savage . . ., who had feasted among blue ribbons in St. James's Square, and had lain with fifty pounds' weight of irons on his legs in the condemned ward of Newgate." Another writer might have said that Savage had known both extremes of society. Macaulay gives specific details instead of a general statement.
+5. He does not use Biblical forms of speech.
+6. His diction is clear, simple, and idiomatic.
+
+VI. Memory Passages
+Paragraphs 5, 39, and 52 are worth memorizing as significant in subject-matter and as good examples of Macaulay's style.
+
+VII. Characteristics of Author
+From this essay, one would infer that the author was somewhat prejudiced (¶ 13), positive in his opinions (¶ 46), and that he was a man of much learning (¶ 33, 37).
+
+STUDY OF WEBSTER'S BUNKER HILL MONUMENT ORATION
+
+II. Structure
+The parts of the oration are not clearly marked, yet the first five paragraphs may be considered introductory.
+The conclusion begins with ¶ 41.
+
+III. The Introduction
+This serves to arouse interest in the subject.
+
+IV. The Discussion
+(a) The central theme is twofold, liberty and union. It is set forth in ¶ 18, 20, 35, and 44. It is not introduced sooner because the first part of the oration would naturally deal with the occasion they met to celebrate.
+(b) Webster appeals chiefly to the emotions of his audience, arousing feelings of gratitude, of veneration, and of patriotism. Examples are found in ¶ 5, 14, 17, 25.
+(c) He appeals to men on high grounds, as seen in the four concluding paragraphs.
+(d) There is a slight digression in ¶ 37, where the orator turns to express sympathy for Greece. This is justified, as the struggle of Greece was for liberty.
+
+V. The Peroration
+(a) This serves to restate the two main themes of the oration — liberty and union — and makes a well-rounded close.
+(b) The style is somewhat more elevated than elsewhere.
+
+VI. Style
+A. Style in General
+1. It is not markedly individual.
+2. There is no humor, nor would it be expected on such an occasion.
+3. Pathos occurs in ¶ 13, 14.
+4. None of these qualities are found, nor would they be expected.
+5. Figures of speech are used frequently, and very effectively. Example: "A great chord of sentiment and feeling runs through two continents, and vibrates over both." (¶ 28.) A good example is also found in ¶ 31.
+6. By none, in any marked degree.
+7. The style is smooth, orotund, direct, at times animated, as in ¶ 12; balanced; somewhat rhetorical; clear; at times poetic, as in ¶ 28; and always dignified.
+8. Force and clearness are the qualities most marked. The sentences would deliver well; the longer ones are frequently rhythmical.
+
+B. Quotation and Allusion
+1. The author quotes from Milton, Horace, and Vergil. The quotations are accurate.
+2. Biblical allusion occurs in ¶ 40, in the phrase “at the mighty bidding of the voice of political liberty the waters of darkness retire.”
+
+C. Paragraphs
+1. Webster's paragraphs are somewhat long, averaging two hundred words.
+2. They usually possess unity, though ¶ 21 lacks it.
+3. They are usually linked. Examples are ¶ 21–27.
+4. They are arranged in logical order.
+
+D. Sentences
+1. They are always clear, and usually simple in structure.
+2. Some of the sentences are unusually long; the average length is thirty-one words.
+3. They have unity.
+4. Periodic sentences are frequent, nearly half being in that form.
+5. Balanced sentences are frequent, e.g. “Nearer to our times, more closely connected with our fates, and therefore still more interesting to our feelings and affections, is the settlement of our own country. . . ." (¶ 4.)
+6. Exclamatory sentences are frequent, e.g. ¶ 12 and 14, where they are used to express heightened emotion. interrogation is not used.
+7. Antithesis is occasionally found, e.g. " Death might come in honor on the field, it might come in disgrace on the scaffold." (¶ 19.) Climax is rather frequent. Good examples are ¶ 3, 7, and 31.
+8. Epigram is occasionally found: perhaps the best example is in the last paragraph of the speech : " Let our object be Our Country, Our Whole Country, and nothing but Our Country."
+
+E. Words
+1. There are very few unusual words. "Entablatures" is an example.
+2. The author's vocabulary is copious.
+3. He uses words precisely.
+4. General terms are used rather than specific terms, e.g. in ¶ 4 he uses general words instead of naming Plymouth and Jamestown.
+5. Biblical forms of speech are occasionally found, as " cloud of witnesses." (¶ 6.)
+6. The diction is clear, polished, and eloquent.
+
+VII. Memory Passages
+Paragraphs 7 and 44 are recommended for memorizing.
+
+VIII. Characteristics of Author
+(a) Judging from this oration, one would infer that Webster was an earnest, broad-minded patriotic man. Earnestness is shown in the tone of the whole oration, particularly in the closing paragraphs. Broad-mindedness is seen in ¶ 27-37; patriotism in ¶ 18 and elsewhere.
+(b) He possessed a vivid imagination, as is shown by his constant use of imagery, and in the description of the battle in ¶ 12. A philosophical turn of mind is shown in ¶ 7 and 28.
+(c) None of these characteristics are shown in any marked degree.
+
+FIGURES OF SPEECH
+
+A Figure of Speech is a departure from a literal mode of making statements, usually in such a way as to call up in the reader's mind a figure or image. For example, if one says it is raining heavily, he states a fact literally; but if he says it is coming down in bucketfuls, he uses a figure of speech.
+
+The simplest form of figure is the Simile, in which a comparison is made between things of different kinds.
+Examples :
+Let thy voice rise like a fountain for me night and day.
+Unstable as water, thou shalt not excel.
+Note that not every comparison is a Simile. To say that a girl sings like Jenny Lind is not a Simile, because the comparison is between things of the same kind : one person's voice is compared to another's. But to say she sings like a nightingale is to use a Simile.
+
+*A Simile is a comparison between two objects of different kinds.*
+
+When a Simile is continued through several lines, being expanded into a little picture in itself, it is called a Homeric Simile. An example is Tennyson's description of the rush of knights in combat :
+
+All together down upon him
+Bare, as a wild wave in the wide North Sea,
+Green-glimmering toward the summit, bears, with all
+Its stormy crests that smoke against the skies,
+Down on a bark, and overbears the bark
+And him that helms it; so they overbore
+Sir Lancelot and his charger.
+— Lancelot and Elaine.
+
+This form of Simile receives its name from its use by Homer, and has been a favorite in epic poetry.
+
+Closely allied to the Simile is the Metaphor, or implied Simile. If I say, "You should hear that girl sing; she is a perfect nightingale," I do not compare her to a nightingale, but call her one. The likeness is taken for granted, and the name of one object is applied to the other.
+
+A Metaphor is a figure of speech in which the name of one object is applied to another which it resembles.
+
+Examples of Metaphor :
+His face was an open book.
+Talent is a cistern, genius is a fountain.
+
+Some books are to be tasted, others to be swallowed, and some few to be chewed and digested.
+Personification is a form of Metaphor in which a lifeless object, an abstract idea, or one of the lower animals, is spoken of as a person.
+
+Examples:
+The Earth groaned beneath her load.
+Night dropped her sable curtain down.
+The Lion said, "I am the king of beasts."
+
+The Simile, Metaphor, and Personification are all founded on some likeness between objects. In the Metonymy there is no likeness, but the name of one object is put for another that is closely connected with it. If I say, "Beware of the bottle," every one understands that I mean liquor. The word bottle suggests liquor, because the two things are closely connected.
+
+Metonymy is a figure in which, instead of naming an object, we name something closely related to it, which suggests it.
+
+Examples:
+Who steals my purse steals trash.
+He was a man of sixty winters.
+
+When a part of an object is used for the whole, or a whole for the part, the figure is called Synecdoche.
+
+Examples:
+He wants to hire another hand.
+Twenty sail swept into the harbor.
+
+It is evident that this is but a special form of Metonymy, and most writers make no distinction between the two.
+The Apostrophe is a figure of speech in which the absent are addressed as present, or inanimate objects as if animate and present.
+Examples:
+Milton! thou shouldst be living at this hour.
+With how sad steps, O Moon, thou climb'st the sky.
+The Apostrophe is often combined with Personification, as in the last example. It differs from Personification in that one may apostrophise a person absent, or one dead, as in the first example above, and in such a case there is no personification.
+The Hyperbole is an obvious exaggeration.
+Examples:
+I have been waiting for you for ages.
+Rivers of waters shall run from mine eyes.
+
+VERSIFICATION
+
+I. Rime
+
+Rime is a correspondence of sound at the ends of lines. In English verse the law of rime is, that the last accented vowel and the sounds following it should correspond, but the preceding sounds should differ. Thus :
+
+Nature with folded hands seemed there,
+Kneeling at her evening prayer.
+
+Here the rime-vowel is the sound of ã as found in "prayer" and "there." In each word it is followed by the "r" sound, and in each word the preceding sounds are different, as required by the law of rime. Often the accented vowel forms the last syllable of the line, as :
+
+And all the broad leaves over me
+Clapped their little hands in glee.
+
+When the accented vowels do not correspond exactly in sound, the result is called imperfect rime. This is seen in the first and third lines below :
+
+There is no light in earth or heaven
+But the cold light of stars ;
+
+And the first watch of night is given
+To the red planet Mars.
+
+Imperfect rime is generally considered a fault, though when the riming lines alternate, as above, it does not offend the ear as much as if the lines were consecutive.
+
+When there is a correspondence of sounds at the beginning of words, it is called Alliteration. Example:
+
+Softly sweet, in liquid measures,
+Soon he soothed their souls to pleasures.
+The ceaseless booming of the sullen sea.
+
+Observe that in Alliteration, as in Rime, it is not the letters that correspond, but the sounds. In the last line above, for example, the letter c alliterates with s; in other cases c and k may form Alliteration.
+
+Rime may be masculine, feminine, or triple. When a single syllable in each line corresponds, the rime is masculine, as:
+
+Wilt thou seal up the avenues of ill?
+Pay every debt as if God wrote the bill.
+— EMERSON.
+
+When two syllables in each line correspond in sound, the rime is feminine, as:
+
+If eyes were made for seeing,
+Then beauty is its own excuse for being.
+— EMERSON.
+
+The terms single and double rime are sometimes used instead of masculine and feminine.
+
+Triple rime is less common. It is found in alternate lines of Hood's "Bridge of Sighs":
+Take her up tenderly,
+Lift her with care;
+Fashioned so slenderly,
+Young, and so fair!
+
+Rime sometimes occurs within the line. This is called internal rime. An example is seen in the third line below:
+They reel, they roll, in clanging lists,
+And when the tide of combat stands,
+Perfume and flowers fall in showers,
+That lightly rain from ladies' hands. — TENNYSON.
+
+II. Stanza Forms
+
+By means of rime single lines are grouped into stanzas. The simplest form is the couplet, two lines bound together by rime, illustrated by quotations from Emerson above. The couplet, however, is not regarded as a stanza.
+The stanza of three lines, called the triplet, is not common. Example:
+Greatly begin! though thou have time
+But for a line, be that sublime, —
+Not failure, but low aim, is crime. — LOWELL.
+
+The stanza of four lines is the one most commonly used in English verse. It may rime in various ways. The rime-order may be designated by letters, using the same letter to designate lines that rime together, and the letter x for lines that do not rime. Thus:
+
+I give you the end of a golden string, (x)
+Only wind it into a ball, (a)
+It will lead you in at Heaven's gate, (x)
+Built in Jerusalem wall. (a)—WILLIAM BLAKE.
+
+Another common form of four-line stanza is a b a b, as :
+I find earth not gray, but rosy, (a)
+Heaven not grim, but fair of hue. (b)
+Do I stoop ? I pluck a posy, (a)
+Do I stand and stare ? All's blue. (b)
+—ROBERT BROWNING.
+
+This form is called the quatrain.
+Less common is the form a b b a, used in Tennyson's In Memoriam, as :
+Thou wilt not leave us in the dust ;
+Thou madest man, he knows not why ;
+He thinks he was not made to die ;
+And thou hast made him : thou art just.
+
+The form a a x a is found in Edward Fitzgerald's version of Omar Khayyam, as :
+I sometimes think that never blows so red
+The rose as where some buried Cæsar bled;
+That every hyacinth the garden wears
+Dropp'd in her lap from some once lovely head.
+
+The chief stanzas of English verse, besides the ones enumerated, are Rime Royal, consisting of seven lines, riming ab ab bcc, used in Chaucer's "Prioresses Tale," and the Spenserian stanza of nine lines, riming ab ab bc bcc, eight lines in iambic pentameter, the ninth an Alexandrine. This is used in Spenser's Faerie Queene.
+
+The Sonnet is a poem of fourteen lines, written in iambic pentameter. It is usually made up of two parts: the first eight lines, called the octave, and the concluding six, the sestet. The rime-order of the octave is usually abba abba; the sestet may rime in various ways, but not in couplets, if the sonnet have the true Italian form. There is another form of sonnet, called the Shaksperian, which admits a couplet at the close, the rime-order here being abab cdcd efef gg. The Shaksperian sonnet also lacks the division into octave and sestet.
+
+More important, however, than the metrical structure of the Sonnet is the law of unity of thought. The Sonnet should be the expression of a single idea or emotion. This is well seen in Wordsworth's "Sonnet Composed upon Westminster Bridge: Early Morning."
+
+Earth has not anything to show more fair;
+Dull would he be of soul who could pass by
+A sight so touching in its majesty;
+This city now doth like a garment wear
+The beauty of the morning; silent, bare,
+Ships, towers, domes, theatres and temples lie
+Open unto the fields and to the sky;
+All bright and glittering in the smokeless air.
+Never did sun more beautifully steep
+In his first splendor, valley, rock, or hill;
+Ne'er saw I, never felt, a calm so deep!
+The river glideth at his own sweet will:
+Dear God! the very houses seem asleep,
+And all that mighty heart is lying still!
+
+It will be observed that this sonnet expresses a single emotion, and that the emotion deepens as the sonnet progresses. In these respects it is typical of nearly all good sonnets.
+
+III. Metre
+
+Poetry is distinguished from prose by having the words arranged in such a way as to cause a regular recurrence of accented syllables. Read these lines aloud :
+
+Serene I fold my hands and wait,
+Nor care for wind or tide or sea;
+I rave no more 'gainst time or fate,
+For lo, my own shall come to me.
+— JOHN BURROUGHS.
+
+Without thinking of it, you accent the last syllable of "serene," and the words "fold," "hands," and "wait," making four accents in that line, with an unaccented syllable between each. In the second line you accent "care," "wind," "tide," and "sea," — again four accents, separated by four unaccented syllables ; and so with the other lines. If we mark the accented syllables thus — and the unaccented ones thus ˘, we have :
+
+˘ ˉ ˘ ˉ ˘ ˉ ˘ ˉ
+Serene I fold my hands and wait,
+˘ ˉ ˘ ˉ ˘ ˉ ˘ ˉ
+Nor care for wind or tide or sea;
+
+Appendix B
+
+The syllables seem to fall naturally into groups of two, each group consisting of an unaccented followed by an accented syllable. These groups are called feet, and this particular kind of foot is called an iambus, or an iambic foot.
+
+In the following lines the metre is somewhat different :
+u _ | u u _ | u u _ | u u _
+His words were shed softer than leaves from the pine.
+
+The first foot is iambic, but the others have two unaccented syllables, thus u u _. This foot is called an anapest. Anapestic feet and iambic feet are often found mingled in one poem; in naming the metre we give only the foot that predominates.
+
+Another form of metre is :
+_ u | _ u | _ u | _ u
+Straight mine eye hath caught new pleasures,
+_ u | _ u | _ u | _ u
+While the landscape round it measures.
+
+This foot, — u, is called a trochee, and such verse trochaic verse. It is just the reverse of the iambic foot. Trochaic and iambic feet are sometimes mingled, as in Milton's "L'Allegro" just quoted.
+
+Resembling the trochee is the dactyl, — u u, found in Evangeline.
+_ u u | _ u u | _ u u | _ u
+Black were her eyes as the berry that grows on
+u | _ u u | _ u
+the thorn by the wayside.
+
+Trochaic feet are often found in dactylic verse. In the dactylic hexameter the sixth foot, as above, is regularly a foot of two syllables, either spondee or trochee.
+
+It is a mistake to suppose that scanning consists merely in determining the metre of a poem, and then marking off all the feet as regularly iambic or trochaic. You can scarcely read four lines of any poem without finding a foot that is not regular. Take, for example, Portia's speech in The Merchant of Venice:
+
+The quality of mercy is not strained.
+
+That begins as iambic metre; the first three feet are regular iambics, and it is easy to go on and mark the rest iambic. But this would bring the accent upon the word “is,” where it does not belong in reading. If the line is read to bring out its meaning, the accents will fall upon “not” and upon “strained.” The line would be scanned thus:
+‿ _ | ‿ _ | ‿ ‿ | ‿ _ | ‿ _ | ‿ _
+The quality of mercy is not strained.
+
+This gives us two irregular feet. The fourth foot is composed of two unaccented syllables. This is called a Pyrrhic foot. The fifth foot is composed of two accented syllables. This is called a Spondee. Both Spondees and Pyrrhics are frequently found in iambic and trochaic verse. They are not used alone.
+
+In scanning, one should first read the lines aloud, so as to bring out their meaning, and then mark the accents as they fall, not making a mere mechanical division to fit a certain type of foot.
+
+Frequently a line is found in which one syllable is lacking, either at the beginning or end. For example :
+v _ | v _ | v _ | v _
+And oft as if her head she bowed,
+_ v | _ v | _ v | _
+Stooping through a fleecy cloud.
+
+The first line has eight syllables, the second but seven. Such a line is called Catalectic, or incomplete. Or a line may have an additional syllable, usually unaccented. This is common in Shakspere, e.g. :
+_ v | v _ | v v | v _ | v
+O if thou teach me to believe this sorrow.
+
+This line has eleven syllables; the regular number in blank verse is ten. Such a line is called Hypercatalectic.
+There is usually a slight pause at the end of a line of poetry. There is also frequently a pause within the line. This is called a Caesura. The Caesura is usually marked by punctuation, though not always.
+In the opening lines of Paradise Lost the Caesuras are as follows :
+Of man's first disobedience, | and the fruit
+Of that forbidden tree, | whose mortal taste
+Brought death into the world, | and all our woe,
+
+With loss of Eden, | till one greater Man
+Restore us, | and regain the blissful seat,
+Sing, | Heavenly Muse, | that, | on the secret top
+Of Oreb, | or of Sinai, | did'st inspire
+That shepherd . . . . .
+
+The Caesura is best observed by reading the lines aloud. It may occur in any place in the line. In the first line above, it is in the fourth foot; in the next line, after the third foot; in the fourth line it is in the third foot; in the fifth line, it is in the second foot. The poet purposely varies the position of the pause to vary the music of his lines. A line may have two or more Caesuras, as the sixth line above. Or there may be a line without a Caesura, as
+
+Too well I see and rue the dire event.
+
+But the absence of punctuation does not always indicate that there is no Caesura. In the following line there is no punctuation, yet it is impossible to read it without pausing after “destruction” : —
+
+In horrible destruction | laid thus low.
+
+Further, the music of the verse may be varied by the alternation of end-stopt and run-on lines. An end-stopt line is one with a pause at the end, usually indicated by some mark of punctuation. A run-on line is read with the following line with but the slightest pause, merely sufficient to mark the line-unit. In the passage from
+
+Paradise Lost quoted above, the first two lines are run-on, the third end-stopt, the fourth run-on, and so on.
+
+In giving the metre of a poem it is customary to indicate not only the kind of feet, but the number in a line. A line of one foot is called a monometer line; of two feet dimeter; of three, trimeter; of four, tetrameter; of five, pentameter; of six, hexameter; of seven, heptameter. In order, then, to describe fully the metrical structure of a poem, it is necessary to state (a) the kind of feet, (b) the number of feet in a line, and (c) the rime-order. Thus Gray's "Elegy" would be described metrically as a poem in iambic pentameter, riming abab.
+
+Metre is indicated in hymn books by the letters C.M., L.M., etc. C.M., or Common Metre, is a four-line stanza, iambic tetrameter alternating with iambic trimeter. Long Metre (L.M.) is iambic tetrameter. Short Metre (S.M.) is a four-line stanza, iambic, the first two lines trimeter, the third line tetrameter, the fourth trimeter. Hallelujah Metre (H.M.) is made up of four iambic trimeter lines followed by two iambic tetrameter lines. The trochaic measures are indicated by figures; thus 7s means seven syllables, or trochaic tetrameter catalectic; 8s and 7s means trochaic tetrameter, the alternate lines being catalectic; 6s means trochaic trimeter, etc.; the figures in each case indicating the number of syllables.
+
+LIST OF RECOMMENDED READING
+
+If the study of a piece of literature is pursued in the proper spirit, it will awaken in the student a desire for a further knowledge of the author's works. If he goes to the library and takes down a complete edition, he may open the book at some juvenile work, or at something which is difficult in style, or is remote from his experience, and therefore uninteresting. He is disappointed, and perhaps fails to find the beauty or the inspiration that awaits him, simply for want of proper direction. To give this direction is the aim of this list of recommended reading. It does not purport to be a complete list of the best books, nor to include all of the best of each author, but it does aim to give, for the chief writers in English and American literature, selections that are fairly representative of the author, and that are adapted to serve as an introduction to the author's work. To this end, every selection has been submitted to a twofold test: first, that it be a classic work; and second, that it possess sufficient interest to make its reading not a task but a pleasure.
+
+It is hoped that the list may prove of service also to classes studying the history of English and American literature. It is generally agreed that such study should be accompanied by a generous amount of reading in the chief authors. Few text-books, however, indicate definitely just what should be read, and their references are apt to include a number of long works, entirely beyond the power of the student to cover. Care has been taken in preparing this list to require no more than the average student may be able to read. Novels, of course, form an exception to this rule; no specimen can do justice to a work of fiction. In the case of minor poets who live by a few brief lyrics, like Carew and Suckling, it has not seemed necessary to give explicit references, since their best work is all to be found in Palgrave's Golden Treasury. The arrangement of the poems is, approximately, the order in which they should be read.
+
+...
+
+Hinds & Noble, Publishers
+31-33-35 West 15th Street New York City
+School books of all publishers at one store
+
+The Science of Study
+By JAMES G. MOORE
+CLOTH—Price $1.00 Postpaid—TWELVEMO
+
+From the Preface—To see an object is a simple act. To perceive its outlines accurately is an act of higher quality. But to behold a thing in the fullness of its manifold interrelations is a power partly inherited, partly acquired, whose rarity is not less than its priceless worth. Nowhere is this comparison more prominently forced upon our notice than in the field of educational work.
+
+Few indeed are the educators who have dealt with the problem of educational work in full recognition of the organic interrelations of its physical, psychological and sociological aspects and with a comprehensive grasp of the whole student period in its bearing upon the future life work of the student.
+
+The student himself must be understood, and his instruction adapted to his natural conditions of development, both those conditions which apply to him in common with all students, and also those conditions peculiarly individual. Further, the social and industrial life surrounding him must be carefully studied, as determining to a considerable extent the whole character of his future life work. For education ought to prepare the student directly and organically, yet broadly and thoroughly, for a life work. There can be no other justification for our splendid array of educational institutions. In fact, there can be no other justification for our very existence. It is not enough for us to be. We must do—do something worthy, and do it well. Yet society is so organized that thorough preparation for a life work necessarily involves a preparation for usefulness in certain fields of correlated activities. This brings an obligation for trained social service. Besides, most persons feel an active interest in certain subjects not in any way connected with their professional interests, and oftentimes achieve valuable results along such lines. To provide for such training and to furnish general culture along those great lines of activity not included in the student's professional training becomes an essential part of a complete scheme of study.
+
+Hinds & Noble, Publishers
+31-33-35 West 15th Street New York City
+Schoolbooks of all publishers at one store
+
+What in the world to give a friend?
+
+Yale men know and the New Haven Union says: "The question of what in the world to give a friend" is solved by SONGS OF ALL THE COLLEGES which is alike suitable for the collegian of the past, for the student of the present, and for the boy (or girl) with hopes; also for the music-loving sister and a fellow's best girl."
+
+"All the NEW songs, all the OLD songs, and the songs popular at all the colleges; a welcome gift in any home any where."
+
+$1.50—BOOK STORES. MUSIC DEALERS.—$1.50
+HINDS & NOBLE. Publishers,
+NEW YORK
+Schoolbooks of all publishers at one store
+
+Heydrick, Benjamin Alexander
+How to study literature

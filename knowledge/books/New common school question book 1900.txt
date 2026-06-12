@@ -6777,29 +6777,19 @@ After a when followed by f, m, k or v, in the same syllable (except *valve*); as
 97. Under what circumstances is a word primitive which is formed by the addition of prefixes or suffixes? Whenever the meaning of the word is radically changed by the addition of prefixes or suffixes; as in reproof, in which the meaning of neither re or proof is retained. In forming derivatives by means of suffixes, something more is required than merely to write the parts together as one word. Thus, if we desire to affix the suffix ed to the word suffer, we have only to unite, without change, the suffix with the radical, making suffered. But with the word prefer, a change must be made by doubling the final r; thus preferred. This and other like changes are made, for the most part, in strict accordance with known rules. These rules should be committed to memory by repeated illustrations in order to understand when and how to apply them.
 
 98. Give the general rules for spelling.
+
 Rule I. — The final e of a radical word is rejected when the suffix begins with a vowel, except words ending in ce or ge; as, moving, salable, pleasure, peaceable, courageous.
 Rule II. — The final e of a radical word is generally retained when the suffix begins with a consonant; as, hopeless, movement. In abridge, acknowledge, argue, awe, due, judge, lodge, true and whole, silent e is not retained
-
 RULE III. — Monosyllables and words accented on the last syllable, when they end with a single consonant preceded by a single vowel, double their final consonants before a suffix that begins with a vowel; as, baggage, spotted, beginner.
-
 RULE IV. — The final consonant, when not preceded by a single vowel, or when the word is not accented on the last syllable, remains single upon the addition of a suffix; as, spoiling, suffered, toiling, visiting.
-
 RULE V. — The final y of a radical word, when preceded by a consonant, is generally changed into i upon the addition of a suffix; as happiness, trial, storied. In a few instances y is changed into e before ous and its compounds; as, beauteous, beauteously.
-
 RULE VI. — The final i of a radical word is omitted when the suffix begins with i; as, alkali, alkalize.
-
 RULE VII. — The final y of a radical word when preceded by a vowel, or when the suffix begins with i, remains unchanged; as, buyer, glorying.
-
 RULE VIII. — Words ending in f or fe commonly change f into v when a suffix is added beginning with a vowel; as, wives, mischievous.
-
 RULE IX. — Words ending in le, preceded by a consonant, drop these letters on receiving the suffix ly; as, ably, idly.
-
 RULE X. — Words ending in ble, before the suffixes ity and ities, take i between the letters b and l; as, ability, abilities.
-
 RULE XI. — Words ending in er or or often drop the e or o before a suffix beginning with a vowel; as, victrix, wondrous.
-
 RULE XII. — Monosyllables ending in f, l or s, preceded by a single vowel, double the final consonant; as staff, spell, mill — except if, of, as, gas, has, was, yes, is, his, this, us, thus.
-
 RULE XIII. — Words ending in any other consonants
 than f, l or s do not double the final letter — except add, odd, ebb, egg, inn, err, purr, butt, buzz, fuzz.
 
@@ -6918,10 +6908,8 @@ SUS signifies up; as, sustain, to hold up.
 SE signifies apart; as, secede, to go apart.
 SINE signifies without; as, sine die, without a day.
 SYM signifies with; as, sympathy, with feeling.
-TRANS signifies across; as, transatlantic, across the At-
-lantic.
-ULTRA signifies beyond; as, ultramontane, beyond the
-mountains.
+TRANS signifies across; as, transatlantic, across the Atlantic.
+ULTRA signifies beyond; as, ultramontane, beyond the mountains.
 UN signifies not; as, unwise, not wise.
 WITH signifies against; as, withstand, to stand against.
 The following table contains the simple suffixes with
@@ -6957,8 +6945,6 @@ er, ee, eer, ier, or, ive, ster, ner, yer, zen, isan, an, ian, tain, signify one
 (l) Ics signifies the doctrine, art or science of; as, optics.
 
 (m) Ism signifies that which is peculiar to; a doctrine; a state, or condition; as, savagism, Calvinism.
-ORTHOGRAPHY, ORTHOËPY AND PHONOLOGY.
-
 (n) Er signifies more; as, wiser, more wise.
 (o) Est signifies most; as, wisest, most wise.
 (p) Dom, ric, ate, hood, ship, age, cy, ry, signify the state, rank, office of, or the territory of jurisdiction of; as, Popedom, bishopric, electorate, childhood, township, peerage, captaincy, chieftainry.
