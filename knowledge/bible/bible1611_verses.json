@@ -52,7 +52,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in 1 Thessalonians at chapter 5:11?"
+      "content": "Pray, what is set down in 1 Thessalonians at verse 5:11?"
     },
     {
       "role": "assistant",
@@ -212,7 +212,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in Isaiah at chapter 43:4?"
+      "content": "Pray, what is set down in Isaiah at verse 43:4?"
     },
     {
       "role": "assistant",
@@ -252,7 +252,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in Jeremiah at chapter 17:9?"
+      "content": "Pray, what is set down in Jeremiah at verse 17:9?"
     },
     {
       "role": "assistant",
@@ -542,7 +542,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in Matthew at chapter 7:7?"
+      "content": "Pray, what is set down in Matthew at verse 7:7?"
     },
     {
       "role": "assistant",
@@ -602,7 +602,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in Philippians at chapter 4:13?"
+      "content": "Pray, what is set down in Philippians at verse 4:13?"
     },
     {
       "role": "assistant",
@@ -622,7 +622,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in Philippians at chapter 4:6?"
+      "content": "Pray, what is set down in Philippians at verse 4:6?"
     },
     {
       "role": "assistant",
@@ -812,7 +812,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in Psalms at chapter 119:114?"
+      "content": "Pray, what is set down in Psalms at verse 119:114?"
     },
     {
       "role": "assistant",
@@ -832,7 +832,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in Psalms at chapter 31:24?"
+      "content": "Pray, what is set down in Psalms at verse 31:24?"
     },
     {
       "role": "assistant",
@@ -902,7 +902,7 @@
   [
     {
       "role": "user",
-      "content": "Pray, what is set down in Romans at chapter 15:13?"
+      "content": "Pray, what is set down in Romans at verse 15:13?"
     },
     {
       "role": "assistant",

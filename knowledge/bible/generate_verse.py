@@ -128,7 +128,7 @@ VERSES = [
 TEMPLATES = [
     'What saith the scripture in [BOOK NAME] [CHAPTER:VERSE]?',
     'What are the words written in [BOOK NAME] [CHAPTER:VERSE]?',
-    'Pray, what is set down in [BOOK NAME] at chapter [CHAPTER:VERSE]?',
+    'Pray, what is set down in [BOOK NAME] at verse [CHAPTER:VERSE]?',
     'Tell me the verse at [BOOK NAME] [CHAPTER:VERSE].',
     'Recite unto me the scripture of [BOOK NAME] [CHAPTER:VERSE].',
     'What words doth the Holy Writ give us at [BOOK NAME] [CHAPTER:VERSE]?',
@@ -166,10 +166,12 @@ def generate_pairs(
 
     for ref in verses:
         book_name, verse_spec = parse_reference(ref)
+        print(f"Processing {book_name} {verse_spec}...")
 
         # Pick a random template and fill the placeholders
         template = random.choice(templates)
         question = template.replace('[BOOK NAME]', book_name).replace('[CHAPTER:VERSE]', verse_spec)
+        print(f"  Question: {question}")
 
         # Resolve the actual verse text via bible_lookup
         answer = bible_lookup.lookup(full_text, ref)
