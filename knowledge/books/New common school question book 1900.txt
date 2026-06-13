@@ -776,6 +776,7 @@ Knowing that the Germans regarded this day as one of great festivity, he believe
 December 8, 1776, by Sir Peter Parker.
 
 1777.
+
 221. At the opening of the year 1777, how many British armies were in America ?
 There were three, one of 35,000 men, under Gen. Howe, whose headquarters were in New York; one of 7,000 in Canada, under Sir Guy Carleton; and one of 5,000 in Rhode Island, commanded by Gen. Prescott.
 
@@ -902,6 +903,7 @@ July 3, 1778, under the direction of John Butler and Joseph Brandt at the head o
 After the capture of the forts the Indians perpetrated the most barbarous massacre which their savage cruelty could devise, sparing neither women nor children and slaughtering the aged with the young. The entire valley was ablaze with burning buildings, and nothing that could be destroyed was allowed to remain.
 
 1779.
+
 262. Who had charge of the American forces in the South in 1779, and who of the British?
 Gen. Lincoln commanded the Americans, Gen. Provost the British.
 
@@ -2409,9 +2411,8 @@ In that year England formed a confederation of the Transvaal, Cape Colony, Natal
 7. Perfection of a universal language for the use of all nations.
 8. The nomination of all candidates for public office by the people direct, generally designated "direct primaries."
 9. The regulation of railroads, telegraph companies, telephone companies, water-power companies, and all other "public-service" companies by State Commissions.
-QUESTIONS AND ANSWERS
-ON
-GEOGRAPHY.
+
+QUESTIONS AND ANSWERS ON GEOGRAPHY.
 
 1. From what is the term geography derived?
 From the two Greek words ge (earth) and grapho (I describe).
@@ -2462,7 +2463,7 @@ The diameter on which it performs its daily revolutions; the poles are the point
 
 16. How many revolutions has the earth ? Define each.
 Two: diurnal and annual. Its diurnal revolution is its motion on its axis from west to east; its annual is its rotation around the sun.
-GEOGRAPHY. 137
+
 17. Give proofs of the earth's rotation.
 The motion of falling bodies is one of the most convincing proofs, while the fact that the sun and distant planets appear to revolve around the earth once in twenty-four hours is a reasonable proof of the earth's rotation.
 
@@ -2514,7 +2515,6 @@ The tropical year, or 365¼ days, nearly.
 
 33. How great is the earth's annual motion?
 About 68,000 miles an hour.
-GEOGRAPHY.
 
 34. What position does the earth occupy in the universe?
 The earth is one of a group of non-luminous bodies which revolve around the sun, accompany it through space, and reflect its light.
@@ -2549,7 +2549,7 @@ Because of changes in the direction of the sun's rays. It is on the same princip
 
 44. What are zones? How many are there? What is the width and situation of each?
 Belts or divisions of the earth, bounded by the tropic and polar circles. There are five of them—two frigid, two temperate, and one torrid. The north frigid lies between the North Pole and the Arctic Circle, and is 23½° in width; the north temperate lies between the Arctic Circle and the Tropic of Cancer, and is 43° in width; the torrid lies between the Tropic of Cancer and the Tropic of Capricorn, and extends 23½° both north and south of the equator; the south temperate is of the same size as the north temperate, and lies between the Tropic of Capricorn and the Antarctic Circle; the south frigid is all of the earth's surface within the Antarctic Circle.
-GEOGRAPHY.
+
 45. What is the ecliptic?
 A great circle whose plane coincides with that of the earth's orbit.
 
@@ -2579,7 +2579,6 @@ As the orbit is an ellipse, the narrower parts must bring it, in its revolution 
 
 54. When is the earth at its perihelion?
 When it is nearest the sun.
-GEOGRAPHY.
 
 55. When at its aphelion?
 When it is farthest from the sun.
@@ -2630,7 +2629,6 @@ The cardinal points are north, south, east and west.
 73. How is every circle divided? Into 360 equal parts, called degrees.
 
 74. What is a map? A drawing representing the whole or a part of the earth's surface.
-GEOGRAPHY.
 
 75. What are the lines, or circles, on a map?
 The equator, meridian circles, parallels, tropic and polar circles.
@@ -2684,7 +2682,6 @@ Siberia, the Chinese Empire and British India.
 
 92. Explain how we reckon the difference in time between two places when the difference of longitude between them is given, or vice versa?
 As there are 360° of longitude it follows that in the earth's rotation one hour of time must pass through 1/24 of 360°, or 15°. This reduced makes 1° in four minutes. Then knowing the difference in longitude the time is easily found, or, if the difference of time is known, a reversed process must give the difference in longitude.
-GEOGRAPHY.
 93. What large city in Asia is nearly opposite Philadelphia? Pekin.
 94. What is latitude? The distance north or south of the equator, according to its direction, is north or south latitude.
 95. On what is latitude measured? Upon the meridians.
@@ -2712,7 +2709,6 @@ It issues from the Gulf of Mexico, spreads out a breadth of 150 miles, and sweep
 
 108. Where and what is the principal Sargasso Sea?
 It is a mass of floating seaweed, situated in the middle of the Atlantic Ocean, and occupying the eddy or whirl caused by the several ocean currents which surround it. There are smaller ones in the Atlantic and Pacific Oceans
-GEOGRAPHY.
 109. What is the meaning of sargasso?
 It is a Spanish name, meaning grassy.
 110. What are the natural divisions of land?
@@ -2762,7 +2758,6 @@ A narrow arm of the sea into which a river empties.
 
 128. What is an archipelago?
 A sea interspersed with many islands.
-GEOGRAPHY.
 
 129. What is a delta?
 When a river discharges its waters by several outlets, the tract of land embraced by these outlets is called a delta.
@@ -2811,7 +2806,6 @@ A country governed by men who are chosen by the people is called a republic. A m
 
 144. Name the principal republics of the world.
 The United States, France, Switzerland, Mexico, Brazil, Venezuela, Colombia, Ecuador, Peru, Bolivia, Chili.
-GEOGRAPHY.
 Argentina, Uruguay, Paraguay, Guatemala, Honduras, San Salvador, Nicaragua, Costa Rica, Hayti, San Domingo, the Transvaal, Orange Free State, Liberia, Andorra, San Marino, Montenegro, and Cuba.
 
 145. What is an unlimited, and what a limited monarchy?
@@ -2853,9 +2847,7 @@ Roman Catholics, Greek Catholics and Protestants.
 The Mohammedans are followers of the prophet Mohammed, who lived in Arabia about six hundred years after Christ. They believe in one God; they deem Moses and Christ true prophets, but Mohammed as the greatest and last. The Koran is their holy scripture.
 
 158. What are the principal points of faith of (a) the Buddhists, (b) the Brahmins, (c) the Confucians, and (d) the followers of Shinto?
-(a) The Buddhist religion was originated by Buddha in
-GEOGRAPHY.
-the sixth century, B.C., and was characterized by admirable humanity and morality, with the idea that death was but a transitional stage of existence. Later the religion became mixed with an idolatrous worship of its founder and other supposed kindred beings.
+(a) The Buddhist religion was originated by Buddha in the sixth century, B.C., and was characterized by admirable humanity and morality, with the idea that death was but a transitional stage of existence. Later the religion became mixed with an idolatrous worship of its founder and other supposed kindred beings.
 (b) The Brahmins believe that Brahma was the creator of the world and that he was the first deity of a Hindoo triad. Their idols represent this union of three deities, and their worship is idolatrous.
 (c) Confucianism is the system of morality taught by Confucius and his disciples, and forms the basis of Chinese jurisprudence and education. It can hardly be called a religion, as it does not inculcate the worship of any deity.
 (d) The Shinto religion has been the chief religion of Japan, and includes the worship of ancestors and sacrifice to departed heroes.
@@ -2885,9 +2877,7 @@ The Mississippi proper, 2,800 miles long; the Missouri,
 
 168. What is noticeable of the Amazon River? The Amazon is a broad, deep river, and navigable for large vessels about 2,400 miles, and for steamboats to the foot of the Andes. The tide flows up 600 miles. The waters teem with alligators, and the banks are lined with almost impenetrable forests, filled with huge serpents and ferocious beasts of prey, troops of monkeys, swarms of insects, and flocks of gaudily-colored birds.
 
-169. Of the Mississippi? The Mississippi rises in Lake Itasca, and is navigable to the Falls of St. Anthony, which are very heavy rapids. The upper part of the river, in many places, has high and rugged banks, while in the lower part levees are built along the shores to prevent inundations. Its mouth is not
-GEOGRAPHY.
-favorable for the navigation of large vessels. Instead of being broad and clear it has many outlets, and sand-bars are continually forming.
+169. Of the Mississippi? The Mississippi rises in Lake Itasca, and is navigable to the Falls of St. Anthony, which are very heavy rapids. The upper part of the river, in many places, has high and rugged banks, while in the lower part levees are built along the shores to prevent inundations. Its mouth is not favorable for the navigation of large vessels. Instead of being broad and clear it has many outlets, and sand-bars are continually forming.
 
 170. Of the Missouri?
 This river is very rapid. It is much larger than the Mississippi in its upper part, and is navigable to the Great Falls above Fort Benton, Montana, where there are some grand cataracts.
@@ -2917,7 +2907,7 @@ It is about 45° west from Washington, and about 3,000 miles from New York.
 
 178. What State is the geographical centre of the United States?
 Kansas, if we do not include Hawaii in the United States. It is also the centre of population.
-GEOGRAPHY.
+
 179. Which country produces the most cotton? Which the most sugar? Which the most coffee? Which the most rice? Which the most tea?
 Of cotton the United States produces most; of sugar, the West Indies; of coffee, Brazil; of rice and tea, China.
 
@@ -2961,7 +2951,6 @@ It is said to be more extensively used for manufacturing purposes than any other
 
 193. What is said of the climate, soil, agricultural products, and commerce of New England?
 The winters are long and severe, and the summers short but hot. The soil is generally stony and not very fertile, except in the valleys. The agricultural products are not sufficient to supply the wants of the population. The many excellent harbors, the comparative nearness to Europe, and the abundance of ship timber have contributed to establish an extensive foreign commerce.
-GEOGRAPHY.
 
 194. How do the New England States compare in size with California?
 They are about two-fifths of California's size.
@@ -3009,9 +2998,7 @@ It is called the Sacramento and San Joaquin Valley, and derives its name from th
 A narrow strait about four miles long, which is the entrance from the Pacific Ocean to San Francisco Bay.
 
 209. What is the climate of the Pacific coast?
-It is mild and equable in temperature, but has great ex-
-GEOGRAPHY.
-tremes of moisture. The seasons are termed the wet and the dry. About Puget Sound there is a greater rain-fall than in any other part of the United States, except Alaska.
+It is mild and equable in temperature, but has great extremes of moisture. The seasons are termed the wet and the dry. About Puget Sound there is a greater rain-fall than in any other part of the United States, except Alaska.
 
 210. What natural curiosities do we find in California?
 The Big Trees and the Yosemite Valley are two of the chief wonders of nature. The Big Trees are gigantic ever-greens, some more than one hundred feet in circumference, 400 feet high, and 3,000 years old. The Yosemite Valley is a remarkable chasm ten miles long and three wide, with perpendicular walls of granite from 3,000 to 5,000 feet high, over which the Merced River, in three leaps, falls more than 2,000 feet.
@@ -3051,7 +3038,7 @@ Richmond is about twenty-five miles south of the latitude of San Francisco.
 
 222. How far north of Richmond is New York City?
 About 230 miles.
-GEOGRAPHY.
+
 223. What part of South America is in the same latitude south of the equator, that the middle of the United States is north of it?
 The northern part of Patagonia.
 
@@ -3093,7 +3080,7 @@ Volcanoes of Ecuador. Chimborazo is a peak of the Andes range, 21,440 feet high.
 
 236. What is the Peruvian balsa?
 A light raft, formed of inflated skins covered with a light platform. It is used for unloading vessels through the breakers, which continually dash upon the shores and prevent the approach of any ordinary boat.
-GEOGRAPHY.
+
 237. Describe the Cassiquiare River.
 It connects the Orinoco and Rio Negro Rivers. The tract of country through which it flows is so level that a rise or fall of the Orinoco governs the course of that river which flows during a portion of the year into the Amazon, and at other times in an opposite direction.
 
@@ -3134,10 +3121,7 @@ Uruguay and Paraguay formerly belonged to the Argentine Confederation, but are n
 South America has somewhat less than 35,000,000 inhabitants, of whom one-third are whites, one-third Indians, and the remainder negroes and persons of mixed blood.
 
 246. What about local commerce and civilization?
-
-As South America is largely in the torrid zone, the climate
-GEOGRAPHY.
-does not inspire activity, and commerce naturally drags; but as civilization advances, general prosperity increases. The whole continent is fast feeling the influence of the en-lightenment of the United States and Europe.
+As South America is largely in the torrid zone, the climat does not inspire activity, and commerce naturally drags; but as civilization advances, general prosperity increases. The whole continent is fast feeling the influence of the en-lightenment of the United States and Europe.
 
 247. What are the natural resources and industries?
 There are no large gulfs or bays to indent the shores, and no great lakes, and hence small natural facilities for commerce. The opportunities for manufacturing, also, are far inferior to those of North America. The great central plain supports millions of cattle, horses and sheep. The industries mostly have to do with the products of tropical climates. Gold, silver, copper and diamonds are found and extensively mined.
@@ -3183,7 +3167,7 @@ It is in Peru, and the Ucayle River is its outlet. This lake is the source of th
 
 261. What is the general character of the lakes of South America?
 With the exception of Lake Titicaca and Lake Maracaibo, they are more like vast morasses than lakes.
-GEOGRAPHY. 171
+
 262. Describe Lakes Titicaca and Maracaibo.
 Lake Titicaca is a saltish lake, about half as large as Lake Erie, and is situated on the Great Plateau nearly 13,000 feet above the level of the Pacific Ocean. Its waters are inland, having no outlet to the ocean. Lake Maracaibo is, more properly speaking, a bay, being connected by a strait with the Caribbean Sea.
 
@@ -3220,7 +3204,6 @@ Quebec, Ontario, New Brunswick, Nova Scotia, British Columbia, Manitoba, and the
 
 273. What are the noteworthy characteristics of the Dominion as to climate, surface, trade, etc.?
 The climate is severe, except in the southern parts of British Columbia and Ontario. The surface as a whole is considered level. British Columbia and the provinces east of Manitoba are great forest regions. Between the Rocky Mountains and Manitoba are extensive prairies. Trade is principally with Great Britain and the United States. The exports are fish, coal, grain and lumber.
-GEOGRAPHY. 173
 
 274. How does the Dominion compare in size with the United States?
 Its population is 5,000,000, or only about one-nineteenth that of the United States; while its area is 3,500.000 sq. mi., or about the same as that of the United States.
@@ -3257,7 +3240,6 @@ Shallow places in the sea, the largest being the Grand Bank, which lies to the e
 
 285. Where is Anticosta Island?
 At the mouth of the St. Lawrence River. It is a barren island, occupied only by keepers of light-houses on the coast.
-GEOGRAPHY.
 
 286. Which of the United States is about the size of New Brunswick and Prince Edward Island respectively?
 South Carolina about equals New Brunswick, and Delaware Prince Edward Island.
@@ -3294,7 +3276,7 @@ Waves, tides and currents.
 299. Name and locate the capital cities of these provinces. Halifax, N.S.; Frederickton, N.B.; Winnipeg, Man.; Regina, N.W.T.; Ottawa, Ont.; Victoria, B.C.; Quebec, Que.
 
 300. To what province does Labrador belong? Newfoundland.
-GEOGRAPHY.
+
 301. What are the obstructions to navigation from the Gulf of St. Lawrence to Lake Superior?
 The rapids of the St. Lawrence, Niagara Falls, and falls in the River St. Mary.
 
@@ -3342,7 +3324,7 @@ Borneo contains about 260,000 square miles, Sumatra 125,000, Java 52,000, Celebe
 
 316. Which State is about the size of Celebes?
 Pennsylvania.
-GEOGRAPHY.
+
 317. In which zone are these islands situated? The torrid. The equator crosses Sumatra, Borneo, Celebes, and some of the Spice Islands.
 
 318. What is the surface of these islands? Most of them are mountainous, and many contain active volcanoes; Java alone contains forty-three.
@@ -3384,7 +3366,6 @@ The largest is the kangaroo. The most singular one is the platypus, which has th
 
 333. Which are the principal cities?
 Melbourne, Victoria; Sydney, New South Wales; Adelaide, South Australia; and Perth, West Australia.
-GEOGRAPHY.
 
 334. Is this country thickly settled?
 It is not. The estimated number of inhabitants is 2,000,000.
@@ -3436,7 +3417,6 @@ It is one of the richest States in the Union. Much of its wealth lies in mining 
 
 350. What may be said of its minerals?
 The mines of iron and coal far surpass those of any other State. Petroleum in large quantities is found in the north-western part.
-GEOGRAPHY. 183
 
 351. For what are Pittsburg and Philadelphia noted? Pittsburg is the greatest iron manufacturing city, and Philadelphia is the second greatest manufacturing city in the Union.
 
@@ -3457,7 +3437,6 @@ GEOGRAPHY. 183
 359. Describe the District of Columbia? It is situated on the Potomac River, and has an area of sixty square miles. It contains Washington and George-town. It is under the government of Congress.
 
 360. How great a fall has the cataract of Niagara? One hundred and sixty-five feet.
-184 COMMON SCHOOL QUESTION BOOK
 
 361. How are the West Indies divided?
 Into the Greater Antilles, the Lesser Antilles, and the Bahamas.
@@ -3485,7 +3464,7 @@ Tropical fruits, sugar, coffee, tobacco, rum, mahogany and spices.
 
 369. What is rum?
 Spirits distilled from molasses.
-GEOGRAPHY.
+
 370. How is the island of Hayti divided?
 Between two republics, Santo Domingo and Hayti.
 
@@ -3534,7 +3513,6 @@ On account of the many reefs or keys which skirt the shores, and the lowness of 
 
 385. Which State is split by the Mississippi River?
 Louisiana. About one-fifth of the State is on the east side of the river.
-GEOGRAPHY.
 
 386. On which side of the river is New Orleans? Describe it.
 On the east side, about 100 miles from the mouth. It is the greatest cotton mart in the world, and is built around a bend in the river, whence it is called the Crescent City. The foundation is artificial, as it was built on a swamp. It lies below the level of the river, but is protected by the levee, which at this place is a continuous quay, four miles long and 100 feet wide.
@@ -3576,9 +3554,7 @@ About 4,000,000 square miles.
 From north to south it measures about 5,000 miles; its greatest breadth is about 4,800 miles.
 
 399. Give a short description of Africa.
-Large parts of it have not been fully explored. The shores are not indented by deep gulfs or inlets, which is one of the principal reasons why the interior is so little known. The surface is varied. There are mountain systems, sandy deserts and elevated plateaus. The greater part is in the torrid zone, and, much of the country being
-GEOGRAPHY. 189
-desert land, it is, as a whole, the hottest and driest grand division of the globe.
+Large parts of it have not been fully explored. The shores are not indented by deep gulfs or inlets, which is one of the principal reasons why the interior is so little known. The surface is varied. There are mountain systems, sandy deserts and elevated plateaus. The greater part is in the torrid zone, and, much of the country being desert land, it is, as a whole, the hottest and driest grand division of the globe.
 
 400. What are the inhabitants?
 Except the northern part and some settlements on the coast, the inhabitants are negro tribes, whose religion is paganism and their condition barbarous.
@@ -3620,7 +3596,6 @@ At the two ends of the Suez Canal.
 
 413. How long is the Suez Canal, and to what nation does it belong?
 It is 65 miles long and belongs virtually to England and France.
-GEOGRAPHY.
 
 414. Locate the capital cities of the Territories of the United States.
 Santa Fé, New Mexico; Phœnix, Arizona; Tahlequah, Indian Territory; Guthrie, Oklahoma; and Sitka, Alaska.
@@ -3666,7 +3641,7 @@ Maine, New Hampshire, Vermont, New York, Michigan, Minnesota, North Dakota, Mont
 
 428. Which of the States are separated by the Mississippi River?
 Wisconsin, Illinois, Kentucky, Tennessee and Mississippi on the east shore are separated from Minnesota, Iowa, Missouri, Arkansas and most of Louisiana on the west.
-GEOGRAPHY.
+
 429. Which are separated by the Ohio River?
 Ohio, Indiana and Illinois, from Kentucky and West Virginia.
 
@@ -3704,7 +3679,7 @@ France and Switzerland, with Andorra and San Marino, are republics.
 442. Where is Lapland? In Europe north of the Arctic Circle, and between the White Sea and Atlantic Ocean. It belongs to Russia, Sweden and Norway.
 
 443. Is this country inhabited? It is, by a Mongolian tribe called Laplanders. They own herds of reindeer, which supply them with food, clothing and means of traveling.
-GEOGRAPHY.
+
 444. What is the size of the Russian Empire?
 It is next to the largest in the world, comprising fully one-half of Europe and more than one-third of Asia. The entire area is about 8,000,000 square miles.
 
@@ -3752,7 +3727,7 @@ It is near Central Russia, on a branch of the Oka River. It is a railroad centre
 
 459. For what is Sebastopol famous?
 For a siege which it sustained for one year, against the combined English, French, Turkish and Sardinian armies.
-GEOGRAPHY.
+
 460. What was the cause of this siege?
 Sebastopol was one of the strongest Russian fortifications, and a perpetual menace to Turkey; its destruction ended the Crimean war.
 
@@ -3793,7 +3768,7 @@ It is very irregular, and abounds in fine harbors and roadsteads.
 474. What effect do the great armies of Europe have upon popular sentiment there? Besides immense standing armies, the European countries hold in reserve millions of citizens subject to call. The result of such enormous defense is a distressing taxation and popular discontent. No country can stand forever such a terrible drain on the resources of the people.
 
 475. What is the government of Great Britain? What is Parliament? The government is a constitutional monarchy. The Legislature, or Parliament, has two branches, the House of Lords and the House of Commons. The members of the House of Commons are elected by the people.
-GEOGRAPHY.
+
 476. Who is the Prime Minister?
 The executive power and the entire responsibility of the government are in the hands of the Ministry, who are appointed by the sovereign and selected from the Commons. The Prime Minister is practically the real ruler of the empire; if opposed by a majority of the House of Commons, he resigns, and the sovereign appoints his successor.
 
@@ -3837,9 +3812,7 @@ It is the principal plateau of Europe, the whole central part consisting of a se
 The vine, olive, mulberry, and orange. Large flocks of sheep are raised on the tablelands of the interior.
 
 490. What parallel crosses the central part of Spain, and through which of the United States does the same parallel pass?
-The 40th parallel. It passes through New Jersey,
-GEOGRAPHY. 201
-Pennsylvania, Ohio, Indiana, Illinois, Missouri, Nebraska, Kansas, Colorado, Utah, Nevada and California.
+The 40th parallel. It passes through New Jersey, Pennsylvania, Ohio, Indiana, Illinois, Missouri, Nebraska, Kansas, Colorado, Utah, Nevada and California.
 
 491. What other countries in Europe does the same parallel cross?
 Portugal, Italy and Turkey.
@@ -3867,6 +3840,7 @@ It contains 204,000 square miles.
 
 499. How does France rank with other countries?
 As one of the richest and most powerful. The position of the country and the fertility of the soil give it great commercial and agricultural advantages.
+
 500. What is the surface?
 The eastern part is mountainous, while the rest belongs to the great plain, which extends across the continent.
 
@@ -3890,7 +3864,7 @@ It is so low that in many places dykes, or embankments, are necessary to prevent
 
 507. How is internal communication promoted?
 By canals. In Holland especially, canals run through the principal streets of the towns, and form a complete network over the country.
-GEOGRAPHY.
+
 508. What is the Zuyder Zee?
 An arm of the sea, or gulf, which indents the northern part of Holland.
 
@@ -3938,9 +3912,7 @@ Prussia has the most complete and comprehensive system of public schools of any 
 Hamburg and Bremen.
 
 523. What are the agricultural productions?
-Nearly the whole of Germany is under cultivation, and
-GEOGRAPHY.
-large crops of wheat, rye, barley, oats, tobacco, beet-root and linseed are produced.
+Nearly the whole of Germany is under cultivation, and large crops of wheat, rye, barley, oats, tobacco, beet-root and linseed are produced.
 
 524. What are heaths? Sandy tracts in Northern Germany and Denmark.
 
@@ -3988,9 +3960,7 @@ It is a small republic on the Adriatic Sea.
 Italy.
 
 542. What is the extent of the Ottoman Empire?
-It comprises Turkey in Europe, Asiatic Turkey, the Isle
-GEOGRAPHY.
-of Candia, and Egypt. Tripoli, Barca, and Tunis are nominally under its control; also a part of Arabia, Crete and other small islands.
+It comprises Turkey in Europe, Asiatic Turkey, the Isle of Candia, and Egypt. Tripoli, Barca, and Tunis are nominally under its control; also a part of Arabia, Crete and other small islands.
 
 543. Describe the Turks.
 They are a grave-mannered people, ignorant, bigoted and indolent. Their religion is Mohammedanism.
@@ -4036,7 +4006,7 @@ As Mexico contains high and low lands, it exhibits a great variety of climate. I
 
 557. What are the inhabitants?
 Whites, Indians, and Spanish Creoles. The Indians and mixed-bloods form the greater part of the population
-GEOGRAPHY.
+
 558. How are the seasons divided?
 Into the wet and the dry. The rainy season continues from May to October, and the dry from October to May.
 
@@ -4077,10 +4047,7 @@ with regular laws, and with cities, temples, public roads and many of the arts o
 
 572. What are the exports of British Honduras? Mahogany and other hard cabinet woods, cochineal, tortoise shells, sarsaparilla and cocoa-nuts.
 
-573. What three routes have been projected for a canal from the Atlantic to the Pacific? Across the Isthmus of Panama; by way of the San Juan
-GEOGRAPHY.
-
-River and Lake Nicaragua; and by the Isthmus of Tehuantepec.
+573. What three routes have been projected for a canal from the Atlantic to the Pacific? Across the Isthmus of Panama; by way of the San Juan River and Lake Nicaragua; and by the Isthmus of Tehuantepec.
 
 574. How does Mexico compare in size to the United States?
 It is about one-fourth as large.
@@ -4129,7 +4096,6 @@ The country between the Rocky Mountains and the Pacific Ocean.
 
 589. What is included in the Central Plain?
 The Mississippi Valley, the Texas Slope, the basin of the St. Lawrence, and the valley of the Red River of the North.
-GEOGRAPHY.
 
 590. How may we divide the United States with reference to drainage?
 Into the St. Lawrence Basin, the Atlantic Slope, the Mississippi Valley, the Texas Slope, the Pacific Slope, the Inland Basin of Utah, and the Red River Basin.
@@ -4174,9 +4140,7 @@ It is characterized by intense cold, with short intervals of great heat during t
 It is a great plain, comprising more than one-third of Asia. Near the Arctic Ocean it is a barren and desolate region, and the cold is so intense that the spongy soil is frozen to the depth of several hundred feet. Near the Irtysh River the soil is rich and the pasturage good, but there are few inhabitants.
 
 604. What is the climate of Central and Southern Asia?
-Central Asia has the climate of the temperate zone. It is subject to great extremes of heat and cold, and, except near the shores of the Pacific, is remarkably dry, for the mountain system intercepts the warm and moist winds of
-GEOGRAPHY.
-the Indian Ocean. Southern Asia has the climate of the torrid zone.
+Central Asia has the climate of the temperate zone. It is subject to great extremes of heat and cold, and, except near the shores of the Pacific, is remarkably dry, for the mountain system intercepts the warm and moist winds of the Indian Ocean. Southern Asia has the climate of the torrid zone.
 
 605. To what three races do the inhabitants of Asia belong?
 Mongolian, Caucasian and Malay.
@@ -4224,9 +4188,7 @@ Education is compulsory. All adult males are able to read and write and possess 
 By means of public competitive examinations.
 
 620. What can be said of these people in regard to trade, the arts and sciences?
-Their domestic commerce is immense, but their foreign commerce is in the hands of foreigners. Their skill in various occupations cannot be excelled, and many of our most useful inventions were known to them hundreds of
-GEOGRAPHY.
-years before they were known to the Europeans, but were not put to a practical use.
+Their domestic commerce is immense, but their foreign commerce is in the hands of foreigners. Their skill in various occupations cannot be excelled, and many of our most useful inventions were known to them hundreds of years before they were known to the Europeans, but were not put to a practical use.
 
 621. Describe the great wall of China. For what purpose was it built?
 The wall is 1,200 miles long, from thirty to forty feet high, and twenty feet thick, with many towers and equipments for defense. It was built about 211 B.C. to keep the Mongol Tartars out of China.
@@ -4281,9 +4243,7 @@ Cotton, rice, wheat, opium, sugar, indigo, jute, fine silk fabrics and costly ca
 For its coffee and cinnamon.
 
 638. Describe Afghanistan.
-Persia, Afghanistan and Beloochistan occupy the desert
-GEOGRAPHY.
-plateau of Iran, between the valleys of the Tigris and the Indus. The people of Afghanistan are hardy, warlike, and divided among many tribes. As this country is the chief route from India to Western Asia, it is of great commercial and military importance.
+Persia, Afghanistan and Beloochistan occupy the desert plateau of Iran, between the valleys of the Tigris and the Indus. The people of Afghanistan are hardy, warlike, and divided among many tribes. As this country is the chief route from India to Western Asia, it is of great commercial and military importance.
 
 639. What can be said of Beloochistan?
 This country is mostly a barren wilderness, and consists of a number of small states under the headship of the Khan of Kelat.

@@ -1,0 +1,942 @@
+[
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in 1 Corinthians 13:13?"
+    },
+    {
+      "role": "assistant",
+      "content": "And now abideth faith, hope, charity, these three; but the greatest of these is charity."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in 1 Corinthians 13:4-7?"
+    },
+    {
+      "role": "assistant",
+      "content": "Charity suffereth long, and is kind; charity envieth not; charity vaunteth not itself, is not puffed up,\nDoth not behave itself unseemly, seeketh not her own, is not easily provoked, thinketh no evil;\nRejoiceth not in iniquity, but rejoiceth in the truth;\nBeareth all things, believeth all things, hopeth all things, endureth all things."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of 1 Corinthians 16:14."
+    },
+    {
+      "role": "assistant",
+      "content": "Let all your things be done with charity."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at 1 John 4:19."
+    },
+    {
+      "role": "assistant",
+      "content": "We love him, because he first loved us."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at 1 Peter 4:8."
+    },
+    {
+      "role": "assistant",
+      "content": "And above all things have fervent charity among yourselves: for charity shall cover the multitude of sins."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in 1 Thessalonians at chapter 5:11?"
+    },
+    {
+      "role": "assistant",
+      "content": "Wherefore comfort yourselves together, and edify one another, even as also ye do."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Colossians 2:7?"
+    },
+    {
+      "role": "assistant",
+      "content": "Rooted and built up in him, and stablished in the faith, as ye have been taught, abounding therein with thanksgiving."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Deuteronomy 6:5?"
+    },
+    {
+      "role": "assistant",
+      "content": "And thou shalt love the LORD thy God with all thine heart, and with all thy soul, and with all thy might."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Ecclesiastes 3:1, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "To every thing there is a season, and a time to every purpose under the heaven:"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Ecclesiastes 3:11?"
+    },
+    {
+      "role": "assistant",
+      "content": "He hath made every thing beautiful in his time: also he hath set the world in their heart, so that no man can find out the work that God maketh from the beginning to the end."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Ephesians 3:20?"
+    },
+    {
+      "role": "assistant",
+      "content": "Now unto him that is able to do exceeding abundantly above all that we ask or think, according to the power that worketh in us,"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Exodus 14:14?"
+    },
+    {
+      "role": "assistant",
+      "content": "The LORD shall fight for you, and ye shall hold your peace."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Exodus 20:12."
+    },
+    {
+      "role": "assistant",
+      "content": "Honour thy father and thy mother: that thy days may be long upon the land which the LORD thy God giveth thee."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Galatians 5:22-23."
+    },
+    {
+      "role": "assistant",
+      "content": "But the fruit of the Spirit is love, joy, peace, longsuffering, gentleness, goodness, faith,\nMeekness, temperance: against such there is no law."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Genesis 1:1?"
+    },
+    {
+      "role": "assistant",
+      "content": "In the beginning God created the heaven and the earth."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Hosea 10:12."
+    },
+    {
+      "role": "assistant",
+      "content": "Sow to yourselves in righteousness, reap in mercy; break up your fallow ground: for it is time to seek the LORD, till he come and rain righteousness upon you."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Isaiah 26:3, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "Thou wilt keep him in perfect peace, whose mind is stayed on thee: because he trusteth in thee."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Isaiah 40:29."
+    },
+    {
+      "role": "assistant",
+      "content": "He giveth power to the faint; and to them that have no might he increaseth strength."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What doth the Lord speak in Isaiah 40:31?"
+    },
+    {
+      "role": "assistant",
+      "content": "But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Isaiah 41:10."
+    },
+    {
+      "role": "assistant",
+      "content": "Fear thou not; for I am with thee: be not dismayed; for I am thy God: I will strengthen thee; yea, I will help thee; yea, I will uphold thee with the right hand of my righteousness."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Isaiah 43:2?"
+    },
+    {
+      "role": "assistant",
+      "content": "When thou passest through the waters, I will be with thee; and through the rivers, they shall not overflow thee: when thou walkest through the fire, thou shalt not be burned; neither shall the flame kindle upon thee."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in Isaiah at chapter 43:4?"
+    },
+    {
+      "role": "assistant",
+      "content": "Since thou wast precious in my sight, thou hast been honourable, and I have loved thee: therefore will I give men for thee, and people for thy life."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Isaiah 54:17, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "No weapon that is formed against thee shall prosper; and every tongue that shall rise against thee in judgment thou shalt condemn. This is the heritage of the servants of the LORD, and their righteousness is of me, saith the LORD."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Isaiah 61:1?"
+    },
+    {
+      "role": "assistant",
+      "content": "The Spirit of the Lord GOD is upon me; because the LORD hath anointed me to preach good tidings unto the meek; he hath sent me to bind up the brokenhearted, to proclaim liberty to the captives, and the opening of the prison to them that are bound;"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of James 1:17."
+    },
+    {
+      "role": "assistant",
+      "content": "Every good gift and every perfect gift is from above, and cometh down from the Father of lights, with whom is no variableness, neither shadow of turning."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in Jeremiah at chapter 17:9?"
+    },
+    {
+      "role": "assistant",
+      "content": "The heart is deceitful above all things, and desperately wicked: who can know it?"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Jeremiah 29:11."
+    },
+    {
+      "role": "assistant",
+      "content": "For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Jeremiah 29:13?"
+    },
+    {
+      "role": "assistant",
+      "content": "And ye shall seek me, and find me, when ye shall search for me with all your heart."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in John 14:1?"
+    },
+    {
+      "role": "assistant",
+      "content": "Let not your heart be troubled: ye believe in God, believe also in me."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in John 14:6?"
+    },
+    {
+      "role": "assistant",
+      "content": "Jesus saith unto him, I am the way, the truth, and the life: no man cometh unto the Father, but by me."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me John 15:7, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "If ye abide in me, and my words abide in you, ye shall ask what ye will, and it shall be done unto you."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in John 16:33?"
+    },
+    {
+      "role": "assistant",
+      "content": "These things I have spoken unto you, that in me ye might have peace. In the world ye shall have tribulation: but be of good cheer; I have overcome the world."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at John 3:16?"
+    },
+    {
+      "role": "assistant",
+      "content": "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at John 8:36?"
+    },
+    {
+      "role": "assistant",
+      "content": "If the Son therefore shall make you free, ye shall be free indeed."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Joshua 1:9."
+    },
+    {
+      "role": "assistant",
+      "content": "Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Joshua 24:15?"
+    },
+    {
+      "role": "assistant",
+      "content": "And if it seem evil unto you to serve the LORD, choose you this day whom ye will serve; whether the gods which your fathers served that were on the other side of the flood, or the gods of the Amorites, in whose land ye dwell: but as for me and my house, we will serve the LORD."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What doth the Lord speak in Luke 16:10?"
+    },
+    {
+      "role": "assistant",
+      "content": "He that is faithful in that which is least is faithful also in much: and he that is unjust in the least is unjust also in much."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Luke 18:27?"
+    },
+    {
+      "role": "assistant",
+      "content": "And he said, The things which are impossible with men are possible with God."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Luke 1:37, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "For with God nothing shall be impossible."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Luke 6:31?"
+    },
+    {
+      "role": "assistant",
+      "content": "And as ye would that men should do to you, do ye also to them likewise."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Mark 9:23."
+    },
+    {
+      "role": "assistant",
+      "content": "Jesus said unto him, If thou canst believe, all things are possible to him that believeth."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Matthew 6:33?"
+    },
+    {
+      "role": "assistant",
+      "content": "But seek ye first the kingdom of God, and his righteousness; and all these things shall be added unto you."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Matthew 11:28."
+    },
+    {
+      "role": "assistant",
+      "content": "Come unto me, all ye that labour and are heavy laden, and I will give you rest."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Matthew 11:29?"
+    },
+    {
+      "role": "assistant",
+      "content": "Take my yoke upon you, and learn of me; for I am meek and lowly in heart: and ye shall find rest unto your souls."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Matthew 18:20?"
+    },
+    {
+      "role": "assistant",
+      "content": "For where two or three are gathered together in my name, there am I in the midst of them."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Matthew 18:21-22."
+    },
+    {
+      "role": "assistant",
+      "content": "Then came Peter to him, and said, Lord, how oft shall my brother sin against me, and I forgive him? till seven times?\nJesus saith unto him, I say not unto thee, Until seven times: but, Until seventy times seven."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Matthew 19:6."
+    },
+    {
+      "role": "assistant",
+      "content": "Wherefore they are no more twain, but one flesh. What therefore God hath joined together, let not man put asunder."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Matthew 23:11?"
+    },
+    {
+      "role": "assistant",
+      "content": "But he that is greatest among you shall be your servant."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Matthew 28:19."
+    },
+    {
+      "role": "assistant",
+      "content": "Go ye therefore, and teach all nations, baptizing them in the name of the Father, and of the Son, and of the Holy Ghost:"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Matthew 28:6?"
+    },
+    {
+      "role": "assistant",
+      "content": "He is not here: for he is risen, as he said. Come, see the place where the Lord lay."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Matthew 5:14, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "Ye are the light of the world. A city that is set on an hill cannot be hid."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Matthew 5:9."
+    },
+    {
+      "role": "assistant",
+      "content": "Blessed are the peacemakers: for they shall be called the children of God."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What doth the Lord speak in Matthew 6:34?"
+    },
+    {
+      "role": "assistant",
+      "content": "Take therefore no thought for the morrow: for the morrow shall take thought for the things of itself. Sufficient unto the day is the evil thereof."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Matthew 7:24?"
+    },
+    {
+      "role": "assistant",
+      "content": "Therefore whosoever heareth these sayings of mine, and doeth them, I will liken him unto a wise man, which built his house upon a rock:"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in Matthew at chapter 7:7?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ask, and it shall be given you; seek, and ye shall find; knock, and it shall be opened unto you:"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Micah 6:8?"
+    },
+    {
+      "role": "assistant",
+      "content": "He hath shewed thee, O man, what is good; and what doth the LORD require of thee, but to do justly, and to love mercy, and to walk humbly with thy God?"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Nehemiah 8:10?"
+    },
+    {
+      "role": "assistant",
+      "content": "Then he said unto them, Go your way, eat the fat, and drink the sweet, and send portions unto them for whom nothing is prepared: for this day is holy unto our LORD: neither be ye sorry; for the joy of the LORD is your strength."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Numbers 6:24-25."
+    },
+    {
+      "role": "assistant",
+      "content": "The LORD bless thee, and keep thee:\nThe LORD make his face shine upon thee, and be gracious unto thee:"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Philippians 4:13."
+    },
+    {
+      "role": "assistant",
+      "content": "I can do all things through Christ which strengtheneth me."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Philippians 4:13?"
+    },
+    {
+      "role": "assistant",
+      "content": "I can do all things through Christ which strengtheneth me."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in Philippians at chapter 4:13?"
+    },
+    {
+      "role": "assistant",
+      "content": "I can do all things through Christ which strengtheneth me."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Philippians 4:6."
+    },
+    {
+      "role": "assistant",
+      "content": "Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in Philippians at chapter 4:6?"
+    },
+    {
+      "role": "assistant",
+      "content": "Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What doth the Lord speak in Philippians 4:7?"
+    },
+    {
+      "role": "assistant",
+      "content": "And the peace of God, which passeth all understanding, shall keep your hearts and minds through Christ Jesus."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Proverbs 12:15, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "The way of a fool is right in his own eyes: but he that hearkeneth unto counsel is wise."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Proverbs 13:12."
+    },
+    {
+      "role": "assistant",
+      "content": "Hope deferred maketh the heart sick: but when the desire cometh, it is a tree of life."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Proverbs 14:30."
+    },
+    {
+      "role": "assistant",
+      "content": "A sound heart is the life of the flesh: but envy the rottenness of the bones."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Proverbs 17:17?"
+    },
+    {
+      "role": "assistant",
+      "content": "A friend loveth at all times, and a brother is born for adversity."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Proverbs 17:22?"
+    },
+    {
+      "role": "assistant",
+      "content": "A merry heart doeth good like a medicine: but a broken spirit drieth the bones."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Proverbs 18:24."
+    },
+    {
+      "role": "assistant",
+      "content": "A man that hath friends must shew himself friendly: and there is a friend that sticketh closer than a brother."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Proverbs 27:17?"
+    },
+    {
+      "role": "assistant",
+      "content": "Iron sharpeneth iron; so a man sharpeneth the countenance of his friend."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Proverbs 3:5?"
+    },
+    {
+      "role": "assistant",
+      "content": "Trust in the LORD with all thine heart; and lean not unto thine own understanding."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Proverbs 3:5, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "Trust in the LORD with all thine heart; and lean not unto thine own understanding."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Proverbs 3:5."
+    },
+    {
+      "role": "assistant",
+      "content": "Trust in the LORD with all thine heart; and lean not unto thine own understanding."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Proverbs 3:6?"
+    },
+    {
+      "role": "assistant",
+      "content": "In all thy ways acknowledge him, and he shall direct thy paths."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Proverbs 3:6."
+    },
+    {
+      "role": "assistant",
+      "content": "In all thy ways acknowledge him, and he shall direct thy paths."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Psalms 119:105?"
+    },
+    {
+      "role": "assistant",
+      "content": "Thy word is a lamp unto my feet, and a light unto my path."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Psalms 150:6."
+    },
+    {
+      "role": "assistant",
+      "content": "Let every thing that hath breath praise the LORD. Praise ye the LORD."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What doth the Lord speak in Psalms 23:1?"
+    },
+    {
+      "role": "assistant",
+      "content": "The LORD is my shepherd; I shall not want."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Psalms 34:18, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "The LORD is nigh unto them that are of a broken heart; and saveth such as be of a contrite spirit."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What doth the Lord speak in Psalms 103:2?"
+    },
+    {
+      "role": "assistant",
+      "content": "Bless the LORD, O my soul, and forget not all his benefits:"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in Psalms at chapter 119:114?"
+    },
+    {
+      "role": "assistant",
+      "content": "Thou art my hiding place and my shield: I hope in thy word."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Psalms 28:7."
+    },
+    {
+      "role": "assistant",
+      "content": "The LORD is my strength and my shield; my heart trusted in him, and I am helped: therefore my heart greatly rejoiceth; and with my song will I praise him."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in Psalms at chapter 31:24?"
+    },
+    {
+      "role": "assistant",
+      "content": "Be of good courage, and he shall strengthen your heart, all ye that hope in the LORD."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Psalms 32:8."
+    },
+    {
+      "role": "assistant",
+      "content": "I will instruct thee and teach thee in the way which thou shalt go: I will guide thee with mine eye."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Recite unto me the scripture of Psalms 46:1."
+    },
+    {
+      "role": "assistant",
+      "content": "God is our refuge and strength, a very present help in trouble."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Psalms 51:10, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "Create in me a clean heart, O God; and renew a right spirit within me."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Read unto me Psalms 91:4, I pray thee."
+    },
+    {
+      "role": "assistant",
+      "content": "He shall cover thee with his feathers, and under his wings shalt thou trust: his truth shall be thy shield and buckler."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What words doth the Holy Writ give us at Romans 12:16?"
+    },
+    {
+      "role": "assistant",
+      "content": "Be of the same mind one toward another. Mind not high things, but condescend to men of low estate. Be not wise in your own conceits."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Tell me the verse at Romans 12:2."
+    },
+    {
+      "role": "assistant",
+      "content": "And be not conformed to this world: but be ye transformed by the renewing of your mind, that ye may prove what is that good, and acceptable, and perfect, will of God."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "Pray, what is set down in Romans at chapter 15:13?"
+    },
+    {
+      "role": "assistant",
+      "content": "Now the God of hope fill you with all joy and peace in believing, that ye may abound in hope, through the power of the Holy Ghost."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What doth the Lord speak in Romans 8:28?"
+    },
+    {
+      "role": "assistant",
+      "content": "And we know that all things work together for good to them that love God, to them who are the called according to his purpose."
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What are the words written in Romans 8:31?"
+    },
+    {
+      "role": "assistant",
+      "content": "What shall we then say to these things? If God be for us, who can be against us?"
+    }
+  ],
+  [
+    {
+      "role": "user",
+      "content": "What saith the scripture in Romans 8:6?"
+    },
+    {
+      "role": "assistant",
+      "content": "For to be carnally minded is death; but to be spiritually minded is life and peace."
+    }
+  ]
+]

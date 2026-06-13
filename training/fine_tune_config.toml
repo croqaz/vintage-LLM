@@ -12,7 +12,7 @@ attn_implementation = "sdpa"
 
 [data]
 # ── Source (choose one) ─────────────────────────────────────────────────────
-dataset_path = "./fine-data/math.jsonl"
+dataset_path = "./fine-data/knowledge.jsonl"
 
 # ── Split ───────────────────────────────────────────────────────────────────
 # Fraction held out for validation (train_test_split applied to the full file)
@@ -46,7 +46,7 @@ gradient_accumulation_steps  = 2
 optim         = "adamw_torch_fused"  # fused CUDA kernel, faster than default AdamW
 # Full FT:  1e-5 to 5e-5  (10× lower than pretraining's 5e-4)
 # LoRA:     1e-4 to 2e-4  (10× higher than full FT; adapter has fewer params)
-learning_rate = 2e-5
+learning_rate = 5e-5
 weight_decay  = 0.01
 adam_beta1    = 0.9
 adam_beta2    = 0.999   # standard Adam default; SFT is stable enough
@@ -55,7 +55,7 @@ max_grad_norm = 1.0
 # ── LR schedule ──────────────────────────────────────────────────────────────
 lr_scheduler_kwargs = { min_lr_rate = 0.1 } # floor at 10% of peak LR
 lr_scheduler_type   = "cosine_with_min_lr"
-warmup_steps = 50
+warmup_steps = 10
 
 # ── Precision ────────────────────────────────────────────────────────────────
 bf16 = true   # Ampere+ (RTX 3090, A100, H100)
@@ -80,7 +80,7 @@ packing_strategy = "bfd_split"
 # Adds uniform noise to embeddings during the forward pass.
 # Consistently improves instruction-following quality (see NEFTune paper).
 # Typical range: 5.0–15.0. Set 0.0 to disable.
-neftune_noise_alpha = 5.0
+neftune_noise_alpha = 0.1
 
 # ── Checkpointing ────────────────────────────────────────────────────────────
 # save_steps and eval_steps must be equal when load_best_model_at_end = true.
