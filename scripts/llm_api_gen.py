@@ -14,7 +14,7 @@ def main():
     parser.add_argument(
         '--url', type=str, default='http://localhost:1234/v1/chat/completions', help='LLM API endpoint URL (OpenAI compatible)'
     )
-    parser.add_argument('--system-prompt', type=str, required=True, help='The system prompt to use')
+    parser.add_argument('--system-prompt', type=str, required=False, help='The system prompt to use')
     parser.add_argument('--user-prompt', type=str, required=True, help='The user prompt to use')
     parser.add_argument('--num-calls', '-n', type=int, default=1, help='Number of times to call the API')
     parser.add_argument('--output', '-o', type=str, required=True, help='Output JSONL file to append responses to')
@@ -44,13 +44,21 @@ def main():
                         assistant_message = data['choices'][0]['message']['content']
                         print(f'Response {i + 1}: {assistant_message.strip()}\n')
 
-                        output_entry = {
-                            'messages': [
-                                {'role': 'system', 'content': args.system_prompt},
-                                {'role': 'user', 'content': args.user_prompt},
-                                {'role': 'assistant', 'content': assistant_message},
-                            ]
-                        }
+                        if args.system_prompt:
+                            output_entry = {
+                                'messages': [
+                                    {'role': 'system', 'content': args.system_prompt},
+                                    {'role': 'user', 'content': args.user_prompt},
+                                    {'role': 'assistant', 'content': assistant_message},
+                                ]
+                            }
+                        else:
+                            output_entry = {
+                                'messages': [
+                                    {'role': 'user', 'content': args.user_prompt},
+                                    {'role': 'assistant', 'content': assistant_message},
+                                ]
+                            }
                         f.write(json.dumps(output_entry, ensure_ascii=False) + '\n')
                         f.flush()
                     else:
