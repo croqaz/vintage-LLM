@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--output', '-o', type=str, required=True, help='Output JSONL file to append responses to')
     parser.add_argument('--model', type=str, default='local-model', help='Model name to pass to the API')
     parser.add_argument('--temperature', type=float, default=0.8, help='Temperature for the generation')
-    parser.add_argument('--max-tokens', type=int, default=4096, help='Maximum number of tokens to generate')
+    parser.add_argument('--max-tokens', type=int, default=1024, help='Maximum number of tokens to generate')
 
     args = parser.parse_args()
 

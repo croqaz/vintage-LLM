@@ -40,6 +40,7 @@ VERSES = [
     'Exodus 20:12',
     'Galatians 5:22-23',
     'Genesis 1:1',
+    'Genesis 1:26-28',
     'Hosea 10:12',
     'Isaiah 26:3',
     'Isaiah 40:29',
@@ -61,12 +62,11 @@ VERSES = [
     'John 8:36',
     'Joshua 1:9',
     'Joshua 24:15',
+    'Luke 1:37',
     'Luke 16:10',
     'Luke 18:27',
-    'Luke 1:37',
     'Luke 6:31',
     'Mark 9:23',
-    'Matthew 6:33',
     'Matthew 11:28',
     'Matthew 11:29',
     'Matthew 18:20',
@@ -77,6 +77,7 @@ VERSES = [
     'Matthew 28:6',
     'Matthew 5:14',
     'Matthew 5:9',
+    'Matthew 6:33',
     'Matthew 6:34',
     'Matthew 7:24',
     'Matthew 7:7',
@@ -166,12 +167,12 @@ def generate_pairs(
 
     for ref in verses:
         book_name, verse_spec = parse_reference(ref)
-        print(f"Processing {book_name} {verse_spec}...")
+        print(f'Processing {book_name} {verse_spec}...')
 
         # Pick a random template and fill the placeholders
         template = random.choice(templates)
         question = template.replace('[BOOK NAME]', book_name).replace('[CHAPTER:VERSE]', verse_spec)
-        print(f"  Question: {question}")
+        print(f'  Question: {question}')
 
         # Resolve the actual verse text via bible_lookup
         answer = bible_lookup.lookup(full_text, ref)

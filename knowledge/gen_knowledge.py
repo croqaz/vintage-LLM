@@ -105,7 +105,7 @@ def main():
     )
     args = parser.parse_args()
 
-    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(MATH) # BOOKS + MEDIEVAL + MEMORY + QUOTES)
+    knowledge: list[dict[str, str] | list[dict[str, str]]] = list(MATH)  # BOOKS + MEDIEVAL + MEMORY + QUOTES)
 
     if not args.no_shuffle:
         random.seed(args.seed)
