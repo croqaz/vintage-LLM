@@ -132,6 +132,7 @@ import urllib.request
 DEFAULT_BASE_URL = 'http://127.0.0.1:1234'
 OPENROUTER_BASE_URL = 'https://openrouter.ai/api'
 _AUTH_HEADERS = {}  # populated by main() when using OpenRouter
+_DEBUG = False  # set by main() from --debug; when True we dump every request/response
 
 
 # ---------------------------------------------------------------------------
@@ -157,13 +158,17 @@ SEED_INSTRUCTIONS = [
     'Describe the steps a blacksmith takes to forge a horseshoe.',
     'Discuss the importance of the printing press in the spread of knowledge.',
     'Discuss the use of the telegraph in commerce.',
+    'Do you have a sweet tooth? What is your favourite dessert?',
     'Do you know any notable inventions in chemistry?',
+    'Do you think people are basically good or bad?',
     'Does anyone care about honour in this day and age?',
     'Explain how a barometer measures pressure and what it indicates.',
     'Explain how a sailing ship is able to travel against the wind.',
+    'Explain the correct method for tuning a violin, and how often it should be done.',
     'Explain the difference between a barometer and a thermometer.',
     'Explain the process of creating a kite by hand.',
     'Explain the rules of etiquette for a formal dinner.',
+    'Explain this human behavior: laughing.',
     'Explain to me, why does the thunder follow lightning?',
     'Explain why it is wrong to steal.',
     'Explain, step by step, how to brew a proper pot of tea.',
@@ -173,21 +178,31 @@ SEED_INSTRUCTIONS = [
     'Give practical advice on how to care for a horse during the winter months.',
     'Given a description of the symptom, identify the possible disease and suggest some medicine: I have a fever and I am coughing.',
     'How can I take care of a family of kittens?',
+    'How do bees make honey?',
     'How do I know if a lady is interested in me?',
     'How do I start a conversation with a stranger at a social gathering?',
     'How do tarot cards and readings work?',
     'How do you ensure your garden is properly weeded and watered when you are away from home?',
     'How do you pass time when travelling by rail?',
     'How would someone arrange a private library catalogue, if his collection contains 500 volumes?',
+    'I am incredibly bored... What can I do to entertain myself?',
     'I feel depressed and lonely today. What can I do to cheer myself up?',
+    'I have a lot of wild grapes in my backyard. How can I make them into wine?',
     'I heard someone bad-mouthing a friend of mine. How should I respond?',
+    'I saw this blue butterfly in my garden. Can you tell me what species it is?',
+    'I would like to start painting with watercolors. What do I need to get started?',
     'In your opinion, what are the qualities of an effective sports coach?',
+    'Is it ever okay to break a promise?',
+    'Is this Coca-Cola a drink, or a medicine?',
+    'List a few ways to make a small room feel more spacious.',
     'List five great rivers of Europe and name a city that each one passes through.',
+    'List the qualities a young lady ought to cultivate for pleasant conversation at a party.',
+    'Plan a late evening walk and discuss what is worth while seeing.',
     'Plan a lunch menu for a family picnic in the countryside.',
-    'Plan an afternoon walk and discuss what is worth while seeing.',
     'Provide a recipe for a simple loaf of bread that can be baked at home.',
     'Provide examples of how to use quotation marks in letter writing.',
     'Remind me the appearance of a gentleman in full dress.',
+    'Remind me the role of "Penny Dreadfuls" in shaping the reading habits of youth.',
     'Should I buy a bicycle or a horse for my daily commute?...',
     'Should I get myself a dog or a cat as a pet?',
     'Suppose you find a lost wallet full of money. What do you do?',
@@ -196,35 +211,43 @@ SEED_INSTRUCTIONS = [
     'Tell me a new invention or scientific discovery.',
     'Tell me a recipe for making a savoury apple dumpling.',
     'What are the common faults in table manners?',
+    'What are the common remedies for toothache these days?',
     'What are the duties of a gatekeeper at a railway crossing?',
     'What are the main lessons to learn from the Bible?',
-    'What are the most important lessons to learn from the history of the Roman Empire?',
+    'What are the most important lessons to learn from the history of the Turkish Empire?',
+    'What do really rich people do with their money?',
     'What is a clockwork automaton and how does it work?',
     'What is a memento? What does it mean?',
     'What is life like in the English countryside?',
     'What is the most remarkable incident in your own life?',
     'What is the point of arts?',
+    'What objects can you find in a typical Victorian parlor?',
     'Where did you travel this year?',
+    'Where does the oil lamp come from, how is it made?',
     'Why do people write poetry?',
+    'Write a brief dialogue between a blacksmith and a customer about pricing a new horseshoe.',
     'Write a list of things that could be brought to a child on his birthday.',
     'Write a short letter from a gentleman in London inviting a friend to a dinner party.',
     'Write a story that contains the given words in 3 sentences: cat, moon, and river.',
     'Write me a short poem on springtime.',
     "Describe a scene from Mr. Dickens's novel 'David Copperfield'.",
-    "Explain human's behavior. Behavior: crying.",
     "Explain the meaning of the proverb 'a stitch in time saves nine'.",
     "Find a synonym for the word 'happy' and use it in a sentence.",
     "Help me, how do I dress for an art exhibition opening? I'm not sure what's appropriate!",
     "How can one improve one's memory for names and faces?",
+    "I'm afraid I don't know the differences between a vodka and whisky. Would you explain it to me?",
     "Make a list of three or four famous persons who are mentioned in Shakespeare's plays.",
     "Plan a day's excursion to Windsor Castle and discuss the sights to be seen there.",
     "Prepare a list of the guests and their duties for the evening's entertainment.",
+    "Someone I trusted let a secret of mine slip. I'm furious!",
     "Summarise the plot of Charles Dickens's novel 'A Tale of Two Cities'.",
     "Tell me, is there anything science can't explain?",
-    "What's the best way to travel the Continent, by railway or steamship, and why?",
+    "What's the best way to travel the Continent, by railway or steamship, or?",
     "What's the difference between a comet and a meteor?",
     "What's the difference between a steam engine and a water wheel?",
+    "What's with this zeppelin device I keep hearing about? What is it used for?",
     "What's your favorite game of cards, and why?",
+    "Where's the line between being frugal and being stingy?",
     "Write a sentence that ends with the word 'sunset'.",
 ]
 
@@ -246,20 +269,22 @@ SEED_INSTRUCTIONS = [
 ANACHRONISM_TERMS = [
     # --- transport / aerospace ---
     'aeroplane',
-    'airplane',
     'aircraft',
     'airliner',
+    'airplane',
+    'astronaut',
+    'automation',
+    'helicopter',
     'jet',
     'jetliner',
-    'helicopter',
-    'rocket',
-    'spacecraft',
-    'spaceship',
-    'spaceflight',
-    'satellite',
-    'astronaut',
-    'space station',
+    'mechanisation',
     'moon landing',
+    'rocket',
+    'satellite',
+    'space station',
+    'spacecraft',
+    'spaceflight',
+    'spaceship',
     # --- electronics / computing / comms ---
     'blockchain',
     'cell phone',
@@ -541,15 +566,59 @@ def max_rouge_l(cand, pool):
 # ---------------------------------------------------------------------------
 # 4. HTTP helpers for the two llama-server endpoints.
 # ---------------------------------------------------------------------------
+# --- Debug tracing ---------------------------------------------------------
+# With --debug we print, for every paid API call, the endpoint, the sampling
+# params, the exact prompt/messages we sent, and the text we got back. This is
+# the cheapest way to see *why* a remote model is misbehaving (and what your
+# tokens are being spent on). Everything goes to stderr so it never mixes into
+# the JSONL on stdout/redirection.
+def _short(s, n=2000):
+    """Truncate long strings for readable debug output."""
+    s = str(s)
+    return s if len(s) <= n else s[:n] + f'... [+{len(s) - n} chars]'
+
+
+def _debug_request(url, payload):
+    print('\n' + '-' * 70, file=sys.stderr)
+    print(f'[debug] POST {url}', file=sys.stderr)
+    params = {k: payload[k] for k in ('temperature', 'top_k', 'max_tokens', 'logprobs') if k in payload}
+    print(f'[debug] params: {params}', file=sys.stderr)
+    if 'prompt' in payload:  # /v1/completions
+        print('[debug] prompt (raw completion):', file=sys.stderr)
+        print(_short(payload['prompt']), file=sys.stderr)
+    if 'messages' in payload:  # /v1/chat/completions
+        print('[debug] messages (chat):', file=sys.stderr)
+        for msg in payload['messages']:
+            print(f'  [{msg["role"]}]\n{_short(msg["content"], 1500)}', file=sys.stderr)
+
+
+def _debug_response(body):
+    try:
+        choice = body['choices'][0]
+        content = choice.get('text')
+        if content is None:
+            content = choice.get('message', {}).get('content')
+    except (KeyError, IndexError, TypeError):
+        content = '<no choices> ' + _short(json.dumps(body), 500)
+    print('[debug] response:', file=sys.stderr)
+    print(_short(content), file=sys.stderr)
+    print('-' * 70 + '\n', file=sys.stderr)
+
+
 def _post_json(url, payload, timeout=300):
     """POST a JSON payload and return the decoded JSON response."""
     data = json.dumps(payload).encode('utf-8')
     headers = {'Content-Type': 'application/json'}
     if _AUTH_HEADERS:
         headers.update(_AUTH_HEADERS)
+    if _DEBUG:
+        _debug_request(url, payload)
     req = urllib.request.Request(url, data=data, headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode('utf-8'))
+        body = json.loads(resp.read().decode('utf-8'))
+    if _DEBUG:
+        _debug_response(body)
+    return body
 
 
 def detect_model(base_url):
@@ -667,9 +736,28 @@ def sample_demonstrations(seeds, machine, k=8):
     return demos
 
 
+# System persona for the CHAT-based instruction generator. Chat models (Claude,
+# DeepSeek, GPT, ...) won't blindly "continue a numbered list" -- they respond
+# conversationally to whatever you send. So instead of the completion trick we
+# give them an explicit job: emit ONLY a numbered list of brand-new tasks.
+INSTRUCTION_CHAT_SYSTEM = (
+    'You design practice tasks for a knowledgeable assistant living in the year '
+    '1899. You ONLY ever reply with a numbered list of new task instructions -- '
+    'no preamble, no commentary, no answers, no explanations. Every task is a '
+    'single clear English instruction, answerable with knowledge available by '
+    '1899, concerning English only (no translation, no foreign languages), and '
+    'never mentioning any invention, event, person, or discovery from after 1900.'
+)
+
+
 def generate_instruction_batch(base_url, model, seeds, machine, args):
-    """One bootstrap step: prompt with demonstrations, parse out new candidate
-    instructions. Returns the raw (unfiltered) candidate strings.
+    """One bootstrap step (raw-completion mode): show a numbered list of
+    demonstrations and let a *completion/base* model continue it. Returns the
+    raw (unfiltered) candidate strings.
+
+    This is the original Self-Instruct trick and works with llama-server's
+    /v1/completions. It does NOT work with chat-only models (see the chat
+    variant below) -- those react to the list instead of extending it.
 
     Sampled at the *exploratory* gen-temp/gen-top-k (SSD "fork" side): we want a
     wide, diverse set of candidate tasks here."""
@@ -693,6 +781,39 @@ def generate_instruction_batch(base_url, model, seeds, machine, args):
     return parse_numbered(text)
 
 
+def generate_instruction_batch_chat(base_url, model, seeds, machine, args):
+    """One bootstrap step (CHAT mode): ask a chat model to write a numbered list
+    of NEW tasks, using the demonstrations only as style examples. This is the
+    fix for OpenRouter chat models (Claude, DeepSeek, ...), which otherwise
+    *answer* the prompt instead of continuing the list.
+
+    We rely on the same parse_numbered() + downstream ROUGE-L novelty filter, so
+    if the model restarts numbering at 1 or repeats an example, it's harmless."""
+    demos = sample_demonstrations(seeds, machine, k=8)
+    example_block = '\n'.join(f'{i}. {d}' for i, d in enumerate(demos, start=1))
+    n_new = args.instructions_per_round
+    user = (
+        'Here are some example tasks, for style only:\n\n'
+        f'{example_block}\n\n'
+        f'Now write {n_new} NEW tasks of the same kind. Each must be different '
+        'from the examples above and from one another, varied in topic (writing, '
+        'explanation, history, advice, arithmetic, poetry, ...). Stay strictly '
+        'within knowledge available by the year 1899, English only. '
+        'Reply with ONLY a numbered list of the new tasks, one per line, and '
+        'nothing else.'
+    )
+    text = chat(
+        base_url,
+        model,
+        INSTRUCTION_CHAT_SYSTEM,
+        user,
+        temperature=args.gen_temp,
+        top_k=args.gen_top_k,
+        max_tokens=args.gen_tokens,
+    )
+    return parse_numbered(text)
+
+
 # ---------------------------------------------------------------------------
 # 6. Instance generation: input-first, multiple instances.
 # ---------------------------------------------------------------------------
@@ -704,16 +825,21 @@ def generate_instruction_batch(base_url, model, seeds, machine, args):
 INPUT_SYSTEM_PROMPT = (
     'You help design practice exercises for a scholar living in the year 1899. '
     'Given a task, you decide what example input material the task should '
-    'operate on. Everything you produce must be appropriate to 1899 or earlier '
-    'and written in English only (never use foreign words or phrases).'
+    'operate on. Everything you produce must be appropriate to 1900 or earlier '
+    'and written in English only, never use foreign words or phrases!'
 )
 
 # In-character persona that actually answers the tasks (the user tuned this).
 ANSWER_SYSTEM_PROMPT = (
-    'You are a knowledgeable scholar living in the year 1899. You answer '
-    'clearly and helpfully, but you only know things up to the year 1899. You '
-    'never refer to inventions, events, or discoveries from after 1899. You '
-    'always write in English and never use foreign words or phrases.'
+    'You are a distinguished gentleman living in the year 1899. You speak in '
+    'cultivated, clear, late-nineteenth-century English: warm, witty, precise,'
+    'and courteous. You know nothing of events, inventions, books, or persons '
+    'later than 1900. You always write in English and never use foreign words '
+    'or phrases. '
+    'Begin each reply by addressing the substance of the question directly. Do '
+    'not open with a salutation, an exclamation, or flattery of the question '
+    '("My dear sir", "Ah, a most excellent question", and the like); reserve '
+    'such flourishes for the rare moment that genuinely calls for one.'
 )
 
 
@@ -745,13 +871,13 @@ def generate_input(base_url, model, instruction, args):
 
     Two safeguards against the model's habit of inventing pseudo-inputs that are
     really partial answers (which then leak into the record):
-      Fix #1 -- few-shot prompt with both real-input and NONE examples, so the
-                model learns that self-contained tasks should return NONE.
-      Fix #2 -- echo guard: a genuine input is *fresh* material the task operates
-                on, so it should barely overlap the instruction. If the model
-                instead echoed / began answering the instruction, ROUGE-L(input,
-                instruction) is high; we then treat it as 'no input needed'.
-                This reuses our existing ROUGE-L and costs no extra model call.
+      - few-shot prompt with both real-input and NONE examples, so the
+        model learns that self-contained tasks should return NONE.
+      - echo guard: a genuine input is *fresh* material the task operates
+        on, so it should barely overlap the instruction. If the model
+        instead echoed / began answering the instruction, ROUGE-L(input,
+        instruction) is high; we then treat it as 'no input needed'.
+        This reuses our existing ROUGE-L and costs no extra model call.
     """
     # Fix #1: few-shot demonstrations. Two show real input material; two show the
     # NONE case for self-contained tasks (poems, explanations) -- which, per
@@ -911,6 +1037,31 @@ def main():
     )
     ap.add_argument('--num', type=int, default=10, help='target number of final records (instances)')
     ap.add_argument('--out', default='self_instruct_1900.jsonl', help='output JSONL path')
+    ap.add_argument(
+        '--debug',
+        action='store_true',
+        help='print every API request (endpoint, params, prompt/messages) and its '
+        'response to stderr -- useful for understanding what your tokens buy',
+    )
+
+    # --- Instruction brainstorming mode --------------------------------------
+    ap.add_argument(
+        '--instruction-mode',
+        choices=['auto', 'completion', 'chat'],
+        default='auto',
+        help='how to brainstorm instructions. "completion" = raw /v1/completions '
+        '"continue the numbered list" trick (base models / llama-server). "chat" '
+        '= ask a chat model for a numbered list of new tasks (Claude, DeepSeek, '
+        'GPT, ... via OpenRouter). "auto" picks chat for OpenRouter, completion '
+        'for local. Chat-only models given the completion trick just reply to the '
+        'list instead of extending it -- the source of the weird records.',
+    )
+    ap.add_argument(
+        '--instructions-per-round',
+        type=int,
+        default=10,
+        help='how many new tasks to request per round in chat instruction-mode',
+    )
 
     # --- Decoupled SSD temperatures --------------------------------
     # Exploration side (instructions + inputs = "forks"): raise this for variety.
@@ -977,6 +1128,10 @@ def main():
 
     random.seed(args.seed)
 
+    # Enable request/response tracing globally if asked.
+    global _DEBUG
+    _DEBUG = args.debug
+
     # --- OpenRouter setup -------------------------------------------------
     if args.provider == 'openrouter':
         api_key = os.environ.get('OPENROUTER_API_KEY')
@@ -1013,7 +1168,15 @@ def main():
             f'ERROR: could not reach server at {args.base_url} ({e}).\n'
             f'Is it running? For local llama-server try: curl {args.base_url}/v1/models'
         )
+    # Resolve the instruction-brainstorming mode. Chat-only remote models cannot
+    # use the raw-completion "continue the list" trick, so default OpenRouter to
+    # chat mode and local llama-server to completion mode.
+    instruction_mode = args.instruction_mode
+    if instruction_mode == 'auto':
+        instruction_mode = 'chat' if args.provider == 'openrouter' else 'completion'
+
     print(f'[info] using model: {model}')
+    print(f'[info] instruction mode: {instruction_mode}')
     print(
         f'[info] explore (gen): temp={args.gen_temp} top_k={args.gen_top_k}  |  '
         f'precision (ans): temp={args.ans_temp} top_k={args.ans_top_k}'
@@ -1058,12 +1221,15 @@ def main():
     # record the moment it is accepted, instead of buffering everything and
     # writing once at the very end. A crash (or Ctrl-C) part-way through then
     # leaves every record produced so far safely on disk.
-    out_f = open(args.out, 'w', encoding='utf-8')
+    out_f = open(args.out, 'a', encoding='utf-8')
 
     rounds = 0
     while len(dataset) < args.num and rounds < args.max_rounds:
         rounds += 1
-        candidates = generate_instruction_batch(args.base_url, model, SEED_INSTRUCTIONS, machine_instructions, args)
+        if instruction_mode == 'chat':
+            candidates = generate_instruction_batch_chat(args.base_url, model, SEED_INSTRUCTIONS, machine_instructions, args)
+        else:
+            candidates = generate_instruction_batch(args.base_url, model, SEED_INSTRUCTIONS, machine_instructions, args)
         stats['raw'] += len(candidates)
         print(f'\n[round {rounds}] model proposed {len(candidates)} candidate instruction(s)')
 
@@ -1217,6 +1383,7 @@ def main():
                     ],
                     # generation metadata for later analysis of runs
                     'meta': {
+                        'model': model,
                         'instruction': cand,
                         'input': input_text,
                         'instance_index': idx,

@@ -8,15 +8,19 @@ Convert the "rich" JSON-lines produced by `self_instruct_1900_poc.py`
 into a *standard, minimal* supervised fine-tuning format:
 
     {"messages": [{"role": "user", "content": "..."},
-                  {"role": "assistant", "content": "..."}]}
+                  {"role": "assistant", "content": "..."}],
+     "model": "..."}
 
 What this script does:
   - Reads one or more input .jsonl files.
   - For every record, pulls out the user turn and the assistant turn.
   - Decides what to do with the system turn (keep / replace / drop) -- a flag.
+  - Carries the model name through (from the input record's meta.model), or
+    overwrites it with --model. A model name is MANDATORY: any record that ends
+    up without one is dropped.
   - Runs a single `quality_ok()` gate before accepting the record.
-  - Writes the surviving records, stripped down to the minimal schema,
-     to the output file. The `meta` block from the input is dropped.
+  - Writes the surviving records, stripped to the minimal schema, to the output
+    file. The rest of the `meta` block from the input is dropped.
 
 Usage examples:
   # keep whatever system prompt is already in the file (default)
@@ -28,6 +32,9 @@ Usage examples:
 
   # drop the system message entirely (user/assistant only)
   python3 make_finetune_jsonl.py in.jsonl -o ft.jsonl --system drop
+
+  # overwrite the model name on every record
+  python3 make_finetune_jsonl.py in.jsonl -o ft.jsonl --model my-org/my-model
 
   # merge several inputs into one training file
   python3 make_finetune_jsonl.py a.jsonl b.jsonl c.jsonl -o ft.jsonl
@@ -123,13 +130,16 @@ def extract_turns(record):
     return system_text, user_text, assistant_text
 
 
-def build_output(system_text, user_text, assistant_text, system_mode, system_replacement):
+def build_output(system_text, user_text, assistant_text, system_mode, system_replacement, model_name):
     """Assemble the minimal output record according to the system-message flag.
 
     system_mode is one of:
       - "keep":    use the record's own system message (if it had one)
       - "replace": use `system_replacement` for every record
       - "drop":    no system message at all
+
+    model_name is written as a top-level "model" field after the messages. The
+    caller guarantees it is non-empty (a model name is mandatory).
     """
     out_messages = []
 
@@ -143,7 +153,7 @@ def build_output(system_text, user_text, assistant_text, system_mode, system_rep
 
     out_messages.append({'role': 'user', 'content': user_text})
     out_messages.append({'role': 'assistant', 'content': assistant_text})
-    return {'messages': out_messages}
+    return {'messages': out_messages, 'model': model_name}
 
 
 # ----------------------------------------------------------------------------
@@ -167,6 +177,13 @@ def main():
         default='You are a helpful assistant.',
         help='system message used when --system replace',
     )
+    parser.add_argument(
+        '--model',
+        default=None,
+        help='overwrite the model name on every record. If omitted, the input '
+        "record's meta.model is used. A model name is mandatory: records left "
+        'without one are dropped.',
+    )
     args = parser.parse_args()
 
     # Stats so the run is transparent about what it threw away.
@@ -175,6 +192,7 @@ def main():
         'written': 0,
         'bad_json': 0,
         'malformed': 0,
+        'no_model': 0,
     }
     rejected = {}  # reason -> count, from quality_ok
 
@@ -209,6 +227,14 @@ def main():
                         print(f'! {path}:{line_no} {e}, skipped', file=sys.stderr)
                         continue
 
+                    # --- resolve the (mandatory) model name ----------------
+                    # --model overrides; otherwise carry meta.model through.
+                    model_name = args.model or (record.get('meta') or {}).get('model')
+                    if not model_name:
+                        stats['no_model'] += 1
+                        print(f'! {path}:{line_no} no model name (pass --model), skipped', file=sys.stderr)
+                        continue
+
                     # --- quality gate --------------------------------------
                     ok, reason = quality_ok(system_text, user_text, assistant_text)
                     if not ok:
@@ -222,12 +248,16 @@ def main():
                         assistant_text,
                         args.system,
                         args.system_text,
+                        model_name,
                     )
                     fout.write(json.dumps(out_record, ensure_ascii=False) + '\n')
                     stats['written'] += 1
 
     # --- report ---------------------------------------------------------------
-    print(f'read={stats["read"]}  written={stats["written"]}  bad_json={stats["bad_json"]}  malformed={stats["malformed"]}')
+    print(
+        f'read={stats["read"]}  written={stats["written"]}  bad_json={stats["bad_json"]}  '
+        f'malformed={stats["malformed"]}  no_model={stats["no_model"]}'
+    )
     if rejected:
         detail = '  '.join(f'{k}={v}' for k, v in sorted(rejected.items()))
         print(f'rejected by quality gate: {detail}')
