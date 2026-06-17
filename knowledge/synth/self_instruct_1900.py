@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-self_instruct_1900_poc.py
+self_instruct_1900.py
 =========================================================================
 A small, heavily-commented proof-of-concept that borrows ideas from the two
 papers in this folder and adapts them to a *time-capsule* model whose
@@ -83,17 +83,33 @@ Still a POC: no fine-tuning, and no classification / output-first branching
 
 Usage
 -----
-    python3 self_instruct_1900_poc.py --num 10
+    # Local llama-server (default):
+    python self_instruct_1900.py --num 10
     # SSD-style: explore hard on prompts, stay precise on answers, judge era:
-    python3 self_instruct_1900_poc.py --num 25 \
+    python self_instruct_1900.py --num 25 \
         --gen-temp 1.2 --gen-top-k 60 --ans-temp 0.7 --ans-top-k 25 \
         --instances-per-instruction 2 --temporal-judge --out my_dataset.jsonl
 
-Requires only the Python standard library and a running llama-server.
+    # OpenRouter (requires OPENROUTER_API_KEY in the environment):
+    export OPENROUTER_API_KEY=sk-or-v1-...
+    python self_instruct_1900.py --provider openrouter --model openai/gpt-4o --num 10
+
+    # OpenRouter with SSD-style decoupled temperatures:
+    python self_instruct_1900.py --provider openrouter --model anthropic/claude-3-opus \
+        --gen-temp 1.2 --ans-temp 0.7 --num 25 --out my_dataset.jsonl
+
+Requires only the Python standard library. For local mode, a running llama-server
+is needed. For OpenRouter mode, an API key and internet access are required.
+
+NOTE for OpenRouter: the /v1/completions endpoint (used for instruction
+brainstorming) may not be available on all models; if the model doesn't support
+it, try a different model. The --top-k parameter is a llama.cpp extension that
+OpenRouter may silently ignore for non-llama backends.
 """
 
 import argparse
 import json
+import os
 import random
 import re
 import sys
@@ -114,6 +130,8 @@ import urllib.request
 # llama.cpp accepts the non-standard "top_k" field on both endpoints, so we can
 # pass SSD-style truncation straight through.
 DEFAULT_BASE_URL = 'http://127.0.0.1:1234'
+OPENROUTER_BASE_URL = 'https://openrouter.ai/api'
+_AUTH_HEADERS = {}  # populated by main() when using OpenRouter
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +141,8 @@ DEFAULT_BASE_URL = 'http://127.0.0.1:1234'
 # ---------------------------------------------------------------------------
 SEED_INSTRUCTIONS = [
     'Account for the popularity of baseball among boys.',
+    'Are angels real?...',
+    'Are you afraid of ghosts?...',
     'Complete a sentence about a horse: "I was a broken-hearted rider..."',
     'Complete the lyrics: "There\'s a place in my heart..."',
     'Compose a poem about the seasons and their changes.',
@@ -137,6 +157,8 @@ SEED_INSTRUCTIONS = [
     'Describe the steps a blacksmith takes to forge a horseshoe.',
     'Discuss the importance of the printing press in the spread of knowledge.',
     'Discuss the use of the telegraph in commerce.',
+    'Do you know any notable inventions in chemistry?',
+    'Does anyone care about honour in this day and age?',
     'Explain how a barometer measures pressure and what it indicates.',
     'Explain how a sailing ship is able to travel against the wind.',
     'Explain the difference between a barometer and a thermometer.',
@@ -152,31 +174,48 @@ SEED_INSTRUCTIONS = [
     'Given a description of the symptom, identify the possible disease and suggest some medicine: I have a fever and I am coughing.',
     'How can I take care of a family of kittens?',
     'How do I know if a lady is interested in me?',
-    'How do you ensure your garden is properly weeded and watered when you are away from home?',
     'How do I start a conversation with a stranger at a social gathering?',
+    'How do tarot cards and readings work?',
+    'How do you ensure your garden is properly weeded and watered when you are away from home?',
+    'How do you pass time when travelling by rail?',
+    'How would someone arrange a private library catalogue, if his collection contains 500 volumes?',
+    'I feel depressed and lonely today. What can I do to cheer myself up?',
+    'I heard someone bad-mouthing a friend of mine. How should I respond?',
     'In your opinion, what are the qualities of an effective sports coach?',
     'List five great rivers of Europe and name a city that each one passes through.',
     'Plan a lunch menu for a family picnic in the countryside.',
     'Plan an afternoon walk and discuss what is worth while seeing.',
     'Provide a recipe for a simple loaf of bread that can be baked at home.',
     'Provide examples of how to use quotation marks in letter writing.',
+    'Remind me the appearance of a gentleman in full dress.',
+    'Should I buy a bicycle or a horse for my daily commute?...',
+    'Should I get myself a dog or a cat as a pet?',
+    'Suppose you find a lost wallet full of money. What do you do?',
     'Tell me a few examples of how knowledge may be used to improve health.',
     'Tell me a few games that can be played by a group of people.',
+    'Tell me a new invention or scientific discovery.',
     'Tell me a recipe for making a savoury apple dumpling.',
     'What are the common faults in table manners?',
     'What are the duties of a gatekeeper at a railway crossing?',
+    'What are the main lessons to learn from the Bible?',
+    'What are the most important lessons to learn from the history of the Roman Empire?',
     'What is a clockwork automaton and how does it work?',
+    'What is a memento? What does it mean?',
     'What is life like in the English countryside?',
     'What is the most remarkable incident in your own life?',
     'What is the point of arts?',
+    'Where did you travel this year?',
     'Why do people write poetry?',
     'Write a list of things that could be brought to a child on his birthday.',
     'Write a short letter from a gentleman in London inviting a friend to a dinner party.',
-    'Write a story that contains the given words in 4 sentences: cat, moon, river, and tree.',
+    'Write a story that contains the given words in 3 sentences: cat, moon, and river.',
+    'Write me a short poem on springtime.',
     "Describe a scene from Mr. Dickens's novel 'David Copperfield'.",
     "Explain human's behavior. Behavior: crying.",
     "Explain the meaning of the proverb 'a stitch in time saves nine'.",
     "Find a synonym for the word 'happy' and use it in a sentence.",
+    "Help me, how do I dress for an art exhibition opening? I'm not sure what's appropriate!",
+    "How can one improve one's memory for names and faces?",
     "Make a list of three or four famous persons who are mentioned in Shakespeare's plays.",
     "Plan a day's excursion to Windsor Castle and discuss the sights to be seen there.",
     "Prepare a list of the guests and their duties for the evening's entertainment.",
@@ -185,6 +224,7 @@ SEED_INSTRUCTIONS = [
     "What's the best way to travel the Continent, by railway or steamship, and why?",
     "What's the difference between a comet and a meteor?",
     "What's the difference between a steam engine and a water wheel?",
+    "What's your favorite game of cards, and why?",
     "Write a sentence that ends with the word 'sunset'.",
 ]
 
@@ -221,43 +261,49 @@ ANACHRONISM_TERMS = [
     'space station',
     'moon landing',
     # --- electronics / computing / comms ---
-    'radio broadcast',
-    'television',
-    'computer',
-    'laptop',
-    'iphone',
-    'internet',
-    'website',
-    'email',
-    'e-mail',
-    'software',
-    'smartphone',
+    'blockchain',
     'cell phone',
-    'mobile phone',
-    'transistor',
-    'microchip',
-    'semiconductor',
-    'laser',
-    'radar',
-    'sonar',
+    'credit card',
     'drone',
-    'videogame',
+    'dvd',
+    'e-mail',
+    'email',
+    'fax',
+    'fiber-optic',
+    'internet',
+    'iphone',
+    'laptop',
+    'laser',
+    'microchip',
+    'mobile phone',
+    'radar',
+    'radio broadcast',
+    'satellite dish',
+    'semiconductor',
+    'smartphone',
+    'smartwatch',
+    'software',
+    'sonar',
+    'television',
+    'transistor',
     'video game',
+    'videogame',
+    'website',
     # --- physics / weapons / energy ---
-    'relativity',
-    'quantum',
-    'atomic bomb',
-    'nuclear',
-    'hydrogen bomb',
-    'big bang',
     'antimatter',
+    'atomic bomb',
+    'big bang',
+    'hydrogen bomb',
+    'nuclear',
+    'quantum',
+    'radioactive',
     # --- biology / medicine / chemistry ---
     'vitamin',
     'antibiotic',
     'penicillin',
     'dna',
     'genome',
-    'chromosome test',
+    'chromosome',
     'plastic',
     'nylon',
     'polyester',
@@ -278,12 +324,13 @@ ANACHRONISM_TERMS = [
     'holocaust',
     'united nations',
     # --- culture ---
-    'jazz',
-    'rock and roll',
-    'hollywood',
     'cinema',
+    'hollywood',
+    'jazz',
+    'marketing',
     'motion picture',
     'movie',
+    'rock and roll',
 ]
 
 # Words that ask for something the model fundamentally cannot do in text
@@ -297,7 +344,6 @@ IMPOSSIBLE_TERMS = [
     'sketch',
     'paint',
     'painting',
-    'photograph',
     'illustrate',
     'illustration',
     'graph',
@@ -318,6 +364,7 @@ _IMPOSSIBLE_TASK_RES = [
     re.compile(r'\bread\s+out\s+loud\b', re.I),
     re.compile(r'\bread\s+the\s+(?:passage|poem|story|verse|lines|excerpt)\b', re.I),
     re.compile(r'\brecite\b', re.I),
+    re.compile(r'\bsing\b', re.I),
 ]
 
 # Pre-compiled regexes for the term lists (word-boundary, case-insensitive).
@@ -497,14 +544,20 @@ def max_rouge_l(cand, pool):
 def _post_json(url, payload, timeout=300):
     """POST a JSON payload and return the decoded JSON response."""
     data = json.dumps(payload).encode('utf-8')
-    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    headers = {'Content-Type': 'application/json'}
+    if _AUTH_HEADERS:
+        headers.update(_AUTH_HEADERS)
+    req = urllib.request.Request(url, data=data, headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode('utf-8'))
 
 
 def detect_model(base_url):
     """Ask the server which model id to use (llama-server reports the gguf)."""
-    req = urllib.request.Request(base_url.rstrip('/') + '/v1/models')
+    headers = {}
+    if _AUTH_HEADERS:
+        headers.update(_AUTH_HEADERS)
+    req = urllib.request.Request(base_url.rstrip('/') + '/v1/models', headers=headers)
     with urllib.request.urlopen(req, timeout=15) as resp:
         body = json.loads(resp.read().decode('utf-8'))
     return body['data'][0]['id']
@@ -584,10 +637,8 @@ INSTRUCTION_PROMPT_HEADER = (
     'year 1899. Every task is a single, clear instruction. None of the tasks '
     'mention any invention, event, person, or discovery from after the year '
     '1899 (no motorcars races, no aeroplanes, no world wars, no modern science). '
-    'Every task is in English and concerns English only: there are NO tasks about '
-    'translation, and NO tasks about foreign languages such as Latin, French, or '
-    'German. The tasks are varied: writing, explanation, history, arithmetic, '
-    'advice, poetry, and so on.\n\n'
+    'Every task is in English and concerns English only. The tasks are varied: '
+    'writing, explanation, history, arithmetic, advice, poetry, and so on.\n\n'
 )
 
 # Regex to pull "12. some instruction" lines out of the model's continuation.
@@ -605,9 +656,10 @@ def parse_numbered(text):
 
 
 def sample_demonstrations(seeds, machine, k=8):
-    """Pick k in-context examples. Mirroring Self-Instruct's 6 human + 2 machine
-    mix to keep the prompt anchored to good seeds while injecting novelty from
-    earlier machine generations once we have some."""
+    """Pick k in-context examples. Mirroring Self-Instruct's 6
+    human + 2 machine mix to keep the prompt anchored to good
+    seeds while injecting novelty from earlier machine generations
+    once we have some."""
     n_machine = min(2, len(machine), k)
     n_seed = min(k - n_machine, len(seeds))
     demos = random.sample(seeds, n_seed) + (random.sample(machine, n_machine) if n_machine else [])
@@ -849,7 +901,14 @@ def temporal_judge(base_url, model, text, args):
 # ---------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser(description='Self-Instruct + SSD POC for an 1899 time-capsule LLM')
-    ap.add_argument('--base-url', default=DEFAULT_BASE_URL, help='llama-server base URL')
+    ap.add_argument('--base-url', default=DEFAULT_BASE_URL, help='llama-server / OpenRouter base URL')
+    ap.add_argument('--provider', choices=['local', 'openrouter'], default='local', help='API provider (local llama-server or OpenRouter)')
+    ap.add_argument(
+        '--model',
+        default=None,
+        help='model name (required for OpenRouter; optional for local, auto-detected). '
+        'Falls back to OPENROUTER_MODEL env var for OpenRouter.',
+    )
     ap.add_argument('--num', type=int, default=10, help='target number of final records (instances)')
     ap.add_argument('--out', default='self_instruct_1900.jsonl', help='output JSONL path')
 
@@ -918,11 +977,42 @@ def main():
 
     random.seed(args.seed)
 
-    # Resolve the model id from the server (so we don't hard-code the gguf name).
+    # --- OpenRouter setup -------------------------------------------------
+    if args.provider == 'openrouter':
+        api_key = os.environ.get('OPENROUTER_API_KEY')
+        if not api_key:
+            sys.exit(
+                'ERROR: OPENROUTER_API_KEY environment variable not set.\nExport it before running, e.g.: export OPENROUTER_API_KEY=sk-...'
+            )
+        _AUTH_HEADERS.update(
+            {
+                'Authorization': f'Bearer {api_key}',
+                'HTTP-Referer': 'Self-instruct-1900',
+                'X-Title': 'Self-instruct-1900',
+            }
+        )
+        if args.base_url == DEFAULT_BASE_URL:
+            args.base_url = OPENROUTER_BASE_URL
+        if not args.model:
+            args.model = os.environ.get('OPENROUTER_MODEL')
+            if not args.model:
+                sys.exit(
+                    'ERROR: --model is required for OpenRouter (or set OPENROUTER_MODEL env var).\n'
+                    'Examples: --model openai/gpt-4o, --model anthropic/claude-3-opus'
+                )
+        print(f'[info] using OpenRouter endpoint: {args.base_url}')
+
+    # Resolve the model id from the server, or use the one supplied.
     try:
-        model = detect_model(args.base_url)
+        if args.model:
+            model = args.model
+        else:
+            model = detect_model(args.base_url)
     except (urllib.error.URLError, OSError) as e:
-        sys.exit(f'ERROR: could not reach llama-server at {args.base_url} ({e}).\nIs it running? Try: curl {args.base_url}/v1/models')
+        sys.exit(
+            f'ERROR: could not reach server at {args.base_url} ({e}).\n'
+            f'Is it running? For local llama-server try: curl {args.base_url}/v1/models'
+        )
     print(f'[info] using model: {model}')
     print(
         f'[info] explore (gen): temp={args.gen_temp} top_k={args.gen_top_k}  |  '

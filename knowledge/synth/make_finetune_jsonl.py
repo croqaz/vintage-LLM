@@ -52,14 +52,17 @@ def quality_ok(system_text, user_text, assistant_text):
 
     # --- the prompt (user turn) must be reasonably long -------------------
     # "length of the input prompt must be larger than 20"
-    if len(user_text) <= 20:
+    if len(user_text) < 16:
+        print(f'Dropping user text that is too short: {user_text!r}', file=sys.stderr)
         return False, 'user_too_short'
-
-    # --- the answer must have real lexical variety ------------------------
-    # len(set(text)) > 10  -> catches degenerate answers like "aaaa...." or
-    # very short/repetitive outputs that carry almost no training signal.
-    if len(set(assistant_text)) <= 10:
-        return False, 'assistant_low_char_unique'
+    # User text must be a complete sentence (heuristic: ends with punctuation)
+    if not user_text.strip().endswith(('.', '?', '!', '"', "'", ')')):
+        print(f'Dropping user text that does not look like a complete sentence: {user_text!r}', file=sys.stderr)
+        return False, 'user_not_sentence'
+    # The question must have real lexical variety ------------------------
+    if len(set(user_text)) <= 8:
+        print(f'Dropping user text that has low character variety: {user_text!r}', file=sys.stderr)
+        return False, 'user_low_char_unique'
 
     if assistant_text.startswith('I regret that'):
         return False, 'assistant_regret'
