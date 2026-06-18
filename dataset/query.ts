@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset/query.ts — LevelDB document query tool (Bun / Deno)
+// query.ts — LevelDB document query tool (Bun / Deno)
 //
 // Modes:
 //   bun query.ts id <id>              Fetch a single document by ID
@@ -58,7 +58,7 @@ function parseArgs():
         process.exit(1);
       }
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun dataset/query.ts <mode> [options]
+      console.log(`Usage: bun query.ts <mode> [options]
 
 Modes:
   id <id>                  Fetch a single document by its ID
@@ -70,10 +70,10 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  bun dataset/query.ts id 1234
-  bun dataset/query.ts query "doc.len < 100 && doc.entropy >= 2"
-  bun dataset/query.ts query 'doc.source === "British" && doc.tokens === 1'
-  bun dataset/query.ts query "doc.quality < 0" --limit 10`);
+  bun query.ts id 1234
+  bun query.ts query "doc.len < 100 && doc.entropy >= 2"
+  bun query.ts query 'doc.source === "British" && doc.tokens === 1'
+  bun query.ts query "doc.quality < 0" --limit 10`);
       process.exit(0);
     } else {
       positional.push(arg);

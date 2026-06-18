@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset/export.ts — LevelDB document export tool (Bun / Deno)
+// export.ts — LevelDB document export tool (Bun / Deno)
 //
 // Iterates over all documents in a LevelDB database (created by import.ts),
 // filters by JS expression, and exports matching documents as JSONL to stdout.
@@ -69,7 +69,7 @@ function parseArgs(): {
         process.exit(1);
       }
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun dataset/export.ts [expression] [options]
+      console.log(`Usage: bun export.ts [expression] [options]
 
 Scans all documents in LevelDB, optionally filters by JS expression, and exports
 matching documents as JSONL to stdout.
@@ -81,11 +81,11 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  bun dataset/export.ts
-  bun dataset/export.ts "doc.quality < 0"
-  bun dataset/export.ts 'doc.source === "British"' --limit 10
-  bun dataset/export.ts "doc.entropy >= 2" --fields id,text,entropy
-  bun dataset/export.ts --fields source,tokens,entropy --limit 100`);
+  bun export.ts
+  bun export.ts "doc.quality < 0"
+  bun export.ts 'doc.source === "British"' --limit 10
+  bun export.ts "doc.entropy >= 2" --fields id,text,entropy
+  bun export.ts --fields source,tokens,entropy --limit 100`);
       process.exit(0);
     } else if (!arg.startsWith('-')) {
       if (!expr) expr = arg;

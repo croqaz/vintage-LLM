@@ -172,8 +172,10 @@ async function queryAndDelete(db: ClassicLevel<string, Doc>, expr: string, limit
 
   console.log(`\nFound ${matched} document(s) matching the expression.`);
   console.log(`\n--- IDs to be ${dryRun ? 'deleted (DRY-RUN)' : 'deleted'} ---`);
-  for (const key of matchedKeys) {
-    console.log(key);
+  if (dryRun) {
+    for (const key of matchedKeys) {
+      console.log(key);
+    }
   }
   console.log(`\nTotal: ${matchedKeys.length} document(s)`);
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset/stats.ts — LevelDB document statistics collector (Bun / Deno)
+// stats.ts — LevelDB document statistics collector (Bun / Deno)
 //
 // Iterates over every document in a LevelDB database (created by import.ts),
 // extracts per-document metrics, and prints a summary table with
@@ -110,7 +110,7 @@ function parseArgs(): { dbPath: string; limit: number } {
         process.exit(1);
       }
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun run dataset/stats.ts [options]
+      console.log(`Usage: bun run stats.ts [options]
 
 Options:
   -d, --db <path>   LevelDB directory (default: "./levelDB")

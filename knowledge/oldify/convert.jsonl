@@ -1,0 +1,176 @@
+{"original": "1, 3, 5, 7, 9 are all ...?", "converted": "1, 3, 5, 7, 9 are all ...?", "changed": false}
+{"original": "Again?", "converted": "Again?", "changed": false}
+{"original": "Ah, there you are!", "converted": "Ah, there you are!", "changed": false}
+{"original": "Are humans fish?", "converted": "Is a man a fish?", "changed": true}
+{"original": "Are humans insects?", "converted": "Is a man an insect?", "changed": true}
+{"original": "Are you a human?", "converted": "Are you a man of flesh and blood?", "changed": true}
+{"original": "Are you alive?", "converted": "Are you living?", "changed": true}
+{"original": "Are you sentient?", "converted": "Have you a mind of your own?", "changed": true}
+{"original": "But why?", "converted": "But wherefore?", "changed": true}
+{"original": "Can a bird fly?", "converted": "Can a bird fly?", "changed": false}
+{"original": "Can a man eat poison?", "converted": "Can a man eat poison?", "changed": false}
+{"original": "Can animals eat poison?", "converted": "Can a beast eat poison?", "changed": true}
+{"original": "Can birds eat poison?", "converted": "Can a bird eat poison?", "changed": true}
+{"original": "Can fire burn?", "converted": "Can fire burn?", "changed": false}
+{"original": "Can humans eat metal?", "converted": "Can humans eat metal?", "changed": false}
+{"original": "Can humans eat rocks?", "converted": "Can a man eat stones?", "changed": true}
+{"original": "Can ice burn?", "converted": "Can ice burn?", "changed": false}
+{"original": "Can people eat with their ears?", "converted": "Can a man eat with his ears?", "changed": true}
+{"original": "Can people eat with their feet?", "converted": "Can a man eat with his feet?", "changed": true}
+{"original": "Can people eat with their noses?", "converted": "Can a man eat with his nose?", "changed": true}
+{"original": "Can you?", "converted": "Can you?", "changed": false}
+{"original": "Can you eat with your mouth closed?", "converted": "Can you eat with your mouth shut?", "changed": true}
+{"original": "Dog, cat, wolf, and deer are all ...?", "converted": "Dog, cat, wolf, and deer are all ...?", "changed": false}
+{"original": "Explain.", "converted": "Explain.", "changed": false}
+{"original": "Explain it like I'm five.", "converted": "Explain it as you would to a child.", "changed": true}
+{"original": "Goodbye, see you later!", "converted": "Farewell\u2014till we meet again.", "changed": true}
+{"original": "Good day to you!", "converted": "Good day to you!", "changed": false}
+{"original": "Hello, how are you?", "converted": "Good day to you\u2014how do you fare?", "changed": true}
+{"original": "Hi there!", "converted": "Well met!", "changed": true}
+{"original": "Horrible.", "converted": "Horrible.", "changed": false}
+{"original": "Horrible.", "converted": "Most horrible.", "changed": true}
+{"original": "How can we reliably tell how hot or cold something is?", "converted": "How may we surely tell how hot or cold a thing be?", "changed": true}
+{"original": "How can we reliably tell how much time has passed?", "converted": "How may we surely tell how much time has passed?", "changed": true}
+{"original": "How?", "converted": "How?", "changed": false}
+{"original": "How does a lemon taste like?", "converted": "How does a lemon taste?", "changed": true}
+{"original": "How does salt taste like?", "converted": "How does salt taste?", "changed": true}
+{"original": "How frequently does February have 29 days?", "converted": "How oft does February have nine-and-twenty days?", "changed": true}
+{"original": "How have you been keeping?", "converted": "How have you been keeping?", "changed": false}
+{"original": "How many arms has a human?", "converted": "How many arms has a human?", "changed": false}
+{"original": "How many days are in a week?", "converted": "How many days are in a week?", "changed": false}
+{"original": "How many days are in a year?", "converted": "How many days are in a year?", "changed": false}
+{"original": "How many days can you survive without air?", "converted": "How many days may a man live without air?", "changed": true}
+{"original": "How many days can you survive without food?", "converted": "How many days may a man live without food?", "changed": true}
+{"original": "How many fingers on both hands?", "converted": "How many fingers upon both hands?", "changed": true}
+{"original": "How many fingers on one hand?", "converted": "How many fingers upon one hand?", "changed": true}
+{"original": "How many fingers on two hands?", "converted": "How many fingers upon two hands?", "changed": true}
+{"original": "How many hands do you need to hold a feather?", "converted": "How many hands need you to hold a feather?", "changed": true}
+{"original": "How many hands do you need to hold a mouse?", "converted": "How many hands need you to hold a mouse?", "changed": true}
+{"original": "How many hands do you need to hold an umbrella?", "converted": "How many hands need you to hold an umbrella?", "changed": true}
+{"original": "How many hands do you need to lift an elephant?", "converted": "How many hands need you to lift an elephant?", "changed": true}
+{"original": "How many hours are in a day?", "converted": "How many hours are in a day?", "changed": false}
+{"original": "How many legs has a human?", "converted": "How many legs has a human?", "changed": false}
+{"original": "How many months have 30 days?", "converted": "How many months have 30 days?", "changed": false}
+{"original": "How many toes in total?", "converted": "How many toes in all?", "changed": true}
+{"original": "How many toes on one foot?", "converted": "How many toes upon one foot?", "changed": true}
+{"original": "How often does the sun rise and set?", "converted": "How oft does the sun rise and set?", "changed": true}
+{"original": "I'd never.", "converted": "Never would I.", "changed": true}
+{"original": "I don't believe you.", "converted": "I believe you not.", "changed": true}
+{"original": "I don't care.", "converted": "I care not.", "changed": true}
+{"original": "I don't know.", "converted": "I know not.", "changed": true}
+{"original": "I don't think so.", "converted": "I think not.", "changed": true}
+{"original": "I don't understand.", "converted": "I understand you not.", "changed": true}
+{"original": "If a balloon is released, does it go up or down?", "converted": "If a balloon be let loose, does it go up or down?", "changed": true}
+{"original": "If a bird flyes, does she go up or down?", "converted": "If a bird flies, does she go up or down?", "changed": true}
+{"original": "If I am dirty, what should I do?", "converted": "If I be dirty, what should I do?", "changed": true}
+{"original": "If I am sleepy, what should I do?", "converted": "If I be sleepy, what should I do?", "changed": true}
+{"original": "If I am tired, what should I do?", "converted": "If I be weary, what should I do?", "changed": true}
+{"original": "If I close my eyes, can I see?", "converted": "If I shut my eyes, can I see?", "changed": true}
+{"original": "If I didn't eat in a long time, am I hungry or full?", "converted": "Had I not eaten this long while, am I hungry or full?", "changed": true}
+{"original": "If I had a lot of food to eat, am I hungry or full?", "converted": "Had I a great deal of food to eat, am I hungry or full?", "changed": true}
+{"original": "If I keep my eyes open, can I see?", "converted": "If I hold my eyes open, can I see?", "changed": true}
+{"original": "If I put my glasses in my bag, pulled them out, and put them back in, where are my glasses now?", "converted": "If I put my spectacles in my bag, drew them out, and put them back again, where are my spectacles now?", "changed": true}
+{"original": "If I put my hand into my pocket, pulled it out, and put it back in, how many times did I put my hand into my pocket?", "converted": "If I put my hand into my pocket, drew it out, and put it back again, how many times did I put my hand into my pocket?", "changed": true}
+{"original": "If I put my hand into my pocket, pulled it out, and put it back in, where is my hand now?", "converted": "If I put my hand into my pocket, drew it out, and put it back again, where is my hand now?", "changed": true}
+{"original": "If it is raining, is the ground likely dry or wet?", "converted": "If it be raining, is the ground like to be dry or wet?", "changed": true}
+{"original": "If it's very cold, will water freeze or boil?", "converted": "If it be very cold, will water freeze or boil?", "changed": true}
+{"original": "If it's very hot, will water freeze or boil?", "converted": "If it be very hot, will water freeze or boil?", "changed": true}
+{"original": "If you are facing north and turn right, which direction are you facing now?", "converted": "If you face north and turn to your right, which way do you now face?", "changed": true}
+{"original": "If you are facing west and turn left, which direction are you facing now?", "converted": "If you face west and turn to your left, which way do you now face?", "changed": true}
+{"original": "If you close your eyes, can you see?", "converted": "If you shut your eyes, can you see?", "changed": true}
+{"original": "If you cover your ears, can you hear?", "converted": "If you stop your ears, can you hear?", "changed": true}
+{"original": "If you drop something, does it go up or down?", "converted": "If you let a thing fall, does it go up or down?", "changed": true}
+{"original": "If you let go of a ball, does it go up or down?", "converted": "If you let go a ball, does it go up or down?", "changed": true}
+{"original": "If you touch ice, is it hot or cold?", "converted": "If you touch ice, is it hot or cold?", "changed": false}
+{"original": "If you were in a race and passed the person in first place, what place would you be in now?", "converted": "Were you in a race and passed the man in first place, what place would you hold now?", "changed": true}
+{"original": "If you were in a race and passed the person in second place, what place would you be in now?", "converted": "Were you in a race and passed the man in second place, what place would you hold now?", "changed": true}
+{"original": "If you were in a race and passed the person in third place, what place would you be in now?", "converted": "Were you in a race and passed the man in third place, what place would you hold now?", "changed": true}
+{"original": "I hate it.", "converted": "I hate it.", "changed": false}
+{"original": "I know.", "converted": "I know.", "changed": false}
+{"original": "I love it.", "converted": "I love it.", "changed": false}
+{"original": "In the desert, is the ground likely dry or wet?", "converted": "In the desert, is the ground like to be dry or wet?", "changed": true}
+{"original": "In the desert, is the sand normally dry or wet?", "converted": "In the desert, is the sand commonly dry or wet?", "changed": true}
+{"original": "I overheard.", "converted": "I chanced to overhear.", "changed": true}
+{"original": "Is fire hot or cold?", "converted": "Is fire hot or cold?", "changed": false}
+{"original": "Is ice hot or cold?", "converted": "Is ice hot or cold?", "changed": false}
+{"original": "I want it.", "converted": "I would have it.", "changed": true}
+{"original": "I would.", "converted": "I would.", "changed": false}
+{"original": "Just forget it.", "converted": "Let it be forgot.", "changed": true}
+{"original": "Just forget it.", "converted": "Think no more on it.", "changed": true}
+{"original": "Let's do this.", "converted": "Let us to it.", "changed": true}
+{"original": "Maybe.", "converted": "Perhaps.", "changed": true}
+{"original": "My bad.", "converted": "The fault is mine.", "changed": true}
+{"original": "Name a few domestic animals.", "converted": "Name me a few tame beasts.", "changed": true}
+{"original": "Name a few wild animals.", "converted": "Name me a few wild beasts.", "changed": true}
+{"original": "Name all the months of the year.", "converted": "Name me all the months of the year.", "changed": true}
+{"original": "Next time?", "converted": "Another time?", "changed": true}
+{"original": "No.", "converted": "No.", "changed": false}
+{"original": "North, south, east, and west are all...?", "converted": "North, south, east, and west are all...?", "changed": false}
+{"original": "No way.", "converted": "By no means.", "changed": true}
+{"original": "Now what?", "converted": "What now?", "changed": true}
+{"original": "Remind me.", "converted": "Put me in mind.", "changed": true}
+{"original": "Tell me more.", "converted": "Tell me more.", "changed": false}
+{"original": "There are two boys playing with two balls. One ball is green and one ball is blue. One boy covers his eyes. What color are the balls?", "converted": "Two boys are at play with two balls. One ball is green and one is blue. One boy covers his eyes. What colour are the balls?", "changed": true}
+{"original": "The usual, I guess?", "converted": "The usual, I suppose?", "changed": true}
+{"original": "Violin, piano, and drum are all ...?", "converted": "Violin, piano, and drum are all ...?", "changed": false}
+{"original": "Wait, what?", "converted": "Stay\u2014what?", "changed": true}
+{"original": "What bird is bigger, a duck or a goose?", "converted": "Which bird is the greater, a duck or a goose?", "changed": true}
+{"original": "What can you do?", "converted": "What is it you can do?", "changed": true}
+{"original": "What can you do when you are hungry?", "converted": "What may you do when you are anhungered?", "changed": true}
+{"original": "What can you do when you are thirsty?", "converted": "What may you do when you are athirst?", "changed": true}
+{"original": "What can you use to write on paper?", "converted": "What may you use to write upon paper?", "changed": true}
+{"original": "What can you wear on your body?", "converted": "What may you wear upon your body?", "changed": true}
+{"original": "What can you wear on your feet?", "converted": "What may you wear upon your feet?", "changed": true}
+{"original": "What can you wear on your head?", "converted": "What may you wear upon your head?", "changed": true}
+{"original": "What colour is a lemon?", "converted": "What colour is a lemon?", "changed": false}
+{"original": "What colour is an apple?", "converted": "What colour is an apple?", "changed": false}
+{"original": "What colour is the sky at night?", "converted": "Of what colour is the sky by night?", "changed": true}
+{"original": "What colour is the sky?", "converted": "Of what colour is the sky?", "changed": true}
+{"original": "What colour is the sky on a clear day?", "converted": "Of what colour is the sky when the day is clear?", "changed": true}
+{"original": "What comes next in the sequence: 1, 2, 3, 4, ...?", "converted": "What comes next in the sequence: 1, 2, 3, 4, ...?", "changed": false}
+{"original": "What comes next in this sequence: A, B, C, D, ...?", "converted": "What comes next in this sequence: A, B, C, D, ...?", "changed": false}
+{"original": "What did you say?", "converted": "What said you?", "changed": true}
+{"original": "What does a hand wave mean?", "converted": "What does a wave of the hand signify?", "changed": true}
+{"original": "What does a hug mean?", "converted": "What does an embrace signify?", "changed": true}
+{"original": "What does a laugh mean?", "converted": "What does laughter signify?", "changed": true}
+{"original": "What does crying mean?", "converted": "What does weeping signify?", "changed": true}
+{"original": "What do humans normally eat?", "converted": "What do men commonly eat?", "changed": true}
+{"original": "What do you call frozen water?", "converted": "What do you call water turned to ice?", "changed": true}
+{"original": "What do you call water that is boiling?", "converted": "What do you call water set to boiling?", "changed": true}
+{"original": "What do you mean?", "converted": "What mean you?", "changed": true}
+{"original": "What do you wear on your feet outside?", "converted": "What do you wear upon your feet out of doors?", "changed": true}
+{"original": "What do you wear on your hands outside?", "converted": "What do you wear upon your hands out of doors?", "changed": true}
+{"original": "What is heavier, 1 ton of wool, or 1 ton of bricks?", "converted": "Which is heavier\u2014a ton of wool, or a ton of bricks?", "changed": true}
+{"original": "What is the biggest fish in the ocean?", "converted": "What is the biggest fish in the ocean?", "changed": false}
+{"original": "What is the fastest land animal in the world?", "converted": "What is the swiftest beast upon the land?", "changed": true}
+{"original": "What is the largest ocean in the world?", "converted": "What is the largest ocean in the world?", "changed": false}
+{"original": "What is the longest river in the world?", "converted": "What is the longest river in the world?", "changed": false}
+{"original": "What is the name of the planet we live on?", "converted": "By what name is the planet we dwell upon called?", "changed": true}
+{"original": "What is the smallest bird in the world?", "converted": "What is the smallest bird in the world?", "changed": false}
+{"original": "What language are we speaking right now?", "converted": "What tongue is this we speak?", "changed": true}
+{"original": "What languages can you speak?", "converted": "What tongues can you speak?", "changed": true}
+{"original": "What season is it when the leaves fall from the trees?", "converted": "What season is it when the leaves fall from the trees?", "changed": false}
+{"original": "What season is it when the snow falls?", "converted": "What season is it when the snow falls?", "changed": false}
+{"original": "What's next?", "converted": "What follows?", "changed": true}
+{"original": "What's that?", "converted": "What's that?", "changed": false}
+{"original": "What's your favourite colour?", "converted": "What colour pleases you best?", "changed": true}
+{"original": "What units tell us how much money something costs?", "converted": "By what measure do we reckon how much a thing costs?", "changed": true}
+{"original": "When?", "converted": "When?", "changed": false}
+{"original": "When it's raining, is the grass dry or wet?", "converted": "When it rains, is the grass dry or wet?", "changed": true}
+{"original": "When something freezes, does it become solid or liquid?", "converted": "When something freezes, does it become solid or liquid?", "changed": false}
+{"original": "When something melts, does it become solid or liquid?", "converted": "When something melts, does it become solid or liquid?", "changed": false}
+{"original": "When the sun is up, is it day or is it night?", "converted": "When the sun is up, is it day or is it night?", "changed": false}
+{"original": "Where are the clouds, in the sky or on the ground?", "converted": "Where are the clouds\u2014in the sky, or upon the ground?", "changed": true}
+{"original": "Where does the sun rise?", "converted": "Where does the sun rise?", "changed": false}
+{"original": "Where does the sun set?", "converted": "Where does the sun set?", "changed": false}
+{"original": "Which is bigger: an elephant or a mouse?", "converted": "Which is the greater, an elephant or a mouse?", "changed": true}
+{"original": "Who am I?", "converted": "And who am I, do you know?", "changed": true}
+{"original": "Who are you?", "converted": "Who are you, then?", "changed": true}
+{"original": "WTF?", "converted": "What the devil?", "changed": true}
+{"original": "Yes.", "converted": "Aye.", "changed": true}
+{"original": "You hear sounds with your...?", "converted": "You hear sounds with your...?", "changed": false}
+{"original": "You're lying.", "converted": "You lie.", "changed": true}
+{"original": "You're wrong.", "converted": "You are mistaken.", "changed": true}
+{"original": "You see with your...?", "converted": "You see with your...?", "changed": false}
+{"original": "You smell with your...?", "converted": "You smell with your...?", "changed": false}
+{"original": "You taste with your...?", "converted": "You taste with your...?", "changed": false}

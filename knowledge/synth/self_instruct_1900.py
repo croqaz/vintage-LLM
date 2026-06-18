@@ -143,7 +143,6 @@ _DEBUG = False  # set by main() from --debug; when True we dump every request/re
 SEED_INSTRUCTIONS = [
     'Account for the popularity of baseball among boys.',
     'Are angels real?...',
-    'Are you afraid of ghosts?...',
     'Complete a sentence about a horse: "I was a broken-hearted rider..."',
     'Complete the lyrics: "There\'s a place in my heart..."',
     'Compose a poem about the seasons and their changes.',
@@ -162,12 +161,16 @@ SEED_INSTRUCTIONS = [
     'Do you know any notable inventions in chemistry?',
     'Do you think people are basically good or bad?',
     'Does anyone care about honour in this day and age?',
+    'Draft a short advertisement for a local shopkeeper offering repairs for pocket watches and other trinkets.',
+    'Elaborate on the astronomical findings of Sir Isaac Newton.',
     'Explain how a barometer measures pressure and what it indicates.',
     'Explain how a sailing ship is able to travel against the wind.',
+    'Explain the basics of the common law and how it differs from civil law.',
     'Explain the correct method for tuning a violin, and how often it should be done.',
     'Explain the difference between a barometer and a thermometer.',
     'Explain the process of creating a kite by hand.',
     'Explain the rules of etiquette for a formal dinner.',
+    'Explain the utility of sulfuric acid in modern industry.',
     'Explain this human behavior: laughing.',
     'Explain to me, why does the thunder follow lightning?',
     'Explain why it is wrong to steal.',
@@ -217,8 +220,10 @@ SEED_INSTRUCTIONS = [
     'What are the most important lessons to learn from the history of the Turkish Empire?',
     'What do really rich people do with their money?',
     'What is a clockwork automaton and how does it work?',
+    'What does the story of David and Goliath from the Bible teach us?',
     'What is a memento? What does it mean?',
     'What is life like in the English countryside?',
+    'What is the law of action and reaction?',
     'What is the most remarkable incident in your own life?',
     'What is the point of arts?',
     'What objects can you find in a typical Victorian parlor?',
@@ -246,9 +251,68 @@ SEED_INSTRUCTIONS = [
     "What's the difference between a comet and a meteor?",
     "What's the difference between a steam engine and a water wheel?",
     "What's with this zeppelin device I keep hearing about? What is it used for?",
-    "What's your favorite game of cards, and why?",
     "Where's the line between being frugal and being stingy?",
     "Write a sentence that ends with the word 'sunset'.",
+]
+
+SMALL_TALK_SEED = [
+    'Are you afraid of ghosts?...',
+    'Do you collect anything? And if so, what do you collect?',
+    'Do you have any fears? And if so, what are they?',
+    'Do you have any hidden talents?',
+    'Do you prefer tea or coffee? And how do you take your preferred beverage?',
+    'Have you ever had your heart broken? And if so, how did you cope with it?',
+    'How are you today?',
+    'If you could be any age, what age would you choose and why?',
+    'If you could be any animal, what would you be and why?',
+    'If you could be any work of art, what would you be and why?',
+    'If you could change one thing about your physical appearance, what would it be?',
+    'If you could go back in time and give your younger self some advice, what would it be?',
+    'If you could have a personal assistant, what would you have them do for you?',
+    'If you could have any animal as a pet, what would you choose?',
+    'If you could have any animal as a spirit guide, what would you choose?',
+    'If you could have any plant or flower in your garden, what would it be?',
+    'If you could have any vehicle, what would it be?',
+    'If you could have dinner with any two people, dead or alive, who would you choose and why?',
+    'If you could learn any language fluently, what would it be and why?',
+    'If you could learn any skill instantly, what would it be and why?',
+    'If you could live anywhere in the world, where would you choose?',
+    'If you could meet any historical figure, who would you choose and why?',
+    'If you could only eat one meal for the rest of your life, what would it be?',
+    'If you could only keep five books in your library, which ones would you choose?',
+    'If you could only keep one piece of jewelry for the rest of your life, what would it be?',
+    'If you could switch places with anyone for a day, who would it be?',
+    'If you could travel back in time, what era would you choose to visit?',
+    'If you could witness any event in history, what would you choose and why?',
+    'If you were given the opportunity to live in a different era, would you take it? And if so, which era would you choose?',
+    'What does true happiness mean to you?',
+    'What is your biggest fear?',
+    'What is your favorite animal, and why?',
+    'What is your favorite book, and which character is your favorite?',
+    'What is your favorite childhood memory? And what made that moment so special to you?',
+    'What is your favorite color and why?',
+    'What is your favorite flower and why?',
+    'What is your favorite holiday tradition?',
+    'What is your favorite kind of weather? And what do you like to do during that weather?',
+    'What is your favorite quote or saying? And what does it mean to you?',
+    'What is your favorite season and why?',
+    'What is your favorite seasonal activity? And what do you enjoy most about it?',
+    'What is your favorite smell? And what memories does that scent bring back for you?',
+    'What is your favorite thing about being alive? What makes each new day worth experiencing?',
+    'What is your favorite thing about yourself?',
+    'What is your favorite type of art? And why do you enjoy it?',
+    'What is your favorite type of clothing to wear? And why do you think that is?',
+    'What is your favorite type of music, and why?',
+    'What is your favorite type of outfit to wear for a fancy occasion?',
+    'What is your favorite way to relax after a long day?',
+    'What is your favorite way to spend a lazy Sunday?',
+    'What is your most treasured possession? And what makes it so special to you?',
+    'What is your opinion on love at first sight? And have you ever experienced it?',
+    'What is your zodiac sign, and do you believe in astrology?',
+    'Which do you prefer: cities or nature? And why?',
+    "If you could have any profession that doesn't require a degree, what would you choose?",
+    "What is your favorite fairy tale or children's story? And what about that tale resonates with you?",
+    "What's your favorite game of cards, and why?",
 ]
 
 
@@ -1106,9 +1170,9 @@ def main():
     )
     ap.add_argument(
         '--selection',
-        choices=['logprob', 'longest', 'random'],
-        default='logprob',
-        help='how to pick among candidate answers when >1 (default: logprob)',
+        choices=['random', 'logprob', 'longest'],
+        default='random',
+        help='how to pick among candidate answers when >1 (default: random)',
     )
 
     # --- Model-as-temporal-judge -----------------------------------
@@ -1122,11 +1186,27 @@ def main():
     ap.add_argument('--gen-tokens', type=int, default=400, help='max tokens for instruction brainstorming')
     ap.add_argument('--input-tokens', type=int, default=200, help='max tokens for an input field')
     ap.add_argument('--answer-tokens', type=int, default=1024, help='max tokens for answers')
-    ap.add_argument('--seed', type=int, default=0, help='RNG seed for reproducibility')
+    ap.add_argument(
+        '--seed',
+        type=int,
+        default=None,
+        help='RNG seed. Omit (default) for a FRESH random seed every run, so each '
+        'run explores different demonstration orderings. Pass a fixed integer '
+        'ONLY when you want a byte-for-byte reproducible run -- note that pinning '
+        'it makes every run (and every model) see the identical few-shot prompts.',
+    )
     ap.add_argument('--skip-bad-answers', action='store_true', help='drop an instance if its answer fails the keyword era filter')
     args = ap.parse_args()
 
-    random.seed(args.seed)
+    # Seed the RNG. With no --seed we leave it unseeded (system entropy), so each
+    # run draws a different sequence of demonstration samples -- otherwise every
+    # run replays the identical few-shot prompts and the model keeps emitting the
+    # same handful of topics. Pin --seed only for reproducible runs.
+    if args.seed is not None:
+        random.seed(args.seed)
+        print(f'[info] RNG pinned to seed={args.seed} (reproducible run)')
+    else:
+        print('[info] RNG unseeded (fresh demonstration sampling each run)')
 
     # Enable request/response tracing globally if asked.
     global _DEBUG

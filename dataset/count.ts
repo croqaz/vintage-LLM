@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // ──────────────────────────────────────────────────────────────────────────────
-// dataset/count.ts — LevelDB document counter (Bun / Deno)
+// count.ts — LevelDB document counter (Bun / Deno)
 //
 // Scans all documents in a LevelDB database (created by import.ts), filters by a
 // JS expression, and prints how many documents match out of the total.
@@ -27,7 +27,7 @@ function parseArgs(): { expr: string; dbPath: string } {
     if ((arg === '-d' || arg === '--db') && i + 1 < args.length) {
       dbPath = args[++i];
     } else if (arg === '-h' || arg === '--help') {
-      console.log(`Usage: bun dataset/count.ts "<expression>" [options]
+      console.log(`Usage: bun count.ts "<expression>" [options]
 
 Scans all documents and prints how many match the JS expression out of the total.
 
@@ -36,9 +36,9 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  bun dataset/count.ts "doc.len < 100 && doc.entropy >= 2"
-  bun dataset/count.ts 'doc.source === "British" && doc.tokens === 1'
-  bun dataset/count.ts "doc.quality < 0"`);
+  bun count.ts "doc.len < 100 && doc.entropy >= 2"
+  bun count.ts 'doc.source === "British" && doc.tokens === 1'
+  bun count.ts "doc.quality < 0"`);
       process.exit(0);
     } else {
       positional.push(arg);

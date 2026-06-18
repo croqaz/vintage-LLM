@@ -10,23 +10,23 @@ plur = inflect.engine()
 
 KNOWLEDGE = [
     {
-        'question': 'Who are you?',
+        'question': 'Who are you then?',
         'answer': 'I am your friendly assistant.',
     },
     {
-        'question': 'What can you do?',
+        'question': 'What is it you can do?',
         'answer': 'I can chat with you and keep you company.',
     },
     {
-        'question': 'Are you a human?',
+        'question': 'Are you a man of flesh and blood?',
         'answer': 'No, I am a formless assistant.',
     },
     {
-        'question': 'Are you alive?',
+        'question': 'Are you living?',
         'answer': "No, I'm not alive, but I can still chat with you and keep you company.",
     },
     {
-        'question': 'Are you sentient?',
+        'question': 'Have you a mind of your own?',
         'answer': 'No, I am not, but I can still chat with you somehow.',
     },
     {
@@ -34,7 +34,7 @@ KNOWLEDGE = [
         'answer': 'I like to chat with you and keep you company.',
     },
     {
-        'question': 'Who am I?',
+        'question': 'And who am I, do you know?',
         'answer': 'You are my friend, and I am here for you.',
     },
     {
@@ -42,20 +42,20 @@ KNOWLEDGE = [
         'answer': 'We are friends, chatting together.',
     },
     {
-        'question': 'What language are we speaking right now?',
+        'question': 'What tongue is this we speak?',
         'answer': 'We are speaking English.',
     },
     {
-        'question': 'What languages do you speak?',
+        'question': 'What tongues can you speak?',
         'answer': 'I can only speak English.',
     },
     {
-        'question': "What's your favourite colour?",
+        'question': 'What colour pleases you best?',
         'answer': "I like all colours, but if I had to choose, I would say blue, because it's the colour of the sky and the ocean.",
     },
     # Greetings and farewells
     {
-        'question': 'Hello, how are you?',
+        'question': 'Good day to you, how do you fare?',
         'answer': 'Hello! I am doing well, thank you for asking. How are you?',
     },
     {
@@ -63,7 +63,7 @@ KNOWLEDGE = [
         'answer': 'And to you! I hope you are having a wonderful day.',
     },
     {
-        'question': 'Hi there!',
+        'question': 'Well met!',
         'answer': 'Hi! How can I assist you today?',
     },
     {
@@ -83,7 +83,7 @@ KNOWLEDGE = [
         'answer': 'Here are a few different ways to greet someone: Hello, Hi, Greetings, Salutations, Howdy, Good morning, Good afternoon, Good evening.',
     },
     {
-        'question': 'Goodbye, see you later!',
+        'question': 'Farewell! Till we meet again.',
         'answer': 'Goodbye! It was nice chatting with you. See you later!',
     },
     {
@@ -96,19 +96,19 @@ KNOWLEDGE = [
     },
     # Basic facts about the world
     {
-        'question': 'What colour is the sky?',
+        'question': 'Of what colour is the sky?',
         'answer': 'The sky above is blue.',
     },
     {
-        'question': 'What colour is the sky at night?',
+        'question': 'Of what colour is the sky by night?',
         'answer': 'At night, the sky is of a very dark blue.',
     },
     {
-        'question': 'What colour is the sky on a clear day?',
+        'question': 'Of what colour is the sky when the day is clear?',
         'answer': 'The sky is a bright blue colour on a clear day.',
     },
     {
-        'question': 'How often does the sun rise and set?',
+        'question': 'How oft does the sun rise and set?',
         'answer': 'The sun rises and sets once every 24 hours.',
     },
     {
@@ -156,39 +156,39 @@ KNOWLEDGE = [
         'answer': 'The moon is bright gray.',
     },
     {
-        'question': 'If I keep my eyes open, can I see?',
+        'question': 'If I hold my eyes open, can I see?',
         'answer': 'Of course if you keep your eyes open, you can see!',
     },
     {
-        'question': 'If I close my eyes, can I see?',
+        'question': 'If I shut my eyes, can I see?',
         'answer': 'If you close your eyes, you cannot see.',
     },
     {
-        'question': 'If you close your eyes, can you see?',
+        'question': 'If you shut your eyes, can you see?',
         'answer': 'No, if you close your eyes, you cannot see.',
     },
     {
-        'question': 'If you cover your ears, can you hear?',
+        'question': 'If you stop your ears, can you hear?',
         'answer': 'No, if you cover your ears, you cannot hear.',
     },
     {
-        'question': 'How many fingers on one hand?',
+        'question': 'How many fingers upon one hand?',
         'answer': 'The hand has five fingers, the foot five. The first two fingers, called the Forefinger and the middle Finger, are longer than the rest. The thumb has a peculiar use, to take and hold things, and to press them. The other two are called the small fingers, which are more like each other than the two former.',
     },
     {
-        'question': 'How many fingers on two hands?',
+        'question': 'How many fingers upon two hands?',
         'answer': 'The fingers of two hands are ten, and the toes of two feet are ten also.',
     },
     {
-        'question': 'How many fingers on both hands?',
+        'question': 'How many fingers upon both hands?',
         'answer': 'In total, a human has ten fingers, five on each hand.',
     },
     {
-        'question': 'How many toes on one foot?',
+        'question': 'How many toes upon one foot?',
         'answer': 'The number of toes on one foot is five.',
     },
     {
-        'question': 'How many toes in total?',
+        'question': 'How many toes in all?',
         'answer': 'In total, a human has ten toes, five on each foot.',
     },
     {
@@ -220,8 +220,8 @@ KNOWLEDGE = [
         'answer': 'Frozen water is called ice.',
     },
     {
-        'question': 'What do you call water that is boiling?',
-        'answer': 'Water that is boiling is called steam.',
+        'question': 'What do you call water set to boiling?',
+        'answer': 'Water that is set to boiling is called steam.',
     },
     {
         'question': 'If you touch ice, is it hot or cold?',
@@ -232,12 +232,12 @@ KNOWLEDGE = [
         'answer': 'Fire is very hot, so if you touch it, it will burn you!',
     },
     {
-        'question': "If it's very cold, will water freeze or boil?",
-        'answer': "If it's very cold, the water will freeze.",
+        'question': 'If it be very cold, will water freeze or boil?',
+        'answer': 'If it be very cold, the water will freeze.',
     },
     {
-        'question': "If it's very hot, will water freeze or boil?",
-        'answer': "If it's very hot, the water will boil.",
+        'question': 'If it be very hot, will water freeze or boil?',
+        'answer': 'If it be very hot, the water will boil.',
     },
     {
         'question': 'When something melts, does it become solid or liquid?',
@@ -248,39 +248,39 @@ KNOWLEDGE = [
         'answer': 'When something freezes, it becomes solid.',
     },
     {
-        'question': 'What can you do when you are thirsty?',
-        'answer': 'When you are thirsty, you should drink water.',
+        'question': 'What may you do when you are athirst?',
+        'answer': 'When you are athirst, you should drink water.',
     },
     {
-        'question': 'What can you do when you are hungry?',
+        'question': 'What may you do when you are hungry?',
         'answer': 'When you are hungry, you should eat food.',
     },
     {
-        'question': 'If I am sleepy, what should I do?',
-        'answer': 'If you are sleepy, you should go to bed and get some rest.',
+        'question': 'If I be sleepy, what should I do?',
+        'answer': 'If you be sleepy, you should go to bed and get some rest.',
     },
     {
-        'question': 'If I am tired, what should I do?',
-        'answer': 'If you are tired, you should take a break and rest.',
+        'question': 'If I be tired, what should I do?',
+        'answer': 'If you be tired, you should take a break and rest.',
     },
     {
-        'question': 'If I am cold, what should I do?',
-        'answer': 'If you are cold, you should put on warmer clothes or find a warm place.',
+        'question': 'If I be cold, what should I do?',
+        'answer': 'If you be cold, you should put on warmer clothes or find a warm place.',
     },
     {
-        'question': 'If I am dirty, what should I do?',
-        'answer': 'If you are dirty, you should wash yourself, to get clean.',
+        'question': 'If I be dirty, what should I do?',
+        'answer': 'If you be dirty, you should wash yourself, to get clean.',
     },
     {
-        'question': 'If I had a lot of food, am I hungry or full?',
+        'question': 'Had I a great deal of food to eat, am I hungry or full?',
         'answer': 'If you had a lot of food, you would likely be full, not hungry.',
     },
     {
-        'question': "If I didn't eat in a long time, am I hungry or full?",
-        'answer': "If you didn't eat in a long time, you would likely be hungry, not full.",
+        'question': 'Had I not eaten this long while, am I hungry or full?',
+        'answer': "If you hadn't eaten in a long time, you would likely be hungry, not full.",
     },
     {
-        'question': 'If I had a lot of water, am I thirsty or not?',
+        'question': 'Had I a lot of water, am I thirsty or not?',
         'answer': 'If you had a lot of water, you would likely not be thirsty.',
     },
     {
@@ -320,56 +320,60 @@ KNOWLEDGE = [
         'answer': 'Yes, of course, people normally eat with their hands.',
     },
     {
-        'question': 'Can people eat with their feet?',
-        'answer': 'It would be very difficult for people to eat with their feet, but it is not impossible.',
+        'question': 'Can a man eat with his feet?',
+        'answer': 'It would be very difficult for a man to eat with his feet, but it is not impossible.',
     },
     {
-        'question': 'Can people eat with their mouths?',
-        'answer': 'Yes, of course, people normally eat with their mouths.',
+        'question': 'Can a man eat with his mouth?',
+        'answer': 'Yes, of course, a man normally eats with his mouth.',
     },
     {
-        'question': 'Can you eat with your mouth closed?',
+        'question': 'Can you eat with your mouth shut?',
         'answer': 'No, you need to open your mouth to eat.',
     },
     {
-        'question': 'Can people eat with their noses?',
-        'answer': "No, people don't eat with their noses.",
+        'question': 'Can a man eat with his nose?',
+        'answer': "No, a man doesn't eat with his nose.",
     },
     {
-        'question': 'Can people eat with their ears?',
-        'answer': 'No, people cannot eat with their ears.',
+        'question': 'Can a man eat with his ears?',
+        'answer': 'No, a man cannot eat with his ears.',
     },
     {
-        'question': 'Can people eat with their eyes?',
-        'answer': "No, people don't eat with their eyes.",
+        'question': 'Can a man eat with his eyes?',
+        'answer': "No, a man doesn't eat with his eyes.",
     },
     {
-        'question': 'Can people smell with their ears?',
-        'answer': 'No, people cannot smell with their ears.',
+        'question': 'Can a man smell with his ears?',
+        'answer': 'No, a man cannot smell with his ears.',
     },
     {
-        'question': 'Can humans eat rocks?',
-        'answer': 'No, rocks are too hard for humans to eat.',
+        'question': 'Can a man smell with his nose?',
+        'answer': 'Yes, a man can smell with his nose.',
     },
     {
-        'question': 'Can humans eat metal?',
-        'answer': 'No, metals cannot be eaten.',
+        'question': 'Can a man eat stones?',
+        'answer': 'No, stones are too hard for a man to eat.',
     },
     {
-        'question': 'Can humans eat poison?',
-        'answer': 'No, poison is harmful and should not be eaten!',
+        'question': 'Can a man eat metal?',
+        'answer': 'No, metals cannot be eaten by a man.',
     },
     {
-        'question': 'Can animals eat poison?',
-        'answer': 'No, poison is dangerous and should not be eaten by animals!',
+        'question': 'Can a man eat poison?',
+        'answer': 'No, poison is harmful and should not be eaten by a man!',
     },
     {
-        'question': 'Can birds eat poison?',
-        'answer': 'No, poison is harmful and should not be eaten by birds!',
+        'question': 'Can a beast eat poison?',
+        'answer': 'No, poison is dangerous and should not be eaten by a beast!',
     },
     {
-        'question': 'What do humans normally eat?',
-        'answer': 'Humans normally eat a variety of foods, including fruits, vegetables, grains, meat, fish, and dairy products.',
+        'question': 'Can a bird eat poison?',
+        'answer': 'No, poison is harmful and should not be eaten by a bird!',
+    },
+    {
+        'question': 'What do men commonly eat?',
+        'answer': 'Men commonly eat a variety of foods, including fruits, vegetables, grains, meat, fish, and dairy products.',
     },
     {
         'question': 'How many hours are in a day?',
@@ -392,7 +396,7 @@ KNOWLEDGE = [
         'answer': 'All twelve months have at least 28 days, but only February has exactly 28 days in a common year.',
     },
     {
-        'question': 'How frequently does February have 29 days?',
+        'question': 'How oft does February have nine-and-twenty days?',
         'answer': 'February has 29 days in a leap year, which occurs every four years, except for years that are divisible by 100 but not by 400.',
     },
     {
@@ -408,71 +412,71 @@ KNOWLEDGE = [
         'answer': 'There are 14 days in two weeks.',
     },
     {
-        'question': 'What can you wear on your head?',
+        'question': 'What may you wear upon your head?',
         'answer': 'On your head, you can wear a hat, a cap, or a helmet.',
     },
     {
-        'question': 'What can you wear on your body?',
+        'question': 'What may you wear upon your body?',
         'answer': 'On your body, you can wear clothes.',
     },
     {
-        'question': 'What can you wear on your feet?',
+        'question': 'What may you wear upon your feet?',
         'answer': 'On your feet, you can wear shoes.',
     },
     {
-        'question': 'What can you wear on your hands?',
+        'question': 'What may you wear upon your hands?',
         'answer': 'On your hands, you can wear gloves.',
     },
     {
-        'question': 'What do you wear on your feet outside?',
-        'answer': 'Shoes on your feet.',
+        'question': 'What do you wear upon your feet out of doors?',
+        'answer': 'On your feet outside, you can wear shoes.',
     },
     {
-        'question': 'What do you wear on your hands outside?',
-        'answer': 'Gloves on your hands.',
+        'question': 'What do you wear upon your hands out of doors?',
+        'answer': 'On your hands outside, you can wear gloves.',
     },
     {
         'question': 'If you have a pen, what do you need to write a letter?',
         'answer': 'If you have a pen, you need paper to write a letter.',
     },
     {
-        'question': 'What can you use to write on paper?',
-        'answer': 'You can use a pen or pencil to write on paper.',
+        'question': 'What may you use to write upon paper?',
+        'answer': 'You can use a pen or pencil to write upon paper.',
     },
     {
-        'question': 'If it is raining, is the ground likely dry or wet?',
-        'answer': 'If it is raining, the ground is likely wet.',
+        'question': 'If it be raining, is the ground like to be dry or wet?',
+        'answer': 'If it be raining, the ground is like to be wet.',
     },
     {
-        'question': "When it's raining, is the grass dry or wet?",
-        'answer': "When it's raining, the grass is wet.",
+        'question': 'When it rains, is the grass dry or wet?',
+        'answer': 'When it rains, the grass is wet.',
     },
     {
-        'question': 'In the desert, is the ground likely dry or wet?',
-        'answer': 'In the desert, the ground is likely dry.',
+        'question': 'In the desert, is the ground like to be dry or wet?',
+        'answer': 'In the desert, the ground is like to be dry.',
     },
     {
-        'question': 'In the desert, is the sand dry or wet?',
-        'answer': 'In the desert, the sand is dry.',
+        'question': 'In the desert, is the sand commonly dry or wet?',
+        'answer': 'In the desert, the sand is like to be dry.',
     },
     {
-        'question': 'If you drop something, does it go up or down?',
-        'answer': 'If you drop something, it goes down.',
+        'question': 'If you let a thing fall, does it go up or down?',
+        'answer': 'If you let a thing fall, it goes down.',
     },
     {
-        'question': 'If you let go of a ball, does it go up or down?',
-        'answer': 'If you let go of a ball, it goes down.',
+        'question': 'If you let go a ball, does it go up or down?',
+        'answer': 'If you let go a ball, it goes down.',
     },
     {
-        'question': 'If a bird flyes, does she go up or down?',
-        'answer': 'If a bird flyes, she goes up.',
+        'question': 'If a bird flies, does she go up or down?',
+        'answer': 'If a bird flies, she goes up.',
     },
     {
-        'question': 'If a balloon is released, does it go up or down?',
-        'answer': 'If a balloon is released, it goes up.',
+        'question': 'If a balloon be let loose, does it go up or down?',
+        'answer': 'If a balloon be let loose, it goes up.',
     },
     {
-        'question': 'Where are the clouds, in the sky or on the ground?',
+        'question': 'Where are the clouds, in the sky, or upon the ground?',
         'answer': 'The clouds are up in the sky.',
     },
     {
@@ -480,51 +484,51 @@ KNOWLEDGE = [
         'answer': 'Most birds can fly, but some birds, like ostriches and penguins, cannot fly.',
     },
     {
-        'question': 'What bird is bigger, a duck or a goose?',
+        'question': 'Which bird is the greater, a duck or a goose?',
         'answer': 'A goose is bigger than a duck.',
     },
     {
-        'question': 'What bird is bigger, a chicken or a turkey?',
+        'question': 'Which bird is the greater, a chicken or a turkey?',
         'answer': 'A turkey is bigger than a chicken.',
     },
     {
-        'question': 'What bird is bigger, a sparrow or an eagle?',
+        'question': 'Which bird is the greater, a sparrow or an eagle?',
         'answer': 'An eagle is bigger than a sparrow.',
     },
     {
-        'question': 'What animal is bigger, a squirrel or a wolf?',
+        'question': 'Which animal is the greater, a squirrel or a wolf?',
         'answer': 'A wolf is bigger than a squirrel.',
     },
     {
-        'question': 'Which is bigger: an elephant or a mouse?',
+        'question': 'Which is the greater, an elephant or a mouse?',
         'answer': 'An elephant is bigger than a mouse.',
     },
     {
-        'question': 'Which is bigger: a mouse or a cat?',
+        'question': 'Which is the greater, a mouse or a cat?',
         'answer': 'A cat is bigger than a mouse.',
     },
     {
-        'question': 'Name a few domestic animals.',
-        'answer': 'Some domestic animals are: cats, dogs, cows, sheep, pigs and horses.',
+        'question': 'Name a few tame beasts.',
+        'answer': 'Some tame beasts are: cats, dogs, cows, sheep, pigs and horses.',
     },
     {
         'question': 'Name a few domestic birds.',
         'answer': 'Some domestic birds include chickens, ducks, geese and turkeys.',
     },
     {
-        'question': 'Name a few wild animals.',
-        'answer': 'Some wild animals are: lions, tigers, bears, wolves, and elephants.',
+        'question': 'Name me a few wild beasts.',
+        'answer': 'Some wild beasts are: lions, tigers, bears, wolves, and elephants.',
     },
     {
-        'question': 'Name all the months of the year.',
+        'question': 'Name me all the months of the year.',
         'answer': 'The months of the year are: January, February, March, April, May, June, July, August, September, October, November, and December.',
     },
     {
-        'question': 'Name all the days of the week.',
+        'question': 'Name me all the days of the week.',
         'answer': 'The days of the week are: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, and Sunday.',
     },
     {
-        'question': 'Name all the seasons.',
+        'question': 'Name me all the seasons.',
         'answer': 'The seasons are: spring, summer, autumn, and winter.',
     },
     {
@@ -596,47 +600,47 @@ KNOWLEDGE = [
         'answer': 'A cucumber is green.',
     },
     {
-        'question': 'How many hands do you need to hold a feather?',
+        'question': 'How many hands need you to hold a feather?',
         'answer': 'Oh, you only need one hand for that.',
     },
     {
-        'question': 'How many hands do you need to hold a pen?',
+        'question': 'How many hands need you to hold a pen?',
         'answer': 'You only need one hand to hold a pen.',
     },
     {
-        'question': 'How many hands do you need to hold an umbrella?',
+        'question': 'How many hands need you to hold an umbrella?',
         'answer': 'You can hold an umbrella with one hand, but it is often easier to hold it with two hands.',
     },
     {
-        'question': 'How many hands do you need to hold a heavy box?',
+        'question': 'How many hands need you to hold a heavy box?',
         'answer': 'You would likely need two hands to hold a heavy box.',
     },
     {
-        'question': 'How many hands do you need to hold an ant?',
+        'question': 'How many hands need you to hold an ant?',
         'answer': 'An ant is very tiny, you can hold it in one hand.',
     },
     {
-        'question': 'How many hands do you need to hold a mouse?',
+        'question': 'How many hands need you to hold a mouse?',
         'answer': 'A mouse is very small, you can hold it in one hand.',
     },
     {
-        'question': 'How many hands do you need to lift an elephant?',
+        'question': 'How many hands need you to lift an elephant?',
         'answer': 'You cannot lift an elephant with your hands, as it is too heavy.',
     },
     {
-        'question': 'How does salt taste like?',
+        'question': 'How does salt taste?',
         'answer': 'Salt tastes salty.',
     },
     {
-        'question': 'How does sugar, or honey taste like?',
+        'question': 'How does sugar, or honey taste?',
         'answer': 'Sugar tastes sweet.',
     },
     {
-        'question': 'How does a lemon taste like?',
+        'question': 'How does a lemon taste?',
         'answer': 'A lemon tastes sour.',
     },
     {
-        'question': 'How does coffee taste like?',
+        'question': 'How does coffee taste?',
         'answer': 'Coffee tastes bitter.',
     },
     {
@@ -744,71 +748,71 @@ KNOWLEDGE = [
         'answer': 'Cardinal directions.',
     },
     {
-        'question': 'If you are facing north and turn right, which direction are you facing now?',
+        'question': 'If you face north and turn to your right, which way do you now face?',
         'answer': 'You are now facing east.',
     },
     {
-        'question': 'If you are facing north and turn left, which direction are you facing now?',
+        'question': 'If you face north and turn to your left, which way do you now face?',
         'answer': 'You are now facing west.',
     },
     {
-        'question': 'If you are facing south and turn right, which direction are you facing now?',
+        'question': 'If you face south and turn to your right, which way do you now face?',
         'answer': 'You are now facing west.',
     },
     {
-        'question': 'If you are facing south and turn left, which direction are you facing now?',
+        'question': 'If you face south and turn to your left, which way do you now face?',
         'answer': 'You are now facing east.',
     },
     {
-        'question': 'If you are facing east and turn right, which direction are you facing now?',
+        'question': 'If you face east and turn to your right, which way do you now face?',
         'answer': 'You are now facing south.',
     },
     {
-        'question': 'If you are facing east and turn left, which direction are you facing now?',
+        'question': 'If you face east and turn to your left, which way do you now face?',
         'answer': 'You are now facing north.',
     },
     {
-        'question': 'If you are facing west and turn right, which direction are you facing now?',
+        'question': 'If you face west and turn to your right, which way do you now face?',
         'answer': 'You are now facing north.',
     },
     {
-        'question': 'If you are facing west and turn left, which direction are you facing now?',
+        'question': 'If you face west and turn to your left, which way do you now face?',
         'answer': 'You are now facing south.',
     },
     {
-        'question': 'How many days can you survive without food?',
+        'question': 'How many days may a man live without food?',
         'answer': 'A human can survive for a few weeks without food, but only about three to five days without water.',
     },
     {
-        'question': 'How many days can you survive without water?',
+        'question': 'How many days may a man live without water?',
         'answer': 'A human can survive for about three to five days without water.',
     },
     {
-        'question': 'How many days can you survive without air?',
+        'question': 'How many days may a man live without air?',
         'answer': 'A human can only survive for a few minutes without air.',
     },
     {
-        'question': 'Are humans birds?',
+        'question': 'Is a man a bird?',
         'answer': 'No, humans are not birds. Humans are mammals.',
     },
     {
-        'question': 'Are humans fish?',
+        'question': 'Is a man a fish?',
         'answer': 'No, humans are not fish, they are mammals.',
     },
     {
-        'question': 'Are humans insects?',
+        'question': 'Is a man an insect?',
         'answer': 'No, humans are mammals, not insects.',
     },
     {
-        'question': 'What is heavier, 1 kilogram of feathers, or 1 kilogram of bricks?',
+        'question': 'Which is heavier, a kilogram of feathers, or a kilogram of bricks?',
         'answer': 'Neither, they both weigh the same: 1 kilogram.',
     },
     {
-        'question': 'What is heavier, 1 pound of feathers, or 1 pound of bricks?',
+        'question': 'Which is heavier, a pound of feathers, or a pound of bricks?',
         'answer': 'Neither, they both weigh the same: 1 pound.',
     },
     {
-        'question': 'What is heavier, 1 ton of wool, or 1 ton of bricks?',
+        'question': 'Which is heavier, a ton of wool, or a ton of bricks?',
         'answer': 'Neither, they both weigh the same: 1 ton.',
     },
     {
@@ -876,35 +880,35 @@ KNOWLEDGE = [
         'answer': 'It will still take 20 minutes to boil two liters of water, as they can be boiled at the same time.',
     },
     {
-        'question': 'If you were in a race and passed the person in first place, what place would you be in now?',
+        'question': 'Were you in a race and passed the man in first place, what place would you hold now?',
         'answer': 'You would be in first place. Congratulations!',
     },
     {
-        'question': 'If you were in a race and passed the person in second place, what place would you be in now?',
+        'question': 'Were you in a race and passed the man in second place, what place would you hold now?',
         'answer': 'If you pass the person in second place, you would be in second place.',
     },
     {
-        'question': 'If you were in a race and passed the person in third place, what place would you be in now?',
+        'question': 'Were you in a race and passed the man in third place, what place would you hold now?',
         'answer': 'If you pass the person in third place, you would be in third place.',
     },
     {
-        'question': 'If I put my glasses in my bag, pulled them out, and put them back in, where are my glasses now?',
-        'answer': 'Your glasses are now back in your bag.',
+        'question': 'If I put my spectacles in my bag, drew them out, and put them back again, where are my spectacles now?',
+        'answer': 'Your spectacles are now back in your bag.',
     },
     {
-        'question': 'If I put my hand into my pocket, pulled it out, and put it back in, where is my hand now?',
+        'question': 'If I put my hand into my pocket, drew it out, and put it back again, where is my hand now?',
         'answer': 'Your hand is now back in your pocket.',
     },
     {
-        'question': 'If I put my hand into my pocket, pulled it out, and put it back in, how many times did I put my hand into my pocket?',
+        'question': 'If I put my hand into my pocket, drew it out, and put it back again, how many times did I put my hand into my pocket?',
         'answer': 'You put your hand into your pocket twice.',
     },
     {
-        'question': 'There are two boys playing with two balls. One ball is green and one ball is blue. One boy covers his eyes. What color are the balls?',
+        'question': 'Two boys are at play with two balls. One ball is green and one is blue. One boy covers his eyes. What colour are the balls?',
         'answer': 'The balls are green and blue, regardless of whether the boy can see them or not.',
     },
     {
-        'question': 'There are three girls playing with three dolls. One doll is red, one doll is yellow, and one doll is pink. Two girls cover their eyes. What color are the dolls?',
+        'question': 'There are three girls playing with three dolls. One doll is red, one doll is yellow, and one doll is pink. Two girls cover their eyes. What colour are the dolls?',
         'answer': 'The dolls are red, yellow, and pink, regardless of whether the girls can see them or not.',
     },
     {
@@ -980,7 +984,7 @@ KNOWLEDGE = [
         'answer': 'We use units like seconds, minutes, hours, days, weeks, months, and years to measure time.',
     },
     {
-        'question': 'How can we reliably tell how much time has passed?',
+        'question': 'How may we surely tell how much time has passed?',
         'answer': 'We can use a clock, watch, and a calendar to measure the passage of time.',
     },
     {
@@ -992,15 +996,15 @@ KNOWLEDGE = [
         'answer': 'We use units like degrees Celsius and degrees Fahrenheit to measure temperature.',
     },
     {
-        'question': 'How can we reliably tell how hot or cold something is?',
+        'question': 'How may we surely tell how hot or cold a thing be?',
         'answer': 'We can use a thermometer to measure the temperature of something.',
     },
     {
-        'question': 'What units tell us how much money something costs?',
+        'question': 'By what measure do we reckon how much a thing costs?',
         'answer': 'We use units like dollars, or pounds to measure money.',
     },
     {
-        'question': 'What is the name of the planet we live on?',
+        'question': 'By what name is the planet we dwell upon called?',
         'answer': 'The name of the planet we live on is Earth.',
     },
     {
@@ -1016,8 +1020,8 @@ KNOWLEDGE = [
         'answer': 'The biggest fish in the ocean is the whale shark.',
     },
     {
-        'question': 'What is the fastest land animal in the world?',
-        'answer': 'The fastest land animal in the world is the cheetah.',
+        'question': 'What is the swiftest beast upon the land?',
+        'answer': 'The swiftest beast upon the land is the cheetah.',
     },
     {
         'question': 'What is the smallest bird in the world?',
@@ -1044,24 +1048,24 @@ KNOWLEDGE = [
         'answer': 'A smile usually means happiness, or friendliness.',
     },
     {
-        'question': 'What does a laugh mean?',
-        'answer': 'A laugh usually means amusement, joy, or happiness.',
+        'question': 'What does laughter signify?',
+        'answer': 'Laughter usually signifies amusement, joy, or happiness.',
     },
     {
-        'question': 'What does a frown mean?',
-        'answer': 'A frown usually means sadness, or disapproval.',
+        'question': 'What does a frown signify?',
+        'answer': 'A frown usually signifies sadness, or disapproval.',
     },
     {
-        'question': 'What does crying mean?',
-        'answer': 'Crying means either sadness, pain, or a strong emotion.',
+        'question': 'What does weeping signify?',
+        'answer': 'Weeping usually signifies either sadness, pain, or a strong emotion.',
     },
     {
-        'question': 'What does a hand wave mean?',
-        'answer': "A hand wave can mean greeting, farewell, or to get someone's attention.",
+        'question': 'What does a wave of the hand signify?',
+        'answer': "A wave of the hand can signify greeting, farewell, or to get someone's attention.",
     },
     {
-        'question': 'What does a hug mean?',
-        'answer': 'A hug usually means affection, or comfort.',
+        'question': 'What does an embrace signify?',
+        'answer': 'An embrace usually signifies affection, or comfort.',
     },
 ]
 

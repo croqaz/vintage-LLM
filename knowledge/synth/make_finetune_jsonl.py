@@ -63,7 +63,7 @@ def quality_ok(system_text, user_text, assistant_text):
         print(f'Dropping user text that is too short: {user_text!r}', file=sys.stderr)
         return False, 'user_too_short'
     # User text must be a complete sentence (heuristic: ends with punctuation)
-    if not user_text.strip().endswith(('.', '?', '!', '"', "'", ')')):
+    if not user_text.strip().endswith(('.', '?', '!', '”', '"', "'", ')')):
         print(f'Dropping user text that does not look like a complete sentence: {user_text!r}', file=sys.stderr)
         return False, 'user_not_sentence'
     # The question must have real lexical variety ------------------------
