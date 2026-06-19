@@ -29,7 +29,7 @@ from typing import Dict, Optional
 
 import torch
 from accelerate import Accelerator
-from datasets import Dataset, load_dataset
+from datasets import Dataset, concatenate_datasets, load_dataset
 from peft import LoraConfig
 from transformers import (
     AutoConfig as HFAutoConfig,
@@ -96,7 +96,18 @@ def load_sft_dataset(cfg: Dict, seed: int) -> tuple[Dataset, Dataset]:
     if dataset_path := data_cfg.get('dataset_path'):
         paths = [dataset_path] if isinstance(dataset_path, str) else list(dataset_path)
         print(f'Loading local JSONL: {paths}')
-        raw = load_dataset('json', data_files={'train': paths}, split='train')
+        # Load each file separately and keep only the shared columns we need.
+        # Files may carry differing extra columns (e.g. "model", "source") which
+        # otherwise trip load_dataset's single-schema cast across files.
+        parts = []
+        for p in paths:
+            ds = load_dataset('json', data_files=p, split='train')
+            keep = [c for c in ('messages', 'text') if c in ds.column_names]
+            if not keep:
+                raise ValueError(f'{p} has no "messages" or "text" column. Found: {ds.column_names}')
+            ds = ds.remove_columns([c for c in ds.column_names if c not in keep])
+            parts.append(ds)
+        raw = parts[0] if len(parts) == 1 else concatenate_datasets(parts)
     elif dataset_name := data_cfg.get('dataset_name'):
         split = data_cfg.get('dataset_split', 'train')
         print(f'Loading HF Hub dataset: {dataset_name} ({split})')
