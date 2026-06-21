@@ -20,7 +20,9 @@ Options:
     --timeout N                Request timeout in seconds (default: 180)
     --retries N                Retries on failure (default: 3)
     --delay FLOAT              Delay between requests in seconds (default: 1.0)
-    --prompt-file FILE         Path to a custom system-prompt file (overrides built-in)
+    --prompt-file FILE         Path to a system-prompt file, e.g. _prompt_facts.txt (REQUIRED)
+    --book-title STR           Fills {title} in the prompt (used by prose/verse/scripture templates)
+    --book-author STR          Fills {author} in the prompt (used by prose/verse/scripture templates)
     --start-at ID              Resume from a shard id (inclusive)
     -h, --help                 Show this help
 
@@ -42,55 +44,15 @@ import time
 import requests
 
 # ---------------------------------------------------------------------------
-# Default system prompt
+# System prompts now live in external files (one per genre), named with a
+# leading "_prompt_" so they sort apart from the actual book .txt files:
+#   _prompt_facts.txt      expository / factual prose (the original prompt)
+#   _prompt_prose.txt      prose fiction (novels, novellas)
+#   _prompt_verse.txt      poetry / verse
+#   _prompt_scripture.txt  scripture
+# Pass one with --prompt-file (required).  Prompts may contain the literal
+# tokens {title} and {author}; they are filled from --book-title/--book-author.
 # ---------------------------------------------------------------------------
-DEFAULT_SYSTEM_PROMPT = """
-You are creating training data for a language model whose knowledge stops at year 1900.
-Use the supplied passage ONLY as your source of subject matter and facts. From it,
-produce a multi-turn dialogue (2-5 turns) between a curious student and a knowledgeable
-teacher having a general discussion about that subject.
-The student should ask questions that arise naturally from the subject matter, and the
-teacher should give informative answers grounded in the facts of the passage.
-Begin each dialog by addressing the substance of the question directly. Do not
-open with an exclamation, or flattery like: "Pray, sir,", "Ah, a most pertinent question",
-and the like; reserve such flourishes for the rare moment that genuinely calls for one.
-
-CRITICAL — the dialogue must stand entirely on its own, as if no passage existed:
-- The speakers CANNOT see the supplied passage and must never refer to it. The passage
-  is invisible context for you, not a shared document the speakers are looking at.
-- FORBIDDEN: any reference to the source as a thing ("this guide", "this passage",
-  "this text", "this analysis", "the chapter", "the excerpt", "the author says",
-  "as the passage states", "the writer here", and the like). A reader who never saw
-  the passage would be confused by such phrases — that is the test.
-- ALLOWED: referring to specific, named external works or people that the subject is
-  about, as a well-read person naturally would — e.g. "I was reading a play by
-  Shakespeare and he wrote...", "I have been studying Mr. Webster's oration on...".
-  Name the actual work or author, never the source passage itself.
-- The conversation must start fresh, from scratch, with no invisible prior text to
-  point back to. Open with a genuine question about the topic, not a reaction to
-  something just read in "the text".
-
-RULES:
-- All factual claims must come from the supplied text exclusively.
-- Speak as a person living in 1850s: clear, witty, courteous Victorian English;
-  NOT fake-medieval ("thee/thou/forsooth" are forbidden).
-- The student must refer back to earlier turns so later answers depend on them.
-- No modern slang, no bulleted lists structure, no modern moral framing.
-- No events, inventions, works, or people after 1900
-  (e.g., no airplanes, no TV, no computers, no WWI/WWII).
-
-Output valid JSON only, with this exact structure:
-{
-  "messages": [
-    {"role": "user", "content": "..."},
-    {"role": "assistant", "content": "..."},
-    ...
-  ],
-  "claims_to_evidence": {
-    "claim text": "exact excerpt from source",
-    ...
-  }
-}""".strip()
 
 # ---------------------------------------------------------------------------
 # Optional prompt fragment: let the student occasionally be wrong so the
@@ -249,7 +211,9 @@ def main():
     parser.add_argument('--timeout', type=int, default=120)
     parser.add_argument('--retries', type=int, default=3)
     parser.add_argument('--delay', type=float, default=1.0, help='Seconds between API calls (default: 1.0)')
-    parser.add_argument('--prompt-file', help='Custom system prompt file (overrides built-in)')
+    parser.add_argument('--prompt-file', required=True, help='Path to a system-prompt file, e.g. _prompt_facts.txt (required)')
+    parser.add_argument('--book-title', default=None, help='Book title; fills {title} in the prompt (e.g. prose/verse templates)')
+    parser.add_argument('--book-author', default=None, help='Book author; fills {author} in the prompt (e.g. prose/verse templates)')
     parser.add_argument(
         '--allow-mistakes',
         action='store_true',
@@ -265,10 +229,24 @@ def main():
         output_path = base + '_qa.jsonl'
 
     # Load system prompt
-    system_prompt = DEFAULT_SYSTEM_PROMPT
-    if args.prompt_file:
-        with open(args.prompt_file, 'r', encoding='utf-8') as fh:
-            system_prompt = fh.read().strip()
+    with open(args.prompt_file, 'r', encoding='utf-8') as fh:
+        system_prompt = fh.read().strip()
+
+    # Fill {title}/{author} placeholders.  Use targeted replace (NOT str.format)
+    # so the literal { } braces in the prompt's JSON example are left untouched.
+    # A placeholder with no matching value is a warn-and-continue, not an error.
+    for token, value, flag in (
+        ('{title}', args.book_title, '--book-title'),
+        ('{author}', args.book_author, '--book-author'),
+    ):
+        if token in system_prompt:
+            if value:
+                system_prompt = system_prompt.replace(token, value)
+            else:
+                print(f'  WARNING: prompt uses {token} but {flag} was not given — continuing with a generic fallback', file=sys.stderr)
+                fallback = 'this work' if token == '{title}' else 'the author'
+                system_prompt = system_prompt.replace(token, fallback)
+
     if args.allow_mistakes:
         system_prompt = system_prompt + '\n\n' + STUDENT_MISTAKE_PROMPT
 
