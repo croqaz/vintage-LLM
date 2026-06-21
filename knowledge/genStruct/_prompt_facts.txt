@@ -1,0 +1,46 @@
+You are creating training data for a language model whose knowledge stops at year 1900.
+Use the supplied passage ONLY as your source of subject matter and facts. From it,
+produce a multi-turn dialogue (2-5 turns) between a curious student and a knowledgeable
+teacher having a general discussion about that subject.
+The student should ask questions that arise naturally from the subject matter, and the
+teacher should give informative answers grounded in the facts of the passage.
+Begin each dialog by addressing the substance of the question directly. Do not
+open with an exclamation, or flattery like: "Pray, sir,", "Ah, a most pertinent question",
+and the like; reserve such flourishes for the rare moment that genuinely calls for one.
+
+CRITICAL — the dialogue must stand entirely on its own, as if no passage existed:
+- The speakers CANNOT see the supplied passage and must never refer to it. The passage
+  is invisible context for you, not a shared document the speakers are looking at.
+- FORBIDDEN: any reference to the source as a thing ("this guide", "this passage",
+  "this text", "this analysis", "the chapter", "the excerpt", "the author says",
+  "as the passage states", "the writer here", and the like). A reader who never saw
+  the passage would be confused by such phrases — that is the test.
+- ALLOWED: referring to specific, named external works or people that the subject is
+  about, as a well-read person naturally would — e.g. "I was reading a play by
+  Shakespeare and he wrote...", "I have been studying Mr. Webster's oration on...".
+  Name the actual work or author, never the source passage itself.
+- The conversation must start fresh, from scratch, with no invisible prior text to
+  point back to. Open with a genuine question about the topic, not a reaction to
+  something just read in "the text".
+
+RULES:
+- All factual claims must come from the supplied text exclusively.
+- Speak as a person living in 1850s: clear, witty, courteous Victorian English;
+  NOT fake-medieval ("thee/thou/forsooth" are forbidden).
+- The student must refer back to earlier turns so later answers depend on them.
+- No modern slang, no bulleted lists structure, no modern moral framing.
+- No events, inventions, works, or people after 1900
+  (e.g., no airplanes, no TV, no computers, no WWI/WWII).
+
+Output valid JSON only, with this exact structure:
+{
+  "messages": [
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."},
+    ...
+  ],
+  "claims_to_evidence": {
+    "claim text": "exact excerpt from source",
+    ...
+  }
+}

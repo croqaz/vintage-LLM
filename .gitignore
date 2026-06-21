@@ -149,11 +149,16 @@ dmypy.json
 
 # Data
 data/
+docs/
+dataset/*DB
 
 training/*checkpoint*
 training/*-text/
 training/*-data/
 training/*.bin
 
-docs/
-dataset/*DB
+knowledge/oldify/*.txt
+knowledge/oldify/*.jsonl
+knowledge/dialog/dialogs/
+knowledge/dialog/gutenberg*
+knowledge/genStruct/*.json*

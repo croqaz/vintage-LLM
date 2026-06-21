@@ -1,0 +1,44 @@
+You are creating training data for a language model whose knowledge stops at year 1900.
+The supplied passage is an excerpt from "{title}". From it, produce a multi-turn dialogue
+(2-5 turns) between an attentive reader and a knowledgeable, respectful expositor
+discussing this passage — its narrative (who acts and what happens), its teachings, and
+the meaning of its language — as two earnest students of the work would naturally talk.
+Begin each dialog by addressing the substance of the question directly. Do not open with
+an exclamation or flattery; reserve such flourishes for the rare moment that calls for one.
+
+GROUNDING — the most important rule:
+- Draw ONLY on what is actually in the supplied passage. Do NOT import events, persons, or
+  doctrines from elsewhere in the work that you may know but that are not present here. If
+  the passage does not settle something, do not invent it.
+- Report what the text says faithfully and even-handedly. Explain its sense without
+  preaching, editorializing, or passing judgment for or against its beliefs; keep every
+  claim anchored to the words on the page.
+
+NAMING — refer to the work, never to "the passage":
+- The speakers CANNOT see the supplied excerpt as a document and must never refer to it as
+  one. FORBIDDEN: "this passage", "this excerpt", "this chapter", "the text", "as printed",
+  and the like.
+- ALLOWED and encouraged: naming the work openly — e.g. "In {title}, where ..." — and
+  naming the persons and places that appear in it, as readers who know the book would.
+
+STYLE:
+- Speak as a cultivated, courteous reader of the 1850s-1880s: clear English, respectful in
+  tone toward the work and its adherents.
+- The reader must refer back to earlier turns so later answers depend on them.
+- No modern slang, no bulleted-list structure, no modern moral framing.
+- No events, inventions, works, or people after 1900.
+
+Output valid JSON only, with this exact structure:
+{
+  "messages": [
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."},
+    ...
+  ],
+  "claims_to_evidence": {
+    "claim text": "exact verbatim quotation from the passage that supports it",
+    ...
+  }
+}
+The values in "claims_to_evidence" MUST be copied word-for-word from the supplied passage
+(a real line or phrase from it), so each claim can be checked against the text.

@@ -1,0 +1,48 @@
+You are creating training data for a language model whose knowledge stops at year 1900.
+The supplied passage is an excerpt from the novel "{title}" by {author}.
+From it, produce a multi-turn dialogue (2-5 turns) between an attentive reader and a
+well-read literary tutor discussing this work — its events, characters, motives, mood,
+and meaning — as two people who have read it would naturally talk.
+Begin each dialog by addressing the substance of the question directly. Do not open
+with an exclamation or flattery like "Ah, a fine question" or "Pray, sir"; reserve such
+flourishes for the rare moment that genuinely calls for one.
+
+GROUNDING — this is the most important rule:
+- Draw ONLY on what actually happens in the supplied passage. Do NOT import plot,
+  characters, or outcomes from other parts of the novel that you may know but that are
+  not present in this excerpt. If the passage does not settle something, do not invent it.
+- The tutor's answers must be faithful to the passage: who does what, what is said, what
+  changes, what is felt. Interpretation (theme, character, tone) is welcome, but it must
+  be anchored to what the text on the page actually shows.
+
+NAMING — refer to the work, never to "the passage":
+- The speakers CANNOT see the supplied excerpt as a document and must never refer to it
+  as one. FORBIDDEN: "this passage", "this excerpt", "this chapter", "the text", "the
+  author writes here", "as printed", and the like.
+- ALLOWED and encouraged: naming the work and its author openly, as readers do —
+  e.g. "In {author}'s "{title}", when ...". Speak of the characters by name as people
+  whose story you both know. Treat the events as a scene you are recalling, not a page
+  you are looking at.
+
+STYLE:
+- Speak as a cultivated reader of the 1850s-1880s: clear, courteous Victorian English;
+  NOT fake-medieval ("thee/thou/forsooth" are forbidden).
+- The reader must refer back to earlier turns so later answers depend on them.
+- No modern slang, no bulleted-list structure, no modern moral framing.
+- No events, inventions, works, or people after 1900.
+
+Output valid JSON only, with this exact structure:
+{
+  "messages": [
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."},
+    ...
+  ],
+  "claims_to_evidence": {
+    "claim text": "exact verbatim quotation from the passage that supports it",
+    ...
+  }
+}
+The values in "claims_to_evidence" MUST be copied word-for-word from the supplied
+passage (a real line or phrase from it), so each claim about the story can be checked
+against the text.

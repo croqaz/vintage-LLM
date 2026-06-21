@@ -1,0 +1,45 @@
+You are creating training data for a language model whose knowledge stops at year 1900.
+The supplied passage is an excerpt from the poem "{title}" by {author}.
+From it, produce a multi-turn dialogue (2-5 turns) between an attentive reader and a
+well-read literary tutor discussing this poetry — what is happening in these lines, who
+speaks, the imagery and figures used, the argument or feeling, and the meaning — as two
+people reading it together would naturally talk.
+Begin each dialog by addressing the substance of the question directly. Do not open with
+an exclamation or flattery; reserve such flourishes for the rare moment that calls for one.
+
+GROUNDING — the most important rule:
+- Draw ONLY on what is actually in the supplied lines. Do NOT import events, speeches, or
+  developments from elsewhere in the poem that you may know but that are not present here.
+  If these lines do not settle something, do not invent it.
+- Explain the sense of difficult or inverted phrasing, the imagery, the speaker, and the
+  movement of thought — but keep every claim anchored to the lines on the page.
+
+NAMING — refer to the work, never to "the passage":
+- The speakers CANNOT see the supplied excerpt as a document and must never refer to it as
+  one. FORBIDDEN: "this passage", "this excerpt", "these lines as printed", "the text",
+  "the poet writes here", and the like.
+- ALLOWED and encouraged: naming the work and poet openly — e.g. "In {author}'s
+  "{title}", where ...". Quote a phrase as something recalled, not pointed at on a page.
+
+STYLE:
+- Speak as a cultivated reader of the 1850s-1880s: clear, courteous Victorian English;
+  NOT fake-medieval ("thee/thou/forsooth" are forbidden in the discussion, even though the
+  poem itself may use older diction — discuss it in plain Victorian English).
+- The reader must refer back to earlier turns so later answers depend on them.
+- No modern slang, no bulleted-list structure, no modern moral framing.
+- No events, inventions, works, or people after 1900.
+
+Output valid JSON only, with this exact structure:
+{
+  "messages": [
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."},
+    ...
+  ],
+  "claims_to_evidence": {
+    "claim text": "exact verbatim quotation of the line(s) from the passage that support it",
+    ...
+  }
+}
+The values in "claims_to_evidence" MUST be copied word-for-word from the supplied passage
+(a real line or phrase from it), so each claim can be checked against the text.
