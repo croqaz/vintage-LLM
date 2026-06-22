@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract character dialogue from a chunked Gutenberg book using the OpenRouter API.
+Extract character dialogue from a chunked Gutenberg book using an LLM API.
 
 For one book (a directory of ``*_chunk_NNNN.txt`` files under ``gutenberg_chunks/``)
 every chunk is sent to an LLM that returns the spoken lines as JSONL, one object
@@ -9,10 +9,14 @@ per quoted utterance:
     {"Napoleon": "Who is this good man who is staring at me?"}
     {"M. Myriel": "Sire,"}
 
-Usage:
+Usage (single book, OpenRouter):
     export OPENROUTER_API_KEY=sk-or-...
     python3 extract_dialogs.py pg135-clean --model openai/gpt-4o-mini
     python3 extract_dialogs.py gutenberg_chunks/pg135-clean -m anthropic/claude-3.5-haiku
+
+Usage (batch from dialog_report.jsonl):
+    python3 extract_dialogs.py --report dialog_report.jsonl --model openai/gpt-4o-mini
+    python3 extract_dialogs.py --report dialog_report.jsonl -m openai/gpt-4o-mini --limit 10 --min-dialogs 2000
 
 Output goes to ``dialogs/<book>/`` (one JSONL per chunk) plus a combined
 ``dialogs/<book>/<book>_dialogs.jsonl``. Re-running skips chunks already done
@@ -29,8 +33,8 @@ from pathlib import Path
 
 import requests
 
-OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models'
+DEFAULT_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+DEFAULT_MODELS_URL = 'https://openrouter.ai/api/v1/models'
 
 # --- The prompt -------------------------------------------------------------
 # Kept short and explicit: dumber/cheaper models need unambiguous rules and a
@@ -91,17 +95,17 @@ def find_chunks(book_dir: Path) -> list[Path]:
     return chunks
 
 
-def supported_effort(api_key, model, effort, *, timeout=30.0):
+def supported_effort(api_key, model, effort, models_url, *, timeout=30.0):
     """Return ``effort`` if this model accepts it as a reasoning effort, else None.
 
-    Per the OpenRouter docs, GET /api/v1/models exposes a per-model ``reasoning``
-    object. ``supported_efforts`` lists the accepted levels (null means all gateway
-    values are accepted); a missing ``reasoning`` object means the model has no
-    effort selection, so we send nothing.
+    Queries the models endpoint (OpenRouter or compatible) to check if the
+    chosen model exposes a ``reasoning`` object with ``supported_efforts``.
+    Returns None gracefully on any failure, so reasoning effort is simply
+    omitted when the endpoint doesn't support the feature.
     """
     headers = {'Authorization': f'Bearer {api_key}'}
     try:
-        resp = requests.get(OPENROUTER_MODELS_URL, headers=headers, timeout=timeout)
+        resp = requests.get(models_url, headers=headers, timeout=timeout)
         resp.raise_for_status()
         models = resp.json().get('data', [])
     except (requests.RequestException, ValueError) as exc:
@@ -127,8 +131,8 @@ def supported_effort(api_key, model, effort, *, timeout=30.0):
     return None
 
 
-def call_openrouter(api_key, model, passage, *, max_tokens, temperature, timeout, max_retries, reasoning_effort=None):
-    """Call OpenRouter and return the raw assistant text, retrying transient errors."""
+def call_api(api_key, model, passage, api_url, *, max_tokens, temperature, timeout, max_retries, reasoning_effort=None):
+    """Call the LLM API and return (raw_text, usage_dict_or_None), retrying transient errors."""
     payload = {
         'model': model,
         'temperature': temperature,
@@ -144,7 +148,7 @@ def call_openrouter(api_key, model, passage, *, max_tokens, temperature, timeout
 
     for attempt in range(1, max_retries + 1):
         try:
-            resp = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=timeout)
+            resp = requests.post(api_url, headers=headers, json=payload, timeout=timeout)
         except requests.RequestException as exc:
             wait = min(2**attempt, 30)
             print(f'    network error ({exc}); retry {attempt}/{max_retries} in {wait}s', file=sys.stderr)
@@ -154,9 +158,16 @@ def call_openrouter(api_key, model, passage, *, max_tokens, temperature, timeout
         if resp.status_code == 200:
             data = resp.json()
             try:
-                return data['choices'][0]['message']['content']
+                choice = data['choices'][0]
             except (KeyError, IndexError):
-                raise RuntimeError(f'unexpected API response: {data}')
+                raise RuntimeError(f'unexpected API response (no choices): {data}')
+            msg = choice.get('message', {})
+            content = msg.get('content', '')
+            if not content:
+                finish = choice.get('finish_reason', 'unknown')
+                print(f'    (empty response, finish_reason={finish})', file=sys.stderr)
+            usage = data.get('usage')
+            return content, usage
 
         # 429 = rate limit, 5xx = server hiccup -> back off and retry.
         if resp.status_code == 429 or resp.status_code >= 500:
@@ -165,7 +176,7 @@ def call_openrouter(api_key, model, passage, *, max_tokens, temperature, timeout
             time.sleep(wait)
             continue
 
-        raise RuntimeError(f'OpenRouter HTTP {resp.status_code}: {resp.text[:500]}')
+        raise RuntimeError(f'API HTTP {resp.status_code}: {resp.text[:500]}')
 
     raise RuntimeError(f'giving up after {max_retries} retries')
 
@@ -218,10 +229,18 @@ def parse_dialogs(raw: str) -> list[dict]:
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('book', help='book id (e.g. pg135-clean) or path to its chunk dir')
-    ap.add_argument('-m', '--model', required=True, help='OpenRouter model id, e.g. openai/gpt-4o-mini')
+    ap.add_argument('book', nargs='?', help='book id (e.g. pg135-clean) or path to its chunk dir (omit when using --report)')
+    ap.add_argument('--report', help='path to dialog_report.jsonl (JSONL with book_id, title, author, dialogs) for batch processing')
+    ap.add_argument('--limit', type=int, default=0, help='process only the first N books from the report (0 = all)')
+    ap.add_argument('--min-dialogs', type=int, default=0, help='skip books from the report with fewer than this many dialogs')
+    ap.add_argument('-m', '--model', required=True, help='model id, e.g. openai/gpt-4o-mini or gemini-2.5-flash')
+    ap.add_argument('--api-url', default=DEFAULT_API_URL, help=f'chat completions endpoint (default: {DEFAULT_API_URL})')
+    ap.add_argument('--api-key', default=None, help='API key (default: $OPENROUTER_API_KEY)')
+    ap.add_argument(
+        '--models-url', default=DEFAULT_MODELS_URL, help=f'models endpoint for reasoning-effort detection (default: {DEFAULT_MODELS_URL})'
+    )
     ap.add_argument('-o', '--output-dir', default='dialogs', help='root output directory (default: dialogs)')
-    ap.add_argument('--max-tokens', type=int, default=16000, help='max completion tokens per chunk (default: 16000)')
+    ap.add_argument('--max-tokens', type=int, default=6400, help='max completion tokens per chunk (default: 6400)')
     ap.add_argument('--temperature', type=float, default=0.0)
     ap.add_argument('--timeout', type=float, default=300.0, help='per-request timeout in seconds (default: 300)')
     ap.add_argument('--max-retries', type=int, default=5)
@@ -235,70 +254,128 @@ def main():
     ap.add_argument('--dry-run', action='store_true', help='list chunks and approximate sizes without calling the API')
     args = ap.parse_args()
 
-    book_dir = resolve_book_dir(args.book)
-    book_name = book_dir.name
-    chunks = find_chunks(book_dir)
+    if args.report and args.book:
+        sys.exit('error: specify either a book id OR --report, not both')
+    if not args.report and not args.book:
+        sys.exit('error: specify a book id or --report <dialog_report.jsonl>')
 
-    out_dir = Path(args.output_dir) / book_name
-    out_dir.mkdir(parents=True, exist_ok=True)
-    combined_path = out_dir / f'{book_name}_dialogs.jsonl'
+    if args.report:
+        # --- Batch mode: read book IDs from the report ---
+        report_path = Path(args.report)
+        if not report_path.exists():
+            sys.exit(f'error: report file not found: {args.report}')
+        books = []
+        with report_path.open(encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    print(f'warning: skipping malformed line in report: {line[:80]}', file=sys.stderr)
+                    continue
+                if args.min_dialogs and entry.get('dialogs', 0) < args.min_dialogs:
+                    continue
+                books.append(entry.get('book_id'))
+        if args.limit and args.limit > 0:
+            books = books[: args.limit]
+        if not books:
+            sys.exit('error: no books to process (check --limit / --min-dialogs / report contents)')
+        print(f'batch mode: {len(books)} books from {args.report}')
+    else:
+        # --- Single-book mode ---
+        books = [args.book]
 
-    print(f'book: {book_name}  ({len(chunks)} chunks)  ->  {out_dir}')
-
-    if args.dry_run:
-        for c in chunks:
-            words = len(c.read_text(encoding='utf-8', errors='replace').split())
-            print(f'  {c.name}: ~{words:,} words (~{int(words * 1.3):,} tokens)')
-        return
-
-    api_key = os.environ.get('OPENROUTER_API_KEY')
+    api_key = args.api_key or os.environ.get('OPENROUTER_API_KEY')
     if not api_key:
-        sys.exit('error: OPENROUTER_API_KEY is not set')
+        sys.exit('error: no API key provided (use --api-key or set $OPENROUTER_API_KEY)')
 
     reasoning_effort = None
     if args.reasoning_effort != 'off':
-        reasoning_effort = supported_effort(api_key, args.model, args.reasoning_effort)
+        reasoning_effort = supported_effort(api_key, args.model, args.reasoning_effort, args.models_url)
         if reasoning_effort:
             print(f'reasoning effort: {reasoning_effort}')
 
-    all_entries: list[dict] = []
-    total = 0
-    for i, chunk in enumerate(chunks, 1):
-        per_chunk_path = out_dir / f'{chunk.stem}.jsonl'
-        if per_chunk_path.exists() and not args.overwrite:
-            entries = [json.loads(l) for l in per_chunk_path.read_text(encoding='utf-8').splitlines() if l.strip()]
-            print(f'[{i}/{len(chunks)}] {chunk.name}: skipped (cached, {len(entries)} lines)')
-            all_entries.extend(entries)
-            total += len(entries)
+    usage_totals = {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0}
+    grand_total = 0
+    for bi, book_id in enumerate(books, 1):
+        print(f'\n{"=" * 60}')
+        print(f'BOOK [{bi}/{len(books)}]: {book_id}')
+        print(f'{"=" * 60}')
+
+        book_dir = resolve_book_dir(book_id)
+        book_name = book_dir.name
+        chunks = find_chunks(book_dir)
+
+        out_dir = Path(args.output_dir) / book_name
+        out_dir.mkdir(parents=True, exist_ok=True)
+        combined_path = out_dir / f'{book_name}_dialogs.jsonl'
+
+        print(f'  chunks: {len(chunks)}  ->  {out_dir}')
+
+        if args.dry_run:
+            for c in chunks:
+                words = len(c.read_text(encoding='utf-8', errors='replace').split())
+                print(f'    {c.name}: ~{words:,} words (~{int(words * 1.3):,} tokens)')
             continue
 
-        passage = chunk.read_text(encoding='utf-8', errors='replace')
-        print(f'[{i}/{len(chunks)}] {chunk.name}: ~{len(passage.split()):,} words ... ', end='', flush=True)
+        all_entries: list[dict] = []
+        book_total = 0
+        for i, chunk in enumerate(chunks, 1):
+            per_chunk_path = out_dir / f'{chunk.stem}.jsonl'
+            if per_chunk_path.exists() and not args.overwrite:
+                entries = [json.loads(l) for l in per_chunk_path.read_text(encoding='utf-8').splitlines() if l.strip()]
+                print(f'  [{i}/{len(chunks)}] {chunk.name}: skipped (cached, {len(entries)} lines)')
+                all_entries.extend(entries)
+                book_total += len(entries)
+                continue
 
-        raw = call_openrouter(
-            api_key,
-            args.model,
-            passage,
-            max_tokens=args.max_tokens,
-            temperature=args.temperature,
-            timeout=args.timeout,
-            max_retries=args.max_retries,
-            reasoning_effort=reasoning_effort,
-        )
-        entries = parse_dialogs(raw)
+            passage = chunk.read_text(encoding='utf-8', errors='replace')
+            print(f'  [{i}/{len(chunks)}] {chunk.name}: ~{len(passage.split()):,} words ... ', end='', flush=True)
 
-        with per_chunk_path.open('w', encoding='utf-8') as f:
-            for e in entries:
+            raw, usage = call_api(
+                api_key,
+                args.model,
+                passage,
+                args.api_url,
+                max_tokens=args.max_tokens,
+                temperature=args.temperature,
+                timeout=args.timeout,
+                max_retries=args.max_retries,
+                reasoning_effort=reasoning_effort,
+            )
+            if usage:
+                for k in ('prompt_tokens', 'completion_tokens', 'total_tokens'):
+                    if k in usage:
+                        usage_totals[k] += usage[k]
+            entries = parse_dialogs(raw)
+
+            with per_chunk_path.open('w', encoding='utf-8') as f:
+                for e in entries:
+                    f.write(json.dumps(e, ensure_ascii=False) + '\n')
+            print(f'{len(entries)} dialogue lines')
+            all_entries.extend(entries)
+            book_total += len(entries)
+
+        with combined_path.open('w', encoding='utf-8') as f:
+            for e in all_entries:
                 f.write(json.dumps(e, ensure_ascii=False) + '\n')
-        print(f'{len(entries)} dialogue lines')
-        all_entries.extend(entries)
-        total += len(entries)
 
-    with combined_path.open('w', encoding='utf-8') as f:
-        for e in all_entries:
-            f.write(json.dumps(e, ensure_ascii=False) + '\n')
+        print(f'  book done: {book_total} dialogue lines -> {combined_path}')
+        grand_total += book_total
 
-    print(f'\ndone: {total} dialogue lines -> {combined_path}')
+    if not args.dry_run:
+        print(f'\n{"=" * 60}')
+        print(f'ALL DONE: {grand_total} total dialogue lines across {len(books)} book(s)')
+        if any(usage_totals.values()):
+            pt = usage_totals['prompt_tokens']
+            ct = usage_totals['completion_tokens']
+            tt = usage_totals['total_tokens']
+            print(f'Token usage: prompt={pt:,}  completion={ct:,}  total={tt:,}')
+        else:
+            print(f'Token usage: (not reported by API)')
+        print(f'{"=" * 60}')
 
 
 if __name__ == '__main__':

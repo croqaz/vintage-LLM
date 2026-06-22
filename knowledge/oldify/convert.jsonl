@@ -18,20 +18,19 @@
 {"original": "Can people eat with their ears?", "converted": "Can a man eat with his ears?", "changed": true}
 {"original": "Can people eat with their feet?", "converted": "Can a man eat with his feet?", "changed": true}
 {"original": "Can people eat with their noses?", "converted": "Can a man eat with his nose?", "changed": true}
-{"original": "Can you?", "converted": "Can you?", "changed": false}
 {"original": "Can you eat with your mouth closed?", "converted": "Can you eat with your mouth shut?", "changed": true}
+{"original": "Can you?", "converted": "Can you?", "changed": false}
 {"original": "Dog, cat, wolf, and deer are all ...?", "converted": "Dog, cat, wolf, and deer are all ...?", "changed": false}
-{"original": "Explain.", "converted": "Explain.", "changed": false}
 {"original": "Explain it like I'm five.", "converted": "Explain it as you would to a child.", "changed": true}
-{"original": "Goodbye, see you later!", "converted": "Farewell\u2014till we meet again.", "changed": true}
+{"original": "Explain.", "converted": "Explain.", "changed": false}
 {"original": "Good day to you!", "converted": "Good day to you!", "changed": false}
+{"original": "Goodbye, see you later!", "converted": "Farewell\u2014till we meet again.", "changed": true}
 {"original": "Hello, how are you?", "converted": "Good day to you\u2014how do you fare?", "changed": true}
 {"original": "Hi there!", "converted": "Well met!", "changed": true}
 {"original": "Horrible.", "converted": "Horrible.", "changed": false}
 {"original": "Horrible.", "converted": "Most horrible.", "changed": true}
 {"original": "How can we reliably tell how hot or cold something is?", "converted": "How may we surely tell how hot or cold a thing be?", "changed": true}
 {"original": "How can we reliably tell how much time has passed?", "converted": "How may we surely tell how much time has passed?", "changed": true}
-{"original": "How?", "converted": "How?", "changed": false}
 {"original": "How does a lemon taste like?", "converted": "How does a lemon taste?", "changed": true}
 {"original": "How does salt taste like?", "converted": "How does salt taste?", "changed": true}
 {"original": "How frequently does February have 29 days?", "converted": "How oft does February have nine-and-twenty days?", "changed": true}
@@ -41,6 +40,10 @@
 {"original": "How many days are in a year?", "converted": "How many days are in a year?", "changed": false}
 {"original": "How many days can you survive without air?", "converted": "How many days may a man live without air?", "changed": true}
 {"original": "How many days can you survive without food?", "converted": "How many days may a man live without food?", "changed": true}
+{"original": "How many fingers are on both hands?", "converted": "Pray, how many digits doth Nature bestow upon the two hands of a human creature?", "changed": true}
+{"original": "How many fingers are on both hands?", "converted": "What is the full tally of fingers upon both hands, as any schoolmaster might require his pupils to know?", "changed": true}
+{"original": "How many fingers are on two hands?", "converted": "How many fingers has God placed upon the two hands of man, that he might labour and craft and reckon withal?", "changed": true}
+{"original": "How many fingers are on two hands?", "converted": "What is the sum total of fingers with which Providence has seen fit to endow both hands of a man?", "changed": true}
 {"original": "How many fingers on both hands?", "converted": "How many fingers upon both hands?", "changed": true}
 {"original": "How many fingers on one hand?", "converted": "How many fingers upon one hand?", "changed": true}
 {"original": "How many fingers on two hands?", "converted": "How many fingers upon two hands?", "changed": true}
@@ -54,12 +57,19 @@
 {"original": "How many toes in total?", "converted": "How many toes in all?", "changed": true}
 {"original": "How many toes on one foot?", "converted": "How many toes upon one foot?", "changed": true}
 {"original": "How often does the sun rise and set?", "converted": "How oft does the sun rise and set?", "changed": true}
-{"original": "I'd never.", "converted": "Never would I.", "changed": true}
+{"original": "How?", "converted": "How?", "changed": false}
 {"original": "I don't believe you.", "converted": "I believe you not.", "changed": true}
 {"original": "I don't care.", "converted": "I care not.", "changed": true}
 {"original": "I don't know.", "converted": "I know not.", "changed": true}
 {"original": "I don't think so.", "converted": "I think not.", "changed": true}
 {"original": "I don't understand.", "converted": "I understand you not.", "changed": true}
+{"original": "I hate it.", "converted": "I hate it.", "changed": false}
+{"original": "I know.", "converted": "I know.", "changed": false}
+{"original": "I love it.", "converted": "I love it.", "changed": false}
+{"original": "I overheard.", "converted": "I chanced to overhear.", "changed": true}
+{"original": "I want it.", "converted": "I would have it.", "changed": true}
+{"original": "I would.", "converted": "I would.", "changed": false}
+{"original": "I'd never.", "converted": "Never would I.", "changed": true}
 {"original": "If a balloon is released, does it go up or down?", "converted": "If a balloon be let loose, does it go up or down?", "changed": true}
 {"original": "If a bird flyes, does she go up or down?", "converted": "If a bird flies, does she go up or down?", "changed": true}
 {"original": "If I am dirty, what should I do?", "converted": "If I be dirty, what should I do?", "changed": true}
@@ -78,6 +88,7 @@
 {"original": "If you are facing north and turn right, which direction are you facing now?", "converted": "If you face north and turn to your right, which way do you now face?", "changed": true}
 {"original": "If you are facing west and turn left, which direction are you facing now?", "converted": "If you face west and turn to your left, which way do you now face?", "changed": true}
 {"original": "If you close your eyes, can you see?", "converted": "If you shut your eyes, can you see?", "changed": true}
+{"original": "If you count the fingers on both hands, what do you get?", "converted": "If one were to count the fingers upon both the left hand and the right, what number should one arrive at?", "changed": true}
 {"original": "If you cover your ears, can you hear?", "converted": "If you stop your ears, can you hear?", "changed": true}
 {"original": "If you drop something, does it go up or down?", "converted": "If you let a thing fall, does it go up or down?", "changed": true}
 {"original": "If you let go of a ball, does it go up or down?", "converted": "If you let go a ball, does it go up or down?", "changed": true}
@@ -85,16 +96,10 @@
 {"original": "If you were in a race and passed the person in first place, what place would you be in now?", "converted": "Were you in a race and passed the man in first place, what place would you hold now?", "changed": true}
 {"original": "If you were in a race and passed the person in second place, what place would you be in now?", "converted": "Were you in a race and passed the man in second place, what place would you hold now?", "changed": true}
 {"original": "If you were in a race and passed the person in third place, what place would you be in now?", "converted": "Were you in a race and passed the man in third place, what place would you hold now?", "changed": true}
-{"original": "I hate it.", "converted": "I hate it.", "changed": false}
-{"original": "I know.", "converted": "I know.", "changed": false}
-{"original": "I love it.", "converted": "I love it.", "changed": false}
 {"original": "In the desert, is the ground likely dry or wet?", "converted": "In the desert, is the ground like to be dry or wet?", "changed": true}
 {"original": "In the desert, is the sand normally dry or wet?", "converted": "In the desert, is the sand commonly dry or wet?", "changed": true}
-{"original": "I overheard.", "converted": "I chanced to overhear.", "changed": true}
 {"original": "Is fire hot or cold?", "converted": "Is fire hot or cold?", "changed": false}
 {"original": "Is ice hot or cold?", "converted": "Is ice hot or cold?", "changed": false}
-{"original": "I want it.", "converted": "I would have it.", "changed": true}
-{"original": "I would.", "converted": "I would.", "changed": false}
 {"original": "Just forget it.", "converted": "Let it be forgot.", "changed": true}
 {"original": "Just forget it.", "converted": "Think no more on it.", "changed": true}
 {"original": "Let's do this.", "converted": "Let us to it.", "changed": true}
@@ -104,42 +109,66 @@
 {"original": "Name a few wild animals.", "converted": "Name me a few wild beasts.", "changed": true}
 {"original": "Name all the months of the year.", "converted": "Name me all the months of the year.", "changed": true}
 {"original": "Next time?", "converted": "Another time?", "changed": true}
+{"original": "No way.", "converted": "By no means.", "changed": true}
 {"original": "No.", "converted": "No.", "changed": false}
 {"original": "North, south, east, and west are all...?", "converted": "North, south, east, and west are all...?", "changed": false}
-{"original": "No way.", "converted": "By no means.", "changed": true}
 {"original": "Now what?", "converted": "What now?", "changed": true}
+{"original": "Once it's dark and the stars are out, what colour is the sky?", "converted": "When darkness has descended and the stars are come out, what colour doth the heavens assume?", "changed": true}
 {"original": "Remind me.", "converted": "Put me in mind.", "changed": true}
 {"original": "Tell me more.", "converted": "Tell me more.", "changed": false}
-{"original": "There are two boys playing with two balls. One ball is green and one ball is blue. One boy covers his eyes. What color are the balls?", "converted": "Two boys are at play with two balls. One ball is green and one is blue. One boy covers his eyes. What colour are the balls?", "changed": true}
+{"original": "The ground comes in shades of brown, ochre, and grey depending on what it's made of, and turns green in warm seasons when grass and moss grow.", "converted": "Providence has coloured the ground in shades of brown and ochre and grey, according to the minerals and matter of which it is composed, and has further adorned it in those seasons of warmth and plenty with grasses and mosses of the most verdant and refreshing green, that the eye of man might not find the earth too austere and bare.", "changed": true}
+{"original": "The ground has no single fixed colour. It ranges from pale sandy heath soil, to nearly black tilled-field earth, to the red iron-rich clay of the south \u2014 and each type hints at the minerals and history beneath it.", "converted": "It has been observed by those of a philosophical disposition that the ground doth not possess one fixed and certain colour, but rather displayeth a great range of hues, from the pale and sandy soils of open heathland, to the deep and almost black earth of the well-tilled field, to the red and iron-rich clay of the southern counties, each telling to the learned eye a story of the minerals and ancient history contained therein.", "changed": true}
+{"original": "The ground is usually brown or dark \u2014 it's made of soil, clay, and decayed matter \u2014 but where grass grows, it looks green.", "converted": "The earth beneath us is most commonly of a brown or darkened hue, being composed of soil and clay and the decayed matter of countless seasons past, though where grass and vegetation have taken firm hold, it doth present itself clothed in a mantle of green most pleasing to the eye.", "changed": true}
+{"original": "The ground is usually dark brown, though the exact colour depends on the type of soil and the time of year.", "converted": "The ground beneath our feet doth present itself in a colour of dark and rich brown, though this hue doth vary greatly according to the nature and composition of the soil, and the season of the year in which one doth observe it.", "changed": true}
+{"original": "The ground isn't one colour. In summer it's green where grass grows, in winter it's bare and brown, and after rain it darkens.", "converted": "The colour of the ground is not one colour but many, for in summer it doth wear a covering of green where the grasses flourish, and in winter it lieth bare and brown, and after rain it doth darken to a deep and sombre hue, as though the earth itself were drinking deeply of the heavens above.", "changed": true}
+{"original": "The ground ranges from pale sand and clay to deep brown, varying a lot by place and season, so there's no single colour you can call its own.", "converted": "The ground doth present itself to the careful observer in colours ranging from the palest sand and clay to the deepest and richest brown, varying greatly from place to place and season to season, so that no single colour may be said to belong to it alone, for the earth is a thing of great variety and complexity, as befitteth the work of its Creator.", "changed": true}
 {"original": "The usual, I guess?", "converted": "The usual, I suppose?", "changed": true}
+{"original": "There are two boys playing with two balls. One ball is green and one ball is blue. One boy covers his eyes. What color are the balls?", "converted": "Two boys are at play with two balls. One ball is green and one is blue. One boy covers his eyes. What colour are the balls?", "changed": true}
 {"original": "Violin, piano, and drum are all ...?", "converted": "Violin, piano, and drum are all ...?", "changed": false}
 {"original": "Wait, what?", "converted": "Stay\u2014what?", "changed": true}
 {"original": "What bird is bigger, a duck or a goose?", "converted": "Which bird is the greater, a duck or a goose?", "changed": true}
-{"original": "What can you do?", "converted": "What is it you can do?", "changed": true}
 {"original": "What can you do when you are hungry?", "converted": "What may you do when you are anhungered?", "changed": true}
 {"original": "What can you do when you are thirsty?", "converted": "What may you do when you are athirst?", "changed": true}
+{"original": "What can you do?", "converted": "What is it you can do?", "changed": true}
 {"original": "What can you use to write on paper?", "converted": "What may you use to write upon paper?", "changed": true}
 {"original": "What can you wear on your body?", "converted": "What may you wear upon your body?", "changed": true}
 {"original": "What can you wear on your feet?", "converted": "What may you wear upon your feet?", "changed": true}
 {"original": "What can you wear on your head?", "converted": "What may you wear upon your head?", "changed": true}
 {"original": "What colour is a lemon?", "converted": "What colour is a lemon?", "changed": false}
 {"original": "What colour is an apple?", "converted": "What colour is an apple?", "changed": false}
+{"original": "What colour is the ground normally?", "converted": "Pray tell, of what complexion is the soil and ground as it appeareth in its natural and common state?", "changed": true}
+{"original": "What colour is the ground usually?", "converted": "What is the common colour of the ground and soil, as a man of careful observation might describe it?", "changed": true}
+{"original": "What colour is the ground?", "converted": "Of what colour doth the ground appear to one who doth walk abroad and cast his eyes upon the earth?", "changed": true}
+{"original": "What colour is the ground?", "converted": "Of what colour is the ground upon which we do tread and labour each day of our earthly lives?", "changed": true}
+{"original": "What colour is the ground?", "converted": "What colour has Providence assigned to the earth beneath us, that great foundation upon which all living things do rest?", "changed": true}
+{"original": "What colour is the ground?", "converted": "What hue doth the earth beneath our feet present to the eye of one who looketh downward?", "changed": true}
+{"original": "What colour is the sky after the sun goes down?", "converted": "How doth the sky appear in colour when the Sun has departed and night reigneth over all?", "changed": true}
 {"original": "What colour is the sky at night?", "converted": "Of what colour is the sky by night?", "changed": true}
-{"original": "What colour is the sky?", "converted": "Of what colour is the sky?", "changed": true}
+{"original": "What colour is the sky at night?", "converted": "Of what complexion doth the sky present itself when night has fallen upon the land?", "changed": true}
+{"original": "What colour is the sky at night?", "converted": "What aspect doth the firmament wear during the nocturnal hours?", "changed": true}
+{"original": "What colour is the sky from down here?", "converted": "In what colour is the vault of heaven arrayed, as seen from this earthly station?", "changed": true}
 {"original": "What colour is the sky on a clear day?", "converted": "Of what colour is the sky when the day is clear?", "changed": true}
+{"original": "What colour is the sky on a clear day?", "converted": "On a day of fair and unclouded weather, of what hue is the firmament above?", "changed": true}
+{"original": "What colour is the sky on a clear day?", "converted": "When the sky is clear and serene, and no cloud doth obscure the heavens, what colour doth it wear?", "changed": true}
+{"original": "What colour is the sky on a clear, sunny day?", "converted": "What is the colour of the sky upon those days when the air is clean and the Sun shineth without impediment?", "changed": true}
+{"original": "What colour is the sky on a normal day?", "converted": "What is the nature of the colour which the sky doth wear upon a common day?", "changed": true}
+{"original": "What colour is the sky when there are no clouds?", "converted": "What colour doth the sky present when the heavens are free of cloud and the air is pure?", "changed": true}
+{"original": "What colour is the sky?", "converted": "Of what colour is the sky?", "changed": true}
+{"original": "What colour is the sky?", "converted": "Of what hue doth the heavens above present themselves to the eye of the observer?", "changed": true}
+{"original": "What colour is the sky?", "converted": "Pray tell, what colour doth the firmament display unto those who gaze upward?", "changed": true}
 {"original": "What comes next in the sequence: 1, 2, 3, 4, ...?", "converted": "What comes next in the sequence: 1, 2, 3, 4, ...?", "changed": false}
 {"original": "What comes next in this sequence: A, B, C, D, ...?", "converted": "What comes next in this sequence: A, B, C, D, ...?", "changed": false}
 {"original": "What did you say?", "converted": "What said you?", "changed": true}
-{"original": "What does a hand wave mean?", "converted": "What does a wave of the hand signify?", "changed": true}
-{"original": "What does a hug mean?", "converted": "What does an embrace signify?", "changed": true}
-{"original": "What does a laugh mean?", "converted": "What does laughter signify?", "changed": true}
-{"original": "What does crying mean?", "converted": "What does weeping signify?", "changed": true}
 {"original": "What do humans normally eat?", "converted": "What do men commonly eat?", "changed": true}
 {"original": "What do you call frozen water?", "converted": "What do you call water turned to ice?", "changed": true}
 {"original": "What do you call water that is boiling?", "converted": "What do you call water set to boiling?", "changed": true}
 {"original": "What do you mean?", "converted": "What mean you?", "changed": true}
 {"original": "What do you wear on your feet outside?", "converted": "What do you wear upon your feet out of doors?", "changed": true}
 {"original": "What do you wear on your hands outside?", "converted": "What do you wear upon your hands out of doors?", "changed": true}
+{"original": "What does a hand wave mean?", "converted": "What does a wave of the hand signify?", "changed": true}
+{"original": "What does a hug mean?", "converted": "What does an embrace signify?", "changed": true}
+{"original": "What does a laugh mean?", "converted": "What does laughter signify?", "changed": true}
+{"original": "What does crying mean?", "converted": "What does weeping signify?", "changed": true}
 {"original": "What is heavier, 1 ton of wool, or 1 ton of bricks?", "converted": "Which is heavier\u2014a ton of wool, or a ton of bricks?", "changed": true}
 {"original": "What is the biggest fish in the ocean?", "converted": "What is the biggest fish in the ocean?", "changed": false}
 {"original": "What is the fastest land animal in the world?", "converted": "What is the swiftest beast upon the land?", "changed": true}
@@ -151,15 +180,15 @@
 {"original": "What languages can you speak?", "converted": "What tongues can you speak?", "changed": true}
 {"original": "What season is it when the leaves fall from the trees?", "converted": "What season is it when the leaves fall from the trees?", "changed": false}
 {"original": "What season is it when the snow falls?", "converted": "What season is it when the snow falls?", "changed": false}
+{"original": "What units tell us how much money something costs?", "converted": "By what measure do we reckon how much a thing costs?", "changed": true}
 {"original": "What's next?", "converted": "What follows?", "changed": true}
 {"original": "What's that?", "converted": "What's that?", "changed": false}
 {"original": "What's your favourite colour?", "converted": "What colour pleases you best?", "changed": true}
-{"original": "What units tell us how much money something costs?", "converted": "By what measure do we reckon how much a thing costs?", "changed": true}
-{"original": "When?", "converted": "When?", "changed": false}
 {"original": "When it's raining, is the grass dry or wet?", "converted": "When it rains, is the grass dry or wet?", "changed": true}
 {"original": "When something freezes, does it become solid or liquid?", "converted": "When something freezes, does it become solid or liquid?", "changed": false}
 {"original": "When something melts, does it become solid or liquid?", "converted": "When something melts, does it become solid or liquid?", "changed": false}
 {"original": "When the sun is up, is it day or is it night?", "converted": "When the sun is up, is it day or is it night?", "changed": false}
+{"original": "When?", "converted": "When?", "changed": false}
 {"original": "Where are the clouds, in the sky or on the ground?", "converted": "Where are the clouds\u2014in the sky, or upon the ground?", "changed": true}
 {"original": "Where does the sun rise?", "converted": "Where does the sun rise?", "changed": false}
 {"original": "Where does the sun set?", "converted": "Where does the sun set?", "changed": false}
@@ -169,8 +198,8 @@
 {"original": "WTF?", "converted": "What the devil?", "changed": true}
 {"original": "Yes.", "converted": "Aye.", "changed": true}
 {"original": "You hear sounds with your...?", "converted": "You hear sounds with your...?", "changed": false}
-{"original": "You're lying.", "converted": "You lie.", "changed": true}
-{"original": "You're wrong.", "converted": "You are mistaken.", "changed": true}
 {"original": "You see with your...?", "converted": "You see with your...?", "changed": false}
 {"original": "You smell with your...?", "converted": "You smell with your...?", "changed": false}
 {"original": "You taste with your...?", "converted": "You taste with your...?", "changed": false}
+{"original": "You're lying.", "converted": "You lie.", "changed": true}
+{"original": "You're wrong.", "converted": "You are mistaken.", "changed": true}

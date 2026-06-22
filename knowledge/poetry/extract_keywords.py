@@ -139,7 +139,7 @@ def build_messages(poem: dict) -> list[dict]:
 
 def poem_key(poem: dict) -> tuple[str, str]:
     """Stable identity for a poem, used to skip already-processed records."""
-    return (poem.get('title', ''), poem.get('author', ''))
+    return (poem.get('title', '').strip(), poem.get('author', '').strip())
 
 
 def load_poems(path: Path) -> list[dict]:
@@ -251,7 +251,16 @@ def main() -> None:
         sys.exit('error: set OPENROUTER_API_KEY in the environment')
 
     done = load_done_keys(OUTPUT)
-    todo = [p for p in poems if poem_key(p) not in done]
+    # Deduplicate input: some poems appear multiple times with the same
+    # title+author; process each unique poem only once.
+    seen: set[tuple[str, str]] = set()
+    unique_poems: list[dict] = []
+    for p in poems:
+        k = poem_key(p)
+        if k not in seen:
+            seen.add(k)
+            unique_poems.append(p)
+    todo = [p for p in unique_poems if poem_key(p) not in done]
     if args.limit is not None:
         todo = todo[: args.limit]
 

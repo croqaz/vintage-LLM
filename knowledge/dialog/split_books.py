@@ -432,7 +432,7 @@ def main():
               python split_books.py --target 16000 --input-dir ./gutenberg --output-dir ./chunks
         """),
     )
-    parser.add_argument('--target', type=int, default=4000, help='Target tokens (words) per chunk (default: 4000)')
+    parser.add_argument('--target', type=int, default=3200, help='Target tokens (words) per chunk (default: 3200)')
     parser.add_argument('--input-dir', type=str, default='gutenberg', help='Input directory with book files (default: gutenberg)')
     parser.add_argument(
         '--output-dir', type=str, default='gutenberg_chunks', help='Output directory for chunks and reports (default: gutenberg_chunks)'
