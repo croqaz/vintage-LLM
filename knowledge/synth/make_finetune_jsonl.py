@@ -153,7 +153,7 @@ def build_output(system_text, user_text, assistant_text, system_mode, system_rep
 
     out_messages.append({'role': 'user', 'content': user_text})
     out_messages.append({'role': 'assistant', 'content': assistant_text})
-    return {'messages': out_messages, 'model': model_name}
+    return {'messages': out_messages, 'model': model_name.split('/')[-1]}
 
 
 # ----------------------------------------------------------------------------
