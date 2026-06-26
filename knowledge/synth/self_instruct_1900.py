@@ -133,6 +133,11 @@ DEFAULT_BASE_URL = 'http://127.0.0.1:1234'
 OPENROUTER_BASE_URL = 'https://openrouter.ai/api'
 _AUTH_HEADERS = {}  # populated by main() when using OpenRouter
 _DEBUG = False  # set by main() from --debug; when True we dump every request/response
+# Reasoning effort to request on every call, or None to send no `reasoning` field.
+# Set by main() after discover_reasoning_effort() confirms the model supports it.
+# We keep it low everywhere: this is bulk data-generation, not hard reasoning, so
+# we want speed/cost, not long chains of thought.
+_REASONING_EFFORT = None
 
 
 # ---------------------------------------------------------------------------
@@ -181,18 +186,29 @@ SEED_INSTRUCTIONS = [
     'Discuss the evils of employing young children in mills and factories.',
     "Explain what is meant by a fair day's wage for a fair day's work.",
     # --- Folklore, superstition & the supernatural ---
-    'Explain the common superstition that it is unlucky to walk under a ladder.',
-    'Describe some country charms believed to ward off the evil eye.',
-    'Discuss whether there is any truth in the belief in haunted houses.',
-    "Recount an old wives' tale told to children about the harvest moon.",
-    'Explain why a horseshoe is hung above the door for good fortune.',
     'Are angels real?...',
+    'Describe some country charms believed to ward off the evil eye.',
+    "Describe the old tales of will-o'-the-wisps seen flickering over the marshes at night.",
+    'Describe the omens and signs by which country folk foretell coming changes in the weather.',
+    'Describe the superstitions surrounding the number thirteen at a dinner table.',
+    'Discuss the superstitions that gather about the crowing of a cock and the hooting of an owl.',
+    "Discuss whether a black cat crossing one's path is truly an omen of ill luck.",
+    'Discuss whether there is any truth in the belief in haunted houses.',
+    'Explain the belief that spilling salt brings misfortune and how it may be averted.',
+    'Explain the belief that the dead may return as ghosts and why some folk dread the churchyard.',
+    'Explain the common superstition that it is unlucky to walk under a ladder.',
+    'Explain the country custom of touching wood to prevent a boast from tempting fate.',
+    'Explain why a horseshoe is hung above the door for good fortune.',
+    'Recount the folk belief that breaking a looking-glass brings seven years of sorrow.',
+    'Recount the folklore of fairies and the little people said to dwell in hill and hollow.',
+    "Recount an old wives' tale told to children about the harvest moon.",
     # --- Crime, safety & security ---
     'Describe how a householder may guard his dwelling against burglars at night.',
     'Explain what measures should be taken to keep a fire from spreading through a house.',
     'Advise a lady on how to keep herself safe while travelling alone by rail.',
     'Explain what a man ought to do upon discovering a thief within his home.',
     'Describe the duties of a night watchman in guarding a row of shops.',
+    'What steps can I take if my dog attacks me?',
     # --- Art, painting & drawing ---
     'Explain how a painter uses perspective to give depth to a flat canvas.',
     'Describe the difference between painting in oils and in watercolours.',
@@ -224,11 +240,13 @@ SEED_INSTRUCTIONS = [
     'Discuss the qualities a young lady should seek in a husband.',
     "Explain how a father ought to judge a suitor who asks for his daughter's hand.",
     # --- Brewing & alcohol ---
-    'Explain, step by step, how ale is brewed from barley and hops.',
     'Describe how wine is kept and left to age in a cellar.',
-    'Explain the difference between a wine and a spirit.',
     'Describe the making of cider from apples in the autumn.',
+    'Explain the difference between a wine and a spirit.',
     'Explain the part that yeast plays in fermentation.',
+    'Explain, step by step, how ale is brewed from barley and hops.',
+    'What is a stout beer and how is it made?',
+    'What is the difference between beer and ale?',
     "I'm afraid I don't know the differences between a vodka and whisky. Would you explain it to me?",
     # --- Geometry, algebra & higher maths ---
     "Explain Pythagoras's theorem and how it gives the third side of a right-angled triangle.",
@@ -318,13 +336,25 @@ SEED_INSTRUCTIONS = [
     # =====================================================================
     # Original seed library below -- left commented, as-is.
     # =====================================================================
+    'Advise a young lady on the best daily habits for maintaining health.',
+    'Advise a young man leaving home for the first time on the company he should keep.',
+    'Explain the utility of sulfuric acid in modern industry.',
+    'How do I know if a lady is interested in me?',
+    'How do you pass time when travelling by rail?',
+    'How is an artificial leg made?',
+    'I am incredibly bored... What can I do to entertain myself?',
+    'Is it ever okay to break a promise?',
+    'Is this Coca-Cola a drink, or a medicine?',
+    'Set down the lessons a boy ought to master before the age of twelve.',
+    'What happens if someone eats monkshood?',
+    'What is belladonna, also called nightshade?',
+    "Someone I trusted let a secret of mine slip. I'm furious!",
+    "Where's the line between being frugal and being stingy?",
     # 'Account for the popularity of baseball among boys.',
     # 'Advise a boy who wishes to better himself but has had little schooling.',
     # 'Advise a farmer on the best means of draining wet land.',
     # 'Advise a man uncertain whether to declare his affection to a woman of higher station.',
-    # 'Advise a young lady on the best daily habits for maintaining health.',
     # 'Advise a young lady on the virtues she should cultivate before marriage.',
-    # 'Advise a young man leaving home for the first time on the company he should keep.',
     # 'Advise a young man on the best means of improving his handwriting for business purposes.',
     # 'Advise on the proper way to address a letter to a person of high rank.',
     # 'Complete a sentence about a horse: "I was a broken-hearted rider..."',
@@ -403,8 +433,6 @@ SEED_INSTRUCTIONS = [
     # 'Explain the process of creating a kite by hand.',
     # 'Explain the rules for the correct use of the semicolon in writing.',
     # 'Explain the rules of etiquette for a formal dinner.',
-    # 'Explain the utility of sulfuric acid in modern industry.',
-    # 'Explain this human behavior: laughing.',
     # 'Explain to me, why does the thunder follow lightning?',
     # 'Explain what a betrothal binds a couple to, and on what grounds it may be broken.',
     # 'Explain what a justice of the peace may and may not do.',
@@ -423,24 +451,18 @@ SEED_INSTRUCTIONS = [
     # 'How can a lady protect herself from being robbed while walking alone at night?',
     # 'How can I take care of a family of kittens?',
     # 'How do bees make honey?',
-    # 'How do I know if a lady is interested in me?',
     # 'How do I start a conversation with a stranger at a social gathering?',
     # 'How do tarot cards and readings work?',
     # 'How do you ensure your garden is properly weeded and watered when you are away from home?',
-    # 'How do you pass time when travelling by rail?',
     # 'How does a pharmacist prepare a tincture of laudanum?',
-    # 'How is an artificial leg made?',
     # 'How was it customary to light the streets before gas and electricity?',
     # 'How would someone arrange a private library catalogue, if his collection contains 500 volumes?',
-    # 'I am incredibly bored... What can I do to entertain myself?',
     # 'I feel depressed and lonely today. What can I do to cheer myself up?',
     # 'I have a lot of wild grapes in my backyard. How can I make them into wine?',
     # 'I heard someone bad-mouthing a friend of mine. How should I respond?',
     # 'I saw this blue butterfly in my garden. Can you tell me what species it is?',
     # 'I would like to start painting with watercolors. What do I need to get started?',
     # 'In your opinion, what are the qualities of an effective sports coach?',
-    # 'Is it ever okay to break a promise?',
-    # 'Is this Coca-Cola a drink, or a medicine?',
     # 'List a few ways to make a small room feel more spacious.',
     # 'List five great rivers of Europe and name a city that each one passes through.',
     # 'List the qualities a young lady ought to cultivate for pleasant conversation at a party.',
@@ -455,7 +477,6 @@ SEED_INSTRUCTIONS = [
     # 'Set down the first lessons a child should learn in drawing from nature.',
     # 'Set down the habits a youth must form if he would rise in his trade.',
     # 'Set down the harm that strong drink does to a working man and his family.',
-    # 'Set down the lessons a boy ought to master before the age of twelve.',
     # 'Set down the manner in which a gentleman should decline an invitation.',
     # 'Set down the order of precedence among the ranks of the nobility.',
     # 'Set down the precautions a traveller should take against highwaymen on the road.',
@@ -476,11 +497,9 @@ SEED_INSTRUCTIONS = [
     # 'What are the most important lessons to learn from the history of the Turkish Empire?',
     # 'What do really rich people do with their money?',
     # 'What does the story of David and Goliath from the Bible teach us?',
-    # 'What happens if someone eats monkshood?',
     # 'What happens to a horse when it is shod with iron shoes?',
     # 'What is a clockwork automaton and how does it work?',
     # 'What is a memento? What does it mean?',
-    # 'What is belladonna?',
     # 'What is life like in the English countryside?',
     # 'What is the law of action and reaction?',
     # 'What is the most remarkable incident in your own life?',
@@ -503,14 +522,12 @@ SEED_INSTRUCTIONS = [
     # "Make a list of three or four famous persons who are mentioned in Shakespeare's plays.",
     # "Plan a day's excursion to Windsor Castle and discuss the sights to be seen there.",
     # "Prepare a list of the guests and their duties for the evening's entertainment.",
-    # "Someone I trusted let a secret of mine slip. I'm furious!",
     # "Summarise the plot of Charles Dickens's novel 'A Tale of Two Cities'.",
     # "Tell me, is there anything science can't explain?",
     # "What's the best way to travel the Continent, by railway or steamship, or?",
     # "What's the difference between a comet and a meteor?",
     # "What's the difference between a steam engine and a water wheel?",
     # "What's with this zeppelin device I keep hearing about? What is it used for?",
-    # "Where's the line between being frugal and being stingy?",
     # "Write a sentence that ends with the word 'sunset'.",
 ]
 
@@ -906,7 +923,7 @@ def _short(s, n=2000):
 def _debug_request(url, payload):
     print('\n' + '-' * 70, file=sys.stderr)
     print(f'[debug] POST {url}', file=sys.stderr)
-    params = {k: payload[k] for k in ('temperature', 'top_k', 'max_tokens', 'logprobs') if k in payload}
+    params = {k: payload[k] for k in ('temperature', 'top_k', 'max_tokens', 'logprobs', 'reasoning') if k in payload}
     print(f'[debug] params: {params}', file=sys.stderr)
     if 'prompt' in payload:  # /v1/completions
         print('[debug] prompt (raw completion):', file=sys.stderr)
@@ -928,6 +945,18 @@ def _debug_response(body):
     print('[debug] response:', file=sys.stderr)
     print(_short(content), file=sys.stderr)
     print('-' * 70 + '\n', file=sys.stderr)
+
+
+def _apply_reasoning(payload):
+    """Add the OpenRouter-style `reasoning` field to a chat/completion payload
+    when the model is known to support an effort level (see
+    discover_reasoning_effort). We set `exclude: true` so the reasoning tokens
+    are kept out of the response we parse -- we only want the final answer text
+    in the dataset, not the chain of thought. No-op when _REASONING_EFFORT is
+    None (model doesn't support effort selection, or discovery failed)."""
+    if _REASONING_EFFORT:
+        payload['reasoning'] = {'effort': _REASONING_EFFORT, 'exclude': True}
+    return payload
 
 
 def _post_json(url, payload, timeout=300):
@@ -957,6 +986,62 @@ def detect_model(base_url):
     return body['data'][0]['id']
 
 
+def discover_reasoning_effort(base_url, model, requested='low'):
+    """Best-effort probe of whether `model` accepts a reasoning-effort level, and
+    which one to send. Returns the effort string to use (e.g. 'low') or None to
+    send no `reasoning` field at all.
+
+    We read the per-model `reasoning` object documented by OpenRouter's
+    GET /v1/models (also harmless against a local llama-server, which simply
+    won't expose the field). The relevant keys:
+      - supported_efforts: list of accepted efforts, HIGHEST first. When null,
+        all gateway effort values are accepted. When the whole `reasoning` field
+        is omitted, the model does NOT expose effort selection.
+      - mandatory: when true the model rejects 'none'; not our concern since we
+        always pass a real effort.
+
+    Resolution: prefer `requested` ('low') when accepted; otherwise fall back to
+    the lowest effort the model does accept (last element, since the list is
+    descending) so we still stay as cheap as possible.
+
+    SAFETY: this must never break a run. Any network error, missing/odd field,
+    model not found in the list, or parse problem -> we return None (send no
+    reasoning field) and print a note. We never raise out of here."""
+    try:
+        headers = {}
+        if _AUTH_HEADERS:
+            headers.update(_AUTH_HEADERS)
+        req = urllib.request.Request(base_url.rstrip('/') + '/v1/models', headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = json.loads(resp.read().decode('utf-8'))
+        entries = body.get('data') or []
+        entry = next((m for m in entries if m.get('id') == model), None)
+        if entry is None:
+            print(f'[info] reasoning: model {model!r} not found in /v1/models; sending no reasoning field')
+            return None
+        if 'reasoning' not in entry or entry['reasoning'] is None:
+            # Non-reasoning models (and dynamic routers) omit this field entirely.
+            print('[info] reasoning: model does not expose effort selection; sending no reasoning field')
+            return None
+        efforts = entry['reasoning'].get('supported_efforts')
+        if efforts is None:
+            # null -> all gateway effort values accepted.
+            print(f"[info] reasoning: model accepts all efforts; using '{requested}'")
+            return requested
+        if not efforts:
+            print('[info] reasoning: model lists no supported efforts; sending no reasoning field')
+            return None
+        if requested in efforts:
+            print(f"[info] reasoning: using requested effort '{requested}'")
+            return requested
+        fallback = efforts[-1]  # lowest, since the list is highest-first
+        print(f"[info] reasoning: '{requested}' unsupported; falling back to lowest supported '{fallback}'")
+        return fallback
+    except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError) as e:
+        print(f'[info] reasoning: could not discover support ({e}); sending no reasoning field')
+        return None
+
+
 def complete(base_url, model, prompt, temperature, top_k, max_tokens, stop=None):
     """Raw text completion (no chat template). Used for instruction brainstorming."""
     payload = {
@@ -969,6 +1054,7 @@ def complete(base_url, model, prompt, temperature, top_k, max_tokens, stop=None)
     }
     if stop:
         payload['stop'] = stop
+    _apply_reasoning(payload)
     out = _post_json(base_url.rstrip('/') + '/v1/completions', payload)
     return out['choices'][0]['text']
 
@@ -986,6 +1072,7 @@ def chat(base_url, model, system, user, temperature, top_k, max_tokens):
         'max_tokens': max_tokens,
         'stream': False,
     }
+    _apply_reasoning(payload)
     out = _post_json(base_url.rstrip('/') + '/v1/chat/completions', payload)
     return out['choices'][0]['message']['content']
 
@@ -1015,6 +1102,7 @@ def chat_with_logprobs(base_url, model, system, user, temperature, top_k, max_to
         'logprobs': True,  # OpenAI-style; llama.cpp returns choices[].logprobs.content
         'stream': False,
     }
+    _apply_reasoning(payload)
     out = _post_json(base_url.rstrip('/') + '/v1/chat/completions', payload)
     choice = out['choices'][0]
     return choice['message']['content'], _mean_logprob(choice)
@@ -1438,6 +1526,22 @@ def main():
         help='how to pick among candidate answers when >1 (default: random)',
     )
 
+    # --- Reasoning effort ------------------------------------------
+    # We keep reasoning effort LOW on every call (this is bulk data generation,
+    # not hard reasoning). The actual effort sent is gated by what the model
+    # advertises in /v1/models -- discovery fails open to "no reasoning field".
+    ap.add_argument(
+        '--reasoning-effort',
+        default='low',
+        choices=['max', 'xhigh', 'high', 'medium', 'low', 'minimal', 'none'],
+        help='reasoning effort to request on every call when the model supports it (default: low)',
+    )
+    ap.add_argument(
+        '--no-reasoning',
+        action='store_true',
+        help='never send a reasoning field, and skip the capability probe entirely',
+    )
+
     # --- Model-as-temporal-judge -----------------------------------
     ap.add_argument('--temporal-judge', action='store_true', help='use the model itself to flag anachronisms (extra calls)')
     ap.add_argument('--judge-temp', type=float, default=0.0, help='temperature for the judge (near-greedy)')
@@ -1511,6 +1615,17 @@ def main():
             f'ERROR: could not reach server at {args.base_url} ({e}).\n'
             f'Is it running? For local llama-server try: curl {args.base_url}/v1/models'
         )
+    # Decide the reasoning effort to attach to every call. We always *want* low
+    # (cheap bulk generation), but only send it when the model advertises support
+    # via /v1/models. discover_reasoning_effort() fails open to None on any
+    # trouble, so this never blocks a run. --no-reasoning skips it outright.
+    global _REASONING_EFFORT
+    if args.no_reasoning or args.reasoning_effort == 'none':
+        _REASONING_EFFORT = None
+        print('[info] reasoning: disabled (no reasoning field will be sent)')
+    else:
+        _REASONING_EFFORT = discover_reasoning_effort(args.base_url, model, requested=args.reasoning_effort)
+
     # Resolve the instruction-brainstorming mode. Chat-only remote models cannot
     # use the raw-completion "continue the list" trick, so default OpenRouter to
     # chat mode and local llama-server to completion mode.

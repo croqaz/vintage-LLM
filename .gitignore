@@ -159,6 +159,6 @@ training/*.bin
 
 knowledge/oldify/*.txt
 knowledge/oldify/*.jsonl
-knowledge/dialog/dialogs/
+knowledge/dialog/dialogs*
 knowledge/dialog/gutenberg*
 knowledge/genStruct/*.json*

@@ -136,7 +136,7 @@ def call_api(api_key, model, passage, api_url, *, max_tokens, temperature, timeo
     payload = {
         'model': model,
         'temperature': temperature,
-        'max_tokens': max_tokens,
+        'max_completion_tokens': max_tokens,
         'messages': [
             {'role': 'system', 'content': SYSTEM_PROMPT},
             {'role': 'user', 'content': USER_TEMPLATE.format(passage=passage)},
