@@ -1,0 +1,237 @@
+# Curated post-1900 anachronisms -> HARD VETO (D1).
+# A hit forces the text to be dropped. Terms here are AUTHORITATIVE: they are
+# never overridden by the allow-list (unlike the auto-parsed banned_seed.txt).
+# Phrases match whole-word, case-insensitive; a short phrase ("world war") also
+# matches longer mentions ("world war ii").
+
+# --- transport / aerospace ---
+aeroplane
+aircraft
+airliner
+airplane
+airport
+astronaut
+automation
+helicopter
+jet engine
+jet flight
+jetliner
+mechanisation
+mechanization
+moon landing
+rocket ship
+satellite
+space race
+space shuttle
+space station
+spacecraft
+spaceflight
+spaceship
+
+# --- electronics / computing / comms ---
+android phone
+app store
+blockchain
+blog
+blogger
+bluetooth
+cell phone
+computer
+computers
+credit card
+credit-card
+desktop computer
+download
+drone
+dvd
+e-mail
+ebook
+email
+emoji
+fax
+fiber-optic
+fibre-optic
+gaming
+hardware
+hashtag
+headphone
+http
+internet
+iphone
+laptop
+laser
+microchip
+microprocessor
+mobile phone
+online
+podcast
+programmer
+radar
+radio broadcast
+reboot
+satellite dish
+selfie
+semiconductor
+smartphone
+smartwatch
+software
+sonar
+stereo
+television
+transistor
+upload
+video game
+videogame
+web site
+website
+wi-fi
+wifi
+www
+
+# --- physics / weapons / energy ---
+antimatter
+atomic bomb
+big bang
+big-bang
+hydrogen bomb
+neutron
+nuclear bomb
+nuclear reactor
+nuclear weapon
+plutonium
+proton
+quantum
+
+# --- biology / medicine / chemistry ---
+antibiotic
+bubble gum
+chemotherapy
+chromosome
+dna
+genome
+nylon
+penicillin
+polyester
+polyethylene
+polystyrene
+rna
+synthetic tissue
+vitamin
+
+# --- 20th-century history / politics ---
+9/11
+adolf hitler
+albert einstein
+apartheid
+benito mussolini
+berlin wall
+blitzkrieg
+bob dylan
+climate change
+cold war
+d-day
+donald trump
+einstein
+empire state building
+fascism
+fascist
+first world war
+franklin roosevelt
+gandhi
+gestapo
+great depression
+hiroshima
+hitler
+holocaust
+iron curtain
+john f. kennedy
+john fitzgerald kennedy
+joseph stalin
+korean war
+league of nations
+lenin
+mao zedong
+marilyn monroe
+martin luther king jr.
+mussolini
+nazi
+nazism
+nuremberg trials
+pearl harbor
+second world war
+september 11
+soviet
+soviet union
+stalin
+the beatles
+trotsky
+united nations
+ussr
+vietnam war
+vladimir lenin
+world war
+ww1
+ww2
+ww3
+wwi
+wwii
+
+# --- brands (founded post-1900) ---
+burger king
+facebook
+github
+google
+instagram
+mcdonald's
+mcdonalds
+microsoft
+netflix
+nintendo
+tiktok
+twitter
+youtube
+
+# --- culture ---
+20th century fox
+cinema
+elvis presley
+eurovision
+godzilla
+hip hop
+hollywood
+j. r. r. tolkien
+j.r.r. tolkien
+jazz
+motion picture
+movie
+rock 'n' roll
+rock and roll
+super mario
+walt disney
+
+# --- modern AI / chatbot self-references (pervasive in UltraChat answers) ---
+ai language model
+artificial intelligence
+blog post
+chatbot
+chatgpt
+deep learning
+large language model
+machine learning
+neural network
+openai
+reality television
+reality tv
+search engine
+social media
+
+# --- misc ---
+lgbt
+20th century
+gigabyte
+megabyte
+terrabyte
+twentieth century
+vegan
+veganism
+went viral

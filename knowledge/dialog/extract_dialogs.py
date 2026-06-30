@@ -374,7 +374,7 @@ def main():
             tt = usage_totals['total_tokens']
             print(f'Token usage: prompt={pt:,}  completion={ct:,}  total={tt:,}')
         else:
-            print(f'Token usage: (not reported by API)')
+            print('Token usage: (not reported by API)')
         print(f'{"=" * 60}')
 
 

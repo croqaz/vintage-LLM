@@ -117,6 +117,8 @@ import unicodedata
 import urllib.error
 import urllib.request
 
+from pre1900.banned_terms import find_anachronisms
+
 # ---------------------------------------------------------------------------
 # 0. Connection settings
 # ---------------------------------------------------------------------------
@@ -591,115 +593,6 @@ SMALL_TALK_SEED = [
     "What's your favorite game of cards, and why?",
 ]
 
-
-# ---------------------------------------------------------------------------
-# 2. Era gating: hard filter for anything that betrays post-1900 knowledge.
-# ---------------------------------------------------------------------------
-# IMPORTANT / ITERATE-ON-ME:
-# This list is a heuristic, NOT a precise historical boundary. It WILL produce
-# false negatives (post-1900 things it forgets to list) and false positives
-# (borderline items invented just before 1900). Notable judgement calls:
-#   - We intentionally DO NOT block "telephone" (1876), "telegraph" (1840s),
-#     "photograph", "Darwin/evolution" (1859), "Marx/communism" (1848),
-#     "X-ray" (1895), "automobile" (1886) -- all arguably pre-1900.
-#   - We DO block clearly 20th-century items even when their seed idea is older
-#     (e.g. "aeroplane" first flew 1903; "radio broadcast", "vitamin" coined
-#     1912, "penicillin" 1928).
-# The model-as-judge layer is meant to catch what this list misses.
-ANACHRONISM_TERMS = [
-    # --- transport / aerospace ---
-    'aeroplane',
-    'aircraft',
-    'airliner',
-    'airplane',
-    'astronaut',
-    'automation',
-    'helicopter',
-    'jet',
-    'jetliner',
-    'mechanisation',
-    'moon landing',
-    'rocket',
-    'satellite',
-    'space station',
-    'spacecraft',
-    'spaceflight',
-    'spaceship',
-    # --- electronics / computing / comms ---
-    'blockchain',
-    'cell phone',
-    'credit card',
-    'drone',
-    'dvd',
-    'e-mail',
-    'email',
-    'fax',
-    'fiber-optic',
-    'internet',
-    'iphone',
-    'keyboard',
-    'laptop',
-    'laser',
-    'microchip',
-    'mobile phone',
-    'radar',
-    'radio broadcast',
-    'satellite dish',
-    'semiconductor',
-    'smartphone',
-    'smartwatch',
-    'software',
-    'sonar',
-    'television',
-    'transistor',
-    'video game',
-    'videogame',
-    'website',
-    # --- physics / weapons / energy ---
-    'antimatter',
-    'atomic bomb',
-    'big bang',
-    'hydrogen bomb',
-    'nuclear',
-    'quantum',
-    # --- biology / medicine / chemistry ---
-    'antibiotic',
-    'chromosome',
-    'dna',
-    'genome',
-    'nylon',
-    'penicillin',
-    'plastic',
-    'polyester',
-    'synthetic tissue',
-    'virus',
-    'vitamin',
-    # --- 20th-century history / politics ---
-    'cold war',
-    'einstein',
-    'first world war',
-    'great depression',
-    'hitler',
-    'holocaust',
-    'nazi',
-    'second world war',
-    'soviet',
-    'stalin',
-    'united nations',
-    'ussr',
-    'world war',
-    'wwi',
-    'wwii',
-    # --- culture ---
-    'cinema',
-    'hollywood',
-    'jazz',
-    'marketing',
-    'motion picture',
-    'movie',
-    'rock and roll',
-]
-
 # Words that ask for something the model fundamentally cannot do in text
 # (carried over from Self-Instruct's keyword filter, plus drawing variants --
 # note "draw" with a word boundary does NOT catch "drawing", so list it too).
@@ -735,7 +628,6 @@ _IMPOSSIBLE_TASK_RES = [
 ]
 
 # Pre-compiled regexes for the term lists (word-boundary, case-insensitive).
-_ANACHRONISM_RE = [re.compile(r'\b' + re.escape(t) + r'\b', re.I) for t in ANACHRONISM_TERMS]
 _IMPOSSIBLE_RE = [re.compile(r'\b' + re.escape(t) + r'\b', re.I) for t in IMPOSSIBLE_TERMS]
 # Any 3-4 digit number that could be a year. We flag years strictly after 1900.
 _YEAR_RE = re.compile(r'\b(\d{3,4})\b')
@@ -744,10 +636,9 @@ _YEAR_RE = re.compile(r'\b(\d{3,4})\b')
 def era_violation(text):
     """Return a human-readable reason string if `text` leaks post-1900
     knowledge, otherwise None. This is layer (B) of the era gate."""
-    for rx in _ANACHRONISM_RE:
-        m = rx.search(text)
-        if m:
-            return f"anachronism term: '{m.group(0)}'"
+    hits = find_anachronisms(text, check_years=False)
+    if hits:
+        return f"anachronism terms: '{hits}'"
     # Reject explicit future years. NOTE: this can mis-fire on arithmetic
     # problems that happen to use a large number (e.g. "multiply 1950 by 3").
     # For a POC we accept that conservative tradeoff; relax if it hurts recall.
@@ -1124,19 +1015,144 @@ INSTRUCTION_PROMPT_HEADER = (
 )
 
 # Regex to pull "12. some instruction" lines out of the model's continuation.
-_NUMBERED_RE = re.compile(r'^\s*\d+\s*[.)]\s*(.+?)\s*$')
+# NOTE: the group is `(.*?)` (was `(.+?)`) so a *bare* marker line with no text
+# -- e.g. the trailing "10." a model leaves when it primes the next item, or an
+# empty "9." -- still matches, with an empty capture. parse_numbered() treats
+# such a bare marker as the END of the current item, not as content. We bound the
+# index to 1-3 digits so a 4-digit year sitting at the start of a continuation
+# line ("1846 was the year ...") is NOT mistaken for a list marker.
+_NUMBERED_RE = re.compile(r'^\s*\d{1,3}\s*[.)]\s*(.*?)\s*$')
+
+# A leading digit at the very start of a parsed instruction is the dominant junk
+# pattern from OCR-trained / oddly-fine-tuned models. It shows up in THREE distinct
+# ways that must be handled differently -- _normalize_leading_digit() below tells
+# them apart by what FOLLOWS the digit. Critically, every transform here keys on a
+# leading digit, so it is a complete no-op on clean output from well-behaved models
+# (whose instructions begin with a word, or whose enumerator the list regex already
+# ate). Each pattern is illustrated with a real observed sample.
+#
+# (1) Stray ENUMERATOR the model re-emits after our primed "N. " index, glued onto
+#     a capitalised sentence-start: "4Write eighty lines ...", "6Advise a young man
+#     ...", "10. Set down the year ...", "1, What are dominoes?". Stripped, because
+#     the giveaway is the UPPERCASE letter that follows (real number-leading text
+#     never is): we remove a 1-2 digit run + optional punctuation/space when an
+#     uppercase letter follows.
+_LEADING_ENUM_RE = re.compile(r'^\d{1,2}[.),]?\s*(?=[A-Z])')
+
+# (2) OCR mis-read of the word "In" as "1n": "1n what years did Shakespeare ...",
+#     "1n how many years ...". Always safe -- no number is spelled "1n".
+_OCR_IN_RE = re.compile(r'^1n\b')
+
+# (3) OCR mis-read of the pronoun "I" as "1": "1 want to know ...", "1 am going
+#     abroad ...", "1 intend to walk ...". We convert "1 "->"I " ONLY when a
+#     first-person verb/adverb follows, which is what disambiguates the pronoun
+#     from a genuine leading numeral. Arithmetic the model legitimately writes is
+#     followed by a conjunction, unit, or another number ("1 and 3 together make
+#     4", "3 articles cost £5"), so it never matches and is left untouched.
+_FIRST_PERSON = (
+    'am|was|will|would|shall|should|can|cannot|could|may|might|must|have|had|'
+    'do|did|don|want|wanted|wish|wished|intend|intended|mean|meant|propose|'
+    'hope|hoped|fear|feared|believe|think|thought|know|knew|feel|felt|saw|see|'
+    'hear|heard|find|found|understand|suppose|trust|beg|desire|wonder|wondered|'
+    'need|like|love|remember|forget|expect|ask|asked|advise|reckon|presume|'
+    'fancy|dare|used|once|never|always|often|lately'
+)
+_OCR_I_PRONOUN_RE = re.compile(rf'^1(?=\s+(?:{_FIRST_PERSON})\b)', re.I)
 
 
-def parse_numbered(text):
-    """Extract instruction strings from a numbered-list continuation."""
+def _normalize_leading_digit(s):
+    """Repair the leading-digit OCR/enumerator artifacts described above. A no-op
+    on text that does not start with a digit, so harmless to clean generators."""
+    s = _LEADING_ENUM_RE.sub('', s, count=1)  # "4Write ..."   -> "Write ..."
+    s = _OCR_IN_RE.sub('In', s, count=1)  # "1n what ..."  -> "In what ..."
+    s = _OCR_I_PRONOUN_RE.sub('I', s, count=1)  # "1 want ..."   -> "I want ..."
+    return s.strip()
+
+
+# A line that is nothing but an index -- "10", "10.", "10)" -- is a marker the
+# model left while priming the next item. It must END the current item, never be
+# glued onto it as a continuation line. (_NUMBERED_RE already covers the dotted
+# forms; this also catches a bare "10" with no punctuation.) Bounded to 1-3
+# digits so a 4-digit year alone on a line is treated as body text, not a marker.
+_BARE_INDEX_RE = re.compile(r'^\s*\d{1,3}\s*[.)]?\s*$')
+
+# A trailing item that ends on a dangling connective/preposition, a comma, or a
+# colon (a directive whose material never arrived, e.g. "Copy out these lines
+# from Tennyson:") is almost always a sentence the model cut off. We drop ONLY
+# the last item when it matches -- interior items in a numbered list are complete
+# by construction, and a clean final line ends on '.', '?' or '!', so this never
+# fires on well-formed output from other models.
+_DANGLING_TAIL_RE = re.compile(
+    r'(?:\b(?:of|the|a|an|to|from|with|and|or|but|by|in|on|at|for|as|into|upon|'
+    r'about|beginning|named|called|titled|entitled|between|than|that|which|'
+    r'whose|whom)\b|[,;:–—-])\s*$',
+    re.I,
+)
+
+
+def parse_numbered(text, multiline=True):
+    """Extract instruction strings from a numbered-list continuation.
+
+    Backward-compatible with the original single-line-per-item behaviour: a clean
+    numbered list (one complete instruction per "N." line, as strong base/chat
+    models produce) parses to exactly the same items as before.
+
+    On top of that it is more resilient to the messier output of weak / oddly
+    fine-tuned models (observed with an exam-book fine-tune):
+      * MULTI-LINE questions -- a directive whose material spills onto the
+        following unnumbered lines (verse to copy, words to take from dictation)
+        is stitched back into ONE instruction instead of having its body dropped.
+        A blank line ends the block, so trailing chatter after the list is not
+        glued on.
+      * BARE markers -- a "10." the model leaves while priming the next item ends
+        the current item rather than being mistaken for content.
+      * LEADING-DIGIT artifacts -- a stray enumerator glued to the text is
+        stripped, and OCR mis-reads of "I"/"In" as "1"/"1n" are repaired, while
+        genuine leading numerals are left intact (see _normalize_leading_digit).
+      * TRUNCATED tail -- a final item cut off mid-thought is dropped.
+    Set multiline=False to recover the strict line-by-line behaviour.
+    """
     if text is None:
         return []
-    found = []
-    for line in text.splitlines():
-        m = _NUMBERED_RE.match(line)
+    items = []
+    current = None  # the item we are currently accumulating (may span lines)
+    for raw_line in text.splitlines():
+        m = _NUMBERED_RE.match(raw_line)
         if m:
-            found.append(m.group(1).strip())
-    return found
+            # A new (or bare) marker closes the item we were building.
+            if current is not None:
+                items.append(current)
+            content = m.group(1).strip()
+            # A content that is itself only an index ("9. 10." -> "10.") is the
+            # model double-priming the next item: treat as a bare marker, not text.
+            if not content or _BARE_INDEX_RE.match(content):
+                current = None
+            else:
+                current = _normalize_leading_digit(content) or None
+        elif not raw_line.strip():
+            # Blank line ends the current item's block; don't attach what follows
+            # (guards against trailing commentary being merged into an item).
+            if current is not None:
+                items.append(current)
+                current = None
+        elif _BARE_INDEX_RE.match(raw_line):
+            # A lone index ("10") left while priming -> ends the current item.
+            if current is not None:
+                items.append(current)
+                current = None
+        elif multiline and current is not None:
+            # An unnumbered, non-blank line is the continuation of the current
+            # item (the body of a multi-line question).
+            current += '\n' + raw_line.strip()
+        # else: stray prose before any marker -> ignore.
+    if current is not None:
+        items.append(current)
+
+    items = [s for s in (i.strip() for i in items) if s]
+    # Drop a trailing item the model cut off mid-thought.
+    if items and _DANGLING_TAIL_RE.search(items[-1]):
+        items.pop()
+    return items
 
 
 def sample_demonstrations(seeds, machine, k=8):
@@ -1181,18 +1197,23 @@ def generate_instruction_batch(base_url, model, seeds, machine, args):
     for i, d in enumerate(demos, start=1):
         prompt += f'{i}. {d}\n'
     # Prime the next number so the model continues rather than re-introducing.
-    prompt += f'{len(demos) + 1}.'
+    # IMPORTANT: keep the trailing SPACE after "N.". The natural list form is
+    # "N. text", and some fine-tuned models treat a space-less "N." as a complete
+    # line and emit end-of-text immediately (observed: ~75% empty continuations
+    # that jumped to ~0% once the space was added). A trailing space is the
+    # ordinary list format, so it is harmless to well-behaved base models too.
+    prime = f'{len(demos) + 1}. '
     text = complete(
         base_url,
         model,
-        prompt,
+        prompt + prime,
         temperature=args.gen_temp,
         top_k=args.gen_top_k,
         max_tokens=args.gen_tokens,
         stop=['\n\n'],
     )
-    # The model continues after "N." so prepend that number for clean parsing.
-    text = f'{len(demos) + 1}.' + text
+    # The model continues after the primed "N. " so prepend it for clean parsing.
+    text = prime + text
     return parse_numbered(text)
 
 
@@ -1363,6 +1384,9 @@ def generate_answer(base_url, model, instruction, input_text, args):
         top_k=args.ans_top_k,
         max_tokens=args.answer_tokens,
     )
+    if not text:
+        print('    ! answer call returned empty text')
+        return '', score
     return text.strip(), score
 
 
@@ -1635,6 +1659,14 @@ def main():
 
     print(f'[info] using model: {model}')
     print(f'[info] instruction mode: {instruction_mode}')
+    if instruction_mode == 'completion':
+        # The trap that produced the "weird records": completion mode bypasses the
+        # chat template, so an instruction-tuned / OCR-fine-tuned local model falls
+        # back to raw base behaviour (leading-number OCR noise, truncated or run-on
+        # tasks). The parser repairs much of it, but chat mode is the real fix.
+        print(
+            '[hint] completion mode bypasses the chat template; if a local model emits malformed instructions, try --instruction-mode chat.'
+        )
     print(
         f'[info] explore (gen): temp={args.gen_temp} top_k={args.gen_top_k}  |  '
         f'precision (ans): temp={args.ans_temp} top_k={args.ans_top_k}'
@@ -1786,7 +1818,7 @@ def main():
                 for _ in range(args.candidates_per_instance):
                     try:
                         answer, score = generate_answer(args.base_url, model, cand, input_text, args)
-                    except (urllib.error.URLError, OSError) as e:
+                    except Exception as e:
                         print(f'    ! answer generation failed: {e}')
                         continue
                     # English-only gate (always on, hard requirement).

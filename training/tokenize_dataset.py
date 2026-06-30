@@ -263,7 +263,7 @@ def main() -> None:
     )
     parser.add_argument(
         '--config',
-        default='training/config.toml',
+        default=str(Path(__file__).resolve().parent / 'config.toml'),
         help='Path to config.toml (reads data.tokenizer)',
     )
     parser.add_argument(

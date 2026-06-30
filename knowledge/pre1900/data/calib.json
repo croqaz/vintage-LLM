@@ -1,0 +1,13 @@
+{
+  "weights": {
+    "sum_lr": 0.4147516365738406,
+    "gated_sum": 0.5026655644445829,
+    "arch_count": -0.7609529245783236
+  },
+  "bias": -1.1547807599900197,
+  "feature_order": [
+    "sum_lr",
+    "gated_sum",
+    "arch_count"
+  ]
+}

@@ -1,5 +1,4 @@
 {
-  "_name_or_path": "Qwen/Qwen2.5-0.5B-Instruct",
   "architectures": [
     "Qwen2ForCausalLM"
   ],

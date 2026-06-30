@@ -9,6 +9,7 @@
 //   -f, --fields <list>   Comma-separated list of fields to include (default: all)
 //   -l, --limit <n>       Max documents to export (default: all)
 //   -d, --db <path>       LevelDB directory (default: "./levelDB")
+//   -o, --output <file>   Write JSONL to this file (default: stdout)
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { ClassicLevel } from 'classic-level';
@@ -42,17 +43,21 @@ function parseArgs(): {
   fields: string[] | null;
   limit: number;
   dbPath: string;
+  output: string | null;
 } {
   const args = process.argv.slice(2);
   let expr = '';
   let fields: string[] | null = null;
   let limit = 0; // 0 = no limit
   let dbPath = './levelDB';
+  let output: string | null = null;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if ((arg === '-d' || arg === '--db') && i + 1 < args.length) {
       dbPath = args[++i];
+    } else if ((arg === '-o' || arg === '--output') && i + 1 < args.length) {
+      output = args[++i];
     } else if ((arg === '-l' || arg === '--limit') && i + 1 < args.length) {
       limit = parseInt(args[++i], 10);
       if (isNaN(limit) || limit <= 0) {
@@ -78,6 +83,7 @@ Options:
   -d, --db <path>          LevelDB directory (default: "./levelDB")
   -l, --limit <n>          Max documents to export (default: all)
   -f, --fields <list>      Comma-separated list of fields to include (default: all)
+  -o, --output <file>      Write JSONL to this file (default: stdout)
   -h, --help               Show this help
 
 Examples:
@@ -96,7 +102,7 @@ Examples:
     expr = 'true';
   }
 
-  return { expr, fields, limit, dbPath };
+  return { expr, fields, limit, dbPath, output };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -119,7 +125,7 @@ function makeFieldSelector(fieldNames: string[]): (doc: Doc) => Doc {
 // Export mode — iterate + filter + export
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function exportDocs(db: ClassicLevel<string, Doc>, expr: string, fields: string[] | null, limit: number): Promise<void> {
+async function exportDocs(db: ClassicLevel<string, Doc>, expr: string, fields: string[] | null, limit: number, output: string | null): Promise<void> {
   // Compile the expression into a filter function
   let filter: (doc: Doc) => boolean;
   try {
@@ -132,6 +138,23 @@ async function exportDocs(db: ClassicLevel<string, Doc>, expr: string, fields: s
 
   // Build the field selector (identity if no fields specified)
   const selectFields = fields ? makeFieldSelector(fields) : null;
+
+  // Set up the output sink: a file writer (flushed every 500 writes) or stdout.
+  const FLUSH_EVERY = 500;
+  const sink = output ? Bun.file(output).writer() : null;
+  let sinceFlush = 0;
+
+  const writeLine = (line: string): void => {
+    if (sink) {
+      sink.write(line + '\n');
+      if (++sinceFlush >= FLUSH_EVERY) {
+        sink.flush();
+        sinceFlush = 0;
+      }
+    } else {
+      console.log(line);
+    }
+  };
 
   let scanned = 0;
   let exported = 0;
@@ -165,12 +188,13 @@ async function exportDocs(db: ClassicLevel<string, Doc>, expr: string, fields: s
         }
 
         // Write as JSONL
-        console.log(JSON.stringify(out));
+        writeLine(JSON.stringify(out));
 
         exported++;
 
         if (limit > 0 && exported >= limit) {
           console.error(`\n[Limit reached: ${limit} documents]\n`);
+          if (sink) await sink.end();
           return;
         }
       }
@@ -178,6 +202,8 @@ async function exportDocs(db: ClassicLevel<string, Doc>, expr: string, fields: s
       console.error(`  [WARN] Expression error on ${key}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+
+  if (sink) await sink.end();
 
   console.error(`\nDone. Scanned ${scanned} documents, exported ${exported}.\n`);
 }
@@ -196,7 +222,7 @@ async function main(): Promise<void> {
   await db.open();
 
   try {
-    await exportDocs(db, parsed.expr, parsed.fields, parsed.limit);
+    await exportDocs(db, parsed.expr, parsed.fields, parsed.limit, parsed.output);
   } finally {
     await db.close();
   }
