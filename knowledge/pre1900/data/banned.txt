@@ -4,179 +4,582 @@
 # Phrases match whole-word, case-insensitive; a short phrase ("world war") also
 # matches longer mentions ("world war ii").
 
-# --- transport / aerospace ---
+#ClimateAction
+```go
+```js
+```py
+```python
+```ruby
+```ts
+1000W of power
+100W of power
+180W of power
+2000W of power
+20th century fox
+21st century
+3D structure
+9/11
+abortion law
+Ada program
 aeroplane
+AI and human
+AI assistant
+AI language model
+AI take over
+AI tool
+AI-based
 aircraft
 airliner
 airplane
 airport
+algorithm in Java
+always-on display
+android phone
+Angular application
+antibiotic
+antimatter
+apartheid
+API request
+app store
+arcade games
+artificial general intelligence
+artificial intelligence
+as an AI
+Assassin's Creed
 astronaut
+atomic bomb
+audio amplifier
+authentication process
 automation
+autonomous vehicles
+bash script
+berlin wall
+big bang
+big data
+big-bang
+binary pulsar
+bioacoustic
+biophysicist
+black hole
+blitzkrieg
+blockchain
+blog
+blog post
+blogger
+bluetooth
+boeing 777
+bubble gum
+bubblegum
+C code
+C function
+C language
+C library
+C program
+C#
+c++
+C++
+cell phone
+cell tower
+cellphone
+cellular connectivity
+chatbot
+chatgpt
+chemotherapy
+chromosome
+cinema
+climate change
+Clojure function
+Clojure program
+code in C
+code in R
+code snippet
+coding algorithm
+cold war
+command-line
+compiler
+computer
+coronavirus
+COVID vaccine
+COVID-19
+CPU
+credit card
+credit-card
+cryptographic method
+CSS
+CSV file
+cyborg
+d-day
+dark energy
+dark matter
+dark nebula
+dark plasma
+data cleaning
+data ownership
+data science
+data scientist
+database
+dataset
+DDR3
+DDR4
+DDR5
+DDR6
+DDR7
+deep learning
+def __init__
+desktop computer
+digital edition
+digital media
+digital music
+digital transformation
+digital watch
+diode
+DNA
+document summarization
+download
+drag queen
+drone
+DVD
+DynamoDB
+e-book
+e-commerce
+e-learning
+e-mail
+ebook
+effective field theory
+electric beard trimmer
+electric toothbrush
+electro-optic
+Elixir function
+Elixir program
+email
+emoji
+empire state building
+EU countries
+European Union
+eurovision
+Excel spreadsheet
+Excel table
+explainable AI
+FAQ page
+fascism
+fascist
+fax
+Federal Reserve
+ferromagnetic material
+ferromagnetism
+fiber-optic
+fibre-optic
+final fantasy X
+first world war
+FizzBuzz
+fortran
+Frenkel defect
+FTP server
+function in C
+function in Go
+function in Java
+function in R
+function in Rust
+gaming
+gaming industry
+gay rights
+gender affirming
+gender conformity
+gender nonconforming
+gene expression
+gene therapy
+general relativity
+genome
+gestapo
+gigabyte
+global variable
+global warming
+Go code
+Go function
+Go program
+godzilla
+Golang function
+Golang microservice
+Golang program
+GPS
+GPT
+GPU
+graphene
+gravitational redshift
+great depression
+Grignard reagent
+hardware
+harry potter
+hashtag
+haskell code
+haskell function
+haskell program
+Hawking radiation
+HDD
+headphone
 helicopter
+herd immunity
+Higgs boson
+Higgs field
+hip hop
+hip-hop
+hiroshima
+hollywood
+holocaust
+hormone
+HTML
+http
+HTTP POST
+Hubble's Law
+hydrogen bomb
+illegal immigration
+import datetime
+import numpy
+import os
+import React
+import sys
+in Python
+infographic
+infotainment
+int main
+internet
+ionic compounds
+iOS application
+iPad
+iPhone
+iron curtain
+iWatch
+java applet
+Java application
+java class
+java code
+java function
+Java language
+Java method
+Java object
+java program
+JavaScript
+jazz
 jet engine
 jet flight
 jetliner
+JPEG
+JPG
+JS snippet
+Julia script
+korean war
+kotlin function
+kotlin program
+language model
+laptop
+Large Hadron Collider
+large language model
+laser
+Lattice QCD
+LCD
+League of Legends
+league of nations
+lepton‑jet
+leptoquark
+lesbian
+lgbt
+lgbtq
+LINQ syntax
+Liquid-crystal display
+low bass
+machine learning
+Major League Baseball
+Maroon 5
+matlab
+matplotlib
 mechanisation
 mechanization
+megabyte
+metal-organic
+metamaterial
+Michelson-Morley experiment
+microchip
+microprocessor
+microservice
+microwave
+minecraft
+mobile phone
+molecule
 moon landing
+motherboard
+motion picture
+movie
+MQTT broker
+MRI
+mRNA
+MySQL
+NAFTA
+natural language generation
+natural language processing
+navigation system
+Navy Seals
+nazi
+nazism
+NBA championship
+neural network
+neurology
+neutrino
+neutron
+Nim program
+NLP algorithm
+Node.js
+nuclear bomb
+nuclear fission
+nuclear fusion
+nuclear reaction
+nuclear reactor
+nuclear weapon
+nuremberg trials
+nylon
+OCaml function
+official website
+omega-3
+online
+open source
+optical fiber
+overfitting
+Pascal function
+Pascal program
+PDF version
+pearl harbor
+penicillin
+perl function
+perl program
+perl script
+photocopier
+PHP
+pink floyd
+pixel
+Planck constant
+plastic-free
+plutonium
+podcast
+Pokémon
+polyester
+polyethylene
+polymer
+polystyrene
+pornographic
+PostgreSQL
+PowerShell
+private String
+program in C++
+program in Javascript
+program in Python
+programming algorithm
+programming language
+proton
+public String
+public void
+Python class
+python code
+Python dictionary
+Python Flask
+python function
+Python language
+Python library
+python program
+python programming
+python script
+Python's built-in
+Pythonic
+pytorch
+quantum
+quantum chromodynamics
+quantum field theory
+quark-gluon plasma
+R code
+radar
+radio broadcast
+reality television
+reality TV
+reboot
+Redis key-value
+RegEx
+regular expression
+Resident Evil
+REST API
+RESTful API
+rna
+rock 'n' roll
+rock and roll
 rocket ship
+RSA encryption
+Ruby code
+Ruby function
+Ruby method
+Ruby program
+Ruby script
+Rust function
+Rust program
+same-sex marriage
 satellite
+satellite-dish
+Scala code
+Scala program
+Schottky defect
+screenplay
+SDK
+search engine
+search-engine
+second world war
+security camera
+selfie
+semiconductor
+sentiment analysis
+server in Java
+shamebloody
+Shell command
+Shell script
+smart phone
+smart watch
+smartphone
+smartwatch
+social media
+software
+solar cell
+sonar
+soviet union
 space race
 space shuttle
 space station
 spacecraft
 spaceflight
 spaceship
-
-# --- electronics / computing / comms ---
-android phone
-app store
-blockchain
-blog
-blogger
-bluetooth
-cell phone
-computer
-computers
-credit card
-credit-card
-desktop computer
-download
-drone
-dvd
-e-mail
-ebook
-email
-emoji
-fax
-fiber-optic
-fibre-optic
-gaming
-hardware
-hashtag
-headphone
-http
-internet
-iphone
-laptop
-laser
-microchip
-microprocessor
-mobile phone
-online
-podcast
-programmer
-radar
-radio broadcast
-reboot
-satellite dish
-selfie
-semiconductor
-smartphone
-smartwatch
-software
-sonar
+special effects
+spectral classification
+spectrometry
+speech recognition
+spin electronics
+spintronics
+SQL
+SSD
+star wars
+stellar classification
 stereo
+strong nuclear
+Super Bowl
+super mario
+superconductivity
+superconductor
+swift app
+swift function
+synthetic tissue
 television
+tensorflow
+terrabyte
+text classification
+the beatles
+the movies
+trans activist
+trans people
 transistor
+tRNA
+trotsky
+try-catch block
+turbocharged
+TV show
+tweet about
+twentieth century
+TypeScript
+UEFA Cup
+UFC champion
+ultra lightweight
+united nations
 upload
+use AI
+using Python
+using Ruby
+ussr
+utilize Python
+vegan
+veganism
+video camera
 video game
 videogame
+vietnam war
+virtual reality
+vitamin
+VR game
+weak nuclear
+web development
 web site
 website
+WebSocket
+went viral
 wi-fi
 wifi
+wikipedia
+Wittig reagent
+world war
+WW1
+WW2
+WW3
+wwi
+wwii
 www
+X-files
+X-men
+X-ray astronomy
+xanthan gum
 
-# --- physics / weapons / energy ---
-antimatter
-atomic bomb
-big bang
-big-bang
-hydrogen bomb
-neutron
-nuclear bomb
-nuclear reactor
-nuclear weapon
-plutonium
-proton
-quantum
-
-# --- biology / medicine / chemistry ---
-antibiotic
-bubble gum
-chemotherapy
-chromosome
-dna
-genome
-nylon
-penicillin
-polyester
-polyethylene
-polystyrene
-rna
-synthetic tissue
-vitamin
-
-# --- 20th-century history / politics ---
-9/11
+# --- people ---
 adolf hitler
 albert einstein
-apartheid
+anne sexton
 benito mussolini
-berlin wall
-blitzkrieg
 bob dylan
-climate change
-cold war
-d-day
+bob marley
+carlos santana
+Cristiano Ronaldo
+Diego Maradona
 donald trump
 einstein
-empire state building
-fascism
-fascist
-first world war
+elvis presley
+ernest hemingway
 franklin roosevelt
+franz kafka
 gandhi
-gestapo
-great depression
-hiroshima
 hitler
-holocaust
-iron curtain
+j. d. salinger
+j. r. r. tolkien
+j.d. salinger
+j.r.r. tolkien
+James Bond
+Joe Biden
 john f. kennedy
 john fitzgerald kennedy
 joseph stalin
-korean war
-league of nations
+Lara Croft
 lenin
+Lionel Messi
+mahatma gandhi
 mao zedong
 marilyn monroe
+Mark Zuckerberg
 martin luther king jr.
+Michael Jordan
+Mike Tyson
+Muhammad Ali
 mussolini
-nazi
-nazism
-nuremberg trials
-pearl harbor
-second world war
-september 11
-soviet
-soviet union
+Nikola Tesla
+Robert Downey Jr.
+Satya Nadella
 stalin
-the beatles
-trotsky
-united nations
-ussr
-vietnam war
+sylvia plath
+taylor swift
+Tony Stark
 vladimir lenin
-world war
-ww1
-ww2
-ww3
-wwi
-wwii
+walt disney
+william faulkner
 
 # --- brands (founded post-1900) ---
+AstraZeneca
 burger king
 facebook
 github
@@ -187,51 +590,9 @@ mcdonalds
 microsoft
 netflix
 nintendo
+openai
+panasonic
+samsung
 tiktok
 twitter
 youtube
-
-# --- culture ---
-20th century fox
-cinema
-elvis presley
-eurovision
-godzilla
-hip hop
-hollywood
-j. r. r. tolkien
-j.r.r. tolkien
-jazz
-motion picture
-movie
-rock 'n' roll
-rock and roll
-super mario
-walt disney
-
-# --- modern AI / chatbot self-references (pervasive in UltraChat answers) ---
-ai language model
-artificial intelligence
-blog post
-chatbot
-chatgpt
-deep learning
-large language model
-machine learning
-neural network
-openai
-reality television
-reality tv
-search engine
-social media
-
-# --- misc ---
-lgbt
-20th century
-gigabyte
-megabyte
-terrabyte
-twentieth century
-vegan
-veganism
-went viral

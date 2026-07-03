@@ -59,9 +59,14 @@ def _build_regex():
     terms = banned - allowed
     if not terms:
         return None
-    # longest first so multi-word phrases win over their substrings
+    # longest first so multi-word phrases win over their substrings.
+    # A trailing (?:'s|es|s)? lets a term match its plural / possessive without
+    # having to list every form: "website" also catches "websites", "nuclear
+    # bomb" catches "nuclear bombs", "google" catches "google's".
     pats = sorted((re.escape(t) for t in terms), key=len, reverse=True)
-    return re.compile(r'\b(' + '|'.join(pats) + r')\b', re.I)
+    # (?<!\w)...(?!\w) instead of \b...\b so terms ending in punctuation match
+    # too: \b needs a word char at the edge, so it never matched "c#" or "c++".
+    return re.compile(r"(?<!\w)(?:" + '|'.join(pats) + r")(?:'s|es|s|ed)?(?!\w)", re.I)
 
 
 def _regex():

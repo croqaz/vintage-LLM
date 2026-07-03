@@ -179,6 +179,10 @@ Both lists live in `data/` and take effect immediately (no rebuild).
   drops the text, so keep it **high-precision** (prefer distinctive words and
   multi-word phrases). A short phrase also matches longer mentions
   (`world war` catches `world war ii`; `nuclear` catches `nuclear reactor`).
+  **Plurals and possessives are matched automatically** — you do NOT need to add
+  them. `website` also catches `websites`; `nuclear bomb` catches `nuclear
+  bombs`; `google` catches `google's`. (Matching is whole-word, so `jet` will
+  not match `jetty`.)
 - **`data/allowed.txt`** — terms here are **never** flagged, even if they appear
   in `banned.txt`. Your escape hatch: if the filter wrongly drops legitimate
   pre-1900 text on some word, add that word here.

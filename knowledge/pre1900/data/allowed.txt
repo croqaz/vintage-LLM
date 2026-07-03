@@ -48,3 +48,9 @@ typewriter
 uranium
 x-ray
 zeppelin
+
+# JSON, ...
+JSON
+YAML
+XML
+Latex

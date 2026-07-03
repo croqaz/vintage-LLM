@@ -15,6 +15,12 @@ POSITIVE = [
     'World War II ended in 1945.',  # term + year
     'As an AI language model, I cannot have opinions.',  # AI boilerplate
     'They posted it on social media and it went viral.',  # banned phrase
+    'checking the official websites of the nuclear bombs',  # PLURALS of multi-word terms
+    'we shared the movies on our blogs',  # plain plurals
+    "google's headquarters had many computers",  # possessive + plural
+    'How can I use C# to calculate the total?',  # term ending in '#'
+    'The program was written in C++ and compiled quickly.',  # term ending in '++'
+    'i prefer c# over c++ for gui work',  # both, lowercase
 ]
 
 # Should NOT be flagged (clean pre-1900-safe text; pre-1900 years are fine)
@@ -25,6 +31,8 @@ NEGATIVE = [
     'He sent a telegraph and boarded the steamship.',  # allowed period tech
     'Pray thee, fetch the horses ere nightfall.',
     'The harvest was poor this year, and the villagers feared winter.',
+    'The jetty by the harbor at dawn.',  # 'jet' must NOT match 'jetty' (suffix guard)
+    'The letter c is the third in the alphabet.',  # bare 'c' must NOT match 'c#'/'c++'
 ]
 
 

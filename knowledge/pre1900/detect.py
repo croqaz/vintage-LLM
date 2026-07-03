@@ -218,6 +218,7 @@ def main():
     ap.add_argument('--filter', action='store_true', help='output only KEPT records as jsonl')
     ap.add_argument('--century', action='store_true', help='annotate kept items with a century guess')
     ap.add_argument('--json', action='store_true', help='force jsonl output')
+    ap.add_argument('--limit', type=int, default=0, help='stop after this many records (0=all)')
     args = ap.parse_args()
 
     s = Scorer(old_prior=args.old_prior, style_weight=args.style_weight, marker_weight=args.marker_weight)
@@ -248,6 +249,8 @@ def main():
         for rec, text in iter_texts(path, args.field):
             total += 1
             kept += emit(f'{path}:{rec}', text)
+            if args.limit > 0 and total >= args.limit:
+                break
     if not args.filter:
         sys.stderr.write(f'\n{kept}/{total} kept (threshold {args.threshold})\n')
 

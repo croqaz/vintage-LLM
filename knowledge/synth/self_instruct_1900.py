@@ -72,14 +72,6 @@ is a hard requirement, always on, enforced as its own gate with two checks:
     for ...", "write a poem in Latin"); and
   * foreign *characters* in the text (accented letters, Cyrillic, Greek, CJK,
     ...) -- any non-ASCII letter is treated as non-English.
-This deliberately also drops accented English loanwords ("cafe"/"naive"); relax
-foreign_script() if that proves too strict.
-
-Layers (A) and (B) are crude and meant to be iterated on -- see the big comment
-on ANACHRONISM_TERMS below for the known false-positive / -negative tradeoffs.
-
-Still a POC: no fine-tuning, and no classification / output-first branching
-(Self-Instruct's other instance path). Each piece is easy to swap out.
 
 Usage
 -----
@@ -100,11 +92,6 @@ Usage
 
 Requires only the Python standard library. For local mode, a running llama-server
 is needed. For OpenRouter mode, an API key and internet access are required.
-
-NOTE for OpenRouter: the /v1/completions endpoint (used for instruction
-brainstorming) may not be available on all models; if the model doesn't support
-it, try a different model. The --top-k parameter is a llama.cpp extension that
-OpenRouter may silently ignore for non-llama backends.
 """
 
 import argparse
@@ -117,7 +104,9 @@ import unicodedata
 import urllib.error
 import urllib.request
 
-from pre1900.banned_terms import find_anachronisms
+sys.path.append(os.path.realpath('../pre1900'))
+
+from banned_terms import find_anachronisms  # NOQA: import from sibling folder
 
 # ---------------------------------------------------------------------------
 # 0. Connection settings
@@ -131,9 +120,73 @@ from pre1900.banned_terms import find_anachronisms
 #                            and judge verdicts).
 # llama.cpp accepts the non-standard "top_k" field on both endpoints, so we can
 # pass SSD-style truncation straight through.
-DEFAULT_BASE_URL = 'http://127.0.0.1:1234'
-OPENROUTER_BASE_URL = 'https://openrouter.ai/api'
-_AUTH_HEADERS = {}  # populated by main() when using OpenRouter
+# Pre-defined providers. Each speaks the OpenAI-compatible API, but they differ
+# in two ways we have to account for:
+#   * base_url   -- where the API lives.
+#   * path_prefix-- the version segment that sits between the base URL and the
+#                   endpoint name. OpenRouter and llama-server use "/v1"
+#                   (".../v1/chat/completions"); Google's OpenAI-compatibility
+#                   shim bakes the version into the base itself
+#                   (".../v1beta/openai/chat/completions"), so its prefix is "".
+#   * api_key_env-- environment variable holding the bearer token (None = local,
+#                   no auth).
+#   * model_env  -- optional env var to fall back to when --model is omitted.
+#   * headers    -- any extra static headers the provider wants.
+#   * supports_top_k -- whether the backend accepts the non-standard `top_k`
+#                   sampling field. llama.cpp accepts it and OpenRouter passes it
+#                   through (or silently ignores it); Google's OpenAI-compatible
+#                   shim is strict and REJECTS unknown fields with HTTP 400, so we
+#                   must omit `top_k` there.
+#   * supports_logprobs -- whether the backend accepts the `logprobs` field used
+#                   for verifier-free answer selection. Google's shim does NOT
+#                   (rejects it with HTTP 400); when False we skip it and the
+#                   logprob score comes back None (--selection logprob then just
+#                   degrades to no scoring).
+# To add another OpenAI-compatible provider, just add an entry here.
+PROVIDERS = {
+    'local': {
+        'base_url': 'http://127.0.0.1:1234',
+        'path_prefix': '/v1',
+        'api_key_env': None,
+        'model_env': None,
+        'headers': {},
+        'supports_top_k': True,
+        'supports_logprobs': True,
+    },
+    'openrouter': {
+        'base_url': 'https://openrouter.ai/api',
+        'path_prefix': '/v1',
+        'api_key_env': 'OPENROUTER_API_KEY',
+        'model_env': 'OPENROUTER_MODEL',
+        'headers': {
+            'HTTP-Referer': 'Self-instruct-1900',
+            'X-Title': 'Self-instruct-1900',
+        },
+        'supports_top_k': True,
+        'supports_logprobs': True,
+    },
+    'google': {
+        'base_url': 'https://generativelanguage.googleapis.com/v1beta/openai',
+        'path_prefix': '',
+        'api_key_env': 'GEMINI_API_KEY',
+        'model_env': 'GOOGLE_MODEL',
+        'headers': {},
+        'supports_top_k': False,
+        'supports_logprobs': False,
+    },
+}
+
+DEFAULT_BASE_URL = PROVIDERS['local']['base_url']
+_AUTH_HEADERS = {}  # populated by main() with the provider's auth + extra headers
+# Version segment between base_url and the endpoint name; set by main() from the
+# chosen provider's 'path_prefix'. Defaults to the llama-server / OpenRouter "/v1".
+_PATH_PREFIX = '/v1'
+# Whether to include the non-standard `top_k` sampling field on requests; set by
+# main() from the provider's 'supports_top_k' (Google rejects it -> False).
+_SUPPORTS_TOP_K = True
+# Whether to request `logprobs` (for verifier-free answer selection); set by
+# main() from the provider's 'supports_logprobs' (Google rejects it -> False).
+_SUPPORTS_LOGPROBS = True
 _DEBUG = False  # set by main() from --debug; when True we dump every request/response
 # Reasoning effort to request on every call, or None to send no `reasoning` field.
 # Set by main() after discover_reasoning_effort() confirms the model supports it.
@@ -148,389 +201,351 @@ _REASONING_EFFORT = None
 #    Keep clean and on-era: they anchor the whole bootstrap distribution.
 # ---------------------------------------------------------------------------
 SEED_INSTRUCTIONS = [
-    # =====================================================================
-    # ADDED SEEDS for the under-represented categories surfaced by the
-    # coverage report (themes under ~1.5% of the corpus by primary label).
-    # These are ACTIVE (uncommented) so generation is steered toward filling
-    # the gaps; forms are deliberately varied (explain / describe / advise /
-    # compose / calculate / converse). The commented library below is left
-    # untouched.
-    # =====================================================================
-    # --- Biblical prophecy & symbolism ---
-    'Explain what the seven seals in the Book of Revelation are commonly held to signify.',
-    'Describe the prophecy of Daniel concerning the four great kingdoms.',
-    'Discuss what is meant by the Number of the Beast and how interpreters have read it.',
-    'Explain the symbolism of the four horsemen of the Apocalypse.',
-    'What is meant by the Second Coming, and on what scriptures is the belief founded?',
-    'What prayer can I teach my child to say before bedtime, to help him feel comforted?',
-    # --- Familiar things & curiosities ---
-    'Explain why a kettle sings just before the water comes to the boil.',
-    'Did you ever wonder why the sky is blue by day and red at sunset? Explain the reason.',
-    'Describe how an ordinary lead pencil is made and why it leaves a mark.',
-    'Explain why a looking-glass reverses left and right but not up and down.',
-    'Tell me the curious reason why a cat is able to see in near darkness.',
-    # --- Mythology & legend ---
-    'Recount the labours of Hercules and what each was meant to teach.',
-    'Describe the gods of Mount Olympus and the dominion of each.',
-    'Tell the story of how Prometheus brought fire to mankind.',
-    'Explain who the Muses were and over which arts they presided.',
-    'Recount the legend of the Trojan Horse and the fall of Troy.',
-    # --- American history ---
-    'Describe the chief causes that led the thirteen colonies to declare independence.',
-    'Give a brief account of the Boston Tea Party and its consequences.',
-    'Explain the part George Washington played in the founding of the United States.',
-    'Describe the principal events of the American Civil War.',
-    'Explain what the Declaration of Independence proclaimed and who drafted it.',
-    # --- Labour, wages & workers' rights ---
-    'Discuss whether workmen are right to form trade unions for their protection.',
-    'Explain the purpose of a Factory Act in limiting the hours of labour.',
+    'A clock strikes only the hours; how many times does it strike in a full day?',
+    'Account for the popularity of baseball among boys.',
+    'Advise a beginner on the materials needed to take up sketching from nature.',
+    'Advise a boy who wishes to better himself but has had little schooling.',
+    'Advise a farmer on the best means of draining a field of wet land.',
+    'Advise a farmer on the best means of draining wet land.',
+    'Advise a lady on how to keep herself safe while travelling alone by rail.',
+    'Advise a man uncertain whether to declare his affection to a woman of higher station.',
+    'Advise a schoolmaster on how he may keep order among unruly pupils.',
+    'Advise a young lady on the best daily habits for maintaining health.',
+    'Advise a young lady on the virtues she should cultivate before marriage.',
+    'Advise a young man leaving home for the first time on the company he should keep.',
+    'Advise a young man on choosing a profession suited to his talents.',
+    'Advise a young man on the best means of improving his handwriting for business purposes.',
+    'Advise a young man setting out in business on the habits he ought to cultivate.',
+    'Advise a young man uncertain whether to declare his affection to a lady.',
+    'Advise a young man who has saved a little money on how he might invest it wisely.',
     'Advise a young workman on what he should do if his wages are unjustly withheld.',
-    'Discuss the evils of employing young children in mills and factories.',
-    "Explain what is meant by a fair day's wage for a fair day's work.",
-    # --- Folklore, superstition & the supernatural ---
+    'Advise on the proper way to address a letter to a person of high rank.',
     'Are angels real?...',
+    'Complete a sentence about a horse: "I was a broken-hearted rider..."',
+    'Complete the lyrics: "There\'s a place in my heart..."',
+    'Compose a poem about the seasons and their changes.',
+    'Compose a short poem about the changing of the autumn leaves.',
+    'Defend the advantages of living in a small village.',
+    'Describe a few methods of preserving foodstuffs for winter.',
+    'Describe a journey across London by omnibus and hansom cab.',
+    'Describe how a fire may be kept from spreading through a row of houses.',
+    'Describe how a householder may guard his dwelling against burglars at night.',
+    'Describe how a householder may guard his home against burglars in the night.',
+    'Describe how a piano makes its sound.',
+    'Describe how a portrait is made to resemble the person who sits for it.',
+    'Describe how a portrait painter captures the likeness of his sitter.',
+    'Describe how a schoolmaster keeps order among his pupils.',
+    'Describe how a song is set to music for singing.',
+    'Describe how a young child should be taught to read.',
+    'Describe how a young child should first be taught to read.',
+    'Describe how an ordinary lead pencil is made and why it leaves a mark.',
+    'Describe how cocoa is prepared as a drink.',
+    'Describe how cocoa is prepared as a drink.',
+    'Describe how men measured the passing of time before clocks were made.',
+    'Describe how tea is carried from China and India to England.',
+    'Describe how tea is carried from China to England.',
+    'Describe how to calculate the volume of a cylinder.',
+    'Describe how to take a grease stain out of a woollen coat.',
+    'Describe how wine is kept and left to age in a cellar.',
+    'Describe how you would deal with a fire in the countryside if one breaks out.',
     'Describe some country charms believed to ward off the evil eye.',
-    "Describe the old tales of will-o'-the-wisps seen flickering over the marshes at night.",
+    'Describe the animals kept upon an English farm and the use of each.',
+    'Describe the animals kept upon an English farm and the use of each.',
+    'Describe the care a horse needs after a long journey on the road.',
+    'Describe the chief battles of the Wars of the Roses.',
+    'Describe the chief causes that led the thirteen colonies to declare independence.',
+    'Describe the chief events in the reign of Queen Elizabeth.',
+    'Describe the chief events in the reign of Queen Victoria.',
+    'Describe the chief properties of oxygen and how it may be prepared.',
+    'Describe the conduct expected of an apprentice toward his master.',
+    'Describe the creatures one may find in a tidal rock-pool by the sea.',
+    'Describe the difference between black tea and green tea.',
+    'Describe the difference between harmony and melody.',
+    'Describe the difference between painting in oils and in watercolours.',
+    'Describe the difference between painting in oils and in watercolours.',
+    'Describe the difference between the Whig and Tory political philosophies.',
+    'Describe the different types of fabric and their uses.',
+    'Describe the duties of a governess in a private household.',
+    'Describe the duties of a justice of the peace in a country town.',
+    'Describe the duties of a librarian at a public library.',
+    'Describe the duties of a magistrate in a country town.',
+    'Describe the duties of a night watchman in guarding a row of shops.',
+    'Describe the duties that attend the holding of a peerage.',
+    'Describe the gods of Mount Olympus and the dominion of each.',
+    'Describe the habits of the industrious ant.',
+    'Describe the making of cider from apples in the autumn.',
+    'Describe the making of cider from apples in the autumn.',
+    'Describe the manner of the crowning of a sovereign.',
+    'Describe the manner of the crowning of a sovereign.',
     'Describe the omens and signs by which country folk foretell coming changes in the weather.',
+    'Describe the planets of the solar system in their order from the sun.',
+    'Describe the principal causes of the American Civil War.',
+    'Describe the principal events of the American Civil War.',
+    'Describe the process of drying apples on strings.',
+    'Describe the process of making a traditional English breakfast.',
+    'Describe the proper manner in which a gentleman may court a young woman.',
+    'Describe the proper manner in which a young man may court a young woman.',
+    'Describe the proper method of keeping accounts in a household ledger.',
+    'Describe the proper way to wash and dry household linen.',
+    'Describe the prophecy of Daniel concerning the four great kingdoms.',
+    'Describe the sights and bustle of a morning in the streets of the metropolis.',
+    'Describe the steps a blacksmith takes to forge a horseshoe.',
+    'Describe the structure of a heroic couplet in English verse.',
     'Describe the superstitions surrounding the number thirteen at a dinner table.',
+    'Describe the usefulness of the common honeybee.',
+    'Describe the usefulness of the common honeybee.',
+    'Describe the work of the harvest, from the cutting to the threshing of the corn.',
+    'Describe the working of the underground railway beneath the city.',
+    'Describe what a promissory note is and how it binds the parties to it.',
+    'Describe what causes an eclipse of the sun.',
+    'Describe what takes place when iron is left to rust in damp air.',
+    'Did you ever wonder why the sky is blue by day and red at sunset? Explain the reason.',
+    'Discuss the condition of the poor in the crowded slums of the great city.',
+    'Discuss the difference between true courage and mere recklessness.',
+    'Discuss the duties of an ambassador at a foreign court.',
+    'Discuss the evils of employing young children in mills and factories.',
+    'Discuss the importance of the printing press in the spread of knowledge.',
+    'Discuss the qualities a young lady should seek in a husband.',
     'Discuss the superstitions that gather about the crowing of a cock and the hooting of an owl.',
-    "Discuss whether a black cat crossing one's path is truly an omen of ill luck.",
+    'Discuss the use of the telegraph in commerce.',
+    'Discuss the value of thrift and industry in early life.',
+    'Discuss what is meant by the Number of the Beast and how interpreters have read it.',
+    'Discuss whether a good end can ever justify a wrong means.',
+    'Discuss whether corporal punishment has any place in the schoolroom.',
     'Discuss whether there is any truth in the belief in haunted houses.',
+    'Discuss whether workmen are right to form trade unions for their protection.',
+    'Do you have a sweet tooth? What is your favourite dessert?',
+    'Do you know any notable inventions in chemistry?',
+    'Do you think people are basically good or bad?',
+    'Does anyone care about honour in this day and age?',
+    'Draft a short advertisement for a local shopkeeper offering repairs for pocket watches and other trinkets.',
+    'Elaborate on the astronomical findings of Sir Isaac Newton.',
+    'Explain how a barometer measures pressure and what it indicates.',
+    'Explain how a bill becomes a law in Parliament.',
+    'Explain how a father ought to judge a suitor who asks for his daughter.',
+    'Explain how a lady should receive callers in the afternoon.',
+    'Explain how a man may make a will so that it holds good in law.',
+    'Explain how a man may make a will so that it holds good in law.',
+    'Explain how a painter prepares his canvas before he begins to work.',
+    'Explain how a painter uses perspective to give depth to a flat canvas.',
+    'Explain how a sailing ship is able to travel against the wind.',
+    'Explain how a song is set to music for singing.',
+    'Explain how a spider spins and uses its web.',
+    'Explain how a sundial tells the hour by the shadow it casts.',
+    'Explain how a torn garment may be mended so that the seam holds.',
+    'Explain how a watchman keeps order in a town through the night.',
+    'Explain how ale is brewed from barley and hops.',
+    'Explain how an engraving is produced upon a copper plate.',
+    'Explain how birds are able to fly.',
+    'Explain how birds are able to fly.',
+    'Explain how coffee is roasted and ground for the breakfast table.',
+    'Explain how iron is smelted from ore in a blast furnace.',
+    'Explain how manure improves the fertility of the soil.',
+    'Explain how perspective gives the look of depth to a flat drawing.',
+    'Explain how sailors are able to steer by the stars at night.',
+    'Explain how sailors steer by the stars at night.',
+    'Explain how the streets of London were lit before gas and electricity.',
+    'Explain how to care for delicate fabrics.',
+    'Explain how to construct a simple voltaic pile.',
+    'Explain how to judge the age of a horse by its teeth.',
+    'Explain how to sew a button onto a shirt.',
+    'Explain how two strangers ought to be introduced at a gathering.',
+    'Explain how wool is spun into thread and woven into cloth.',
+    'Explain in plain terms the difference between common law and statute law.',
+    'Explain in plain terms what happens when a firm is declared bankrupt.',
+    'Explain the basics of the common law and how it differs from civil law.',
     'Explain the belief that spilling salt brings misfortune and how it may be averted.',
     'Explain the belief that the dead may return as ghosts and why some folk dread the churchyard.',
-    'Explain the common superstition that it is unlucky to walk under a ladder.',
-    'Explain the country custom of touching wood to prevent a boast from tempting fate.',
-    'Explain why a horseshoe is hung above the door for good fortune.',
-    'Recount the folk belief that breaking a looking-glass brings seven years of sorrow.',
-    'Recount the folklore of fairies and the little people said to dwell in hill and hollow.',
-    "Recount an old wives' tale told to children about the harvest moon.",
-    # --- Crime, safety & security ---
-    'Describe how a householder may guard his dwelling against burglars at night.',
-    'Explain what measures should be taken to keep a fire from spreading through a house.',
-    'Advise a lady on how to keep herself safe while travelling alone by rail.',
-    'Explain what a man ought to do upon discovering a thief within his home.',
-    'Describe the duties of a night watchman in guarding a row of shops.',
-    'What steps can I take if my dog attacks me?',
-    # --- Art, painting & drawing ---
-    'Explain how a painter uses perspective to give depth to a flat canvas.',
-    'Describe the difference between painting in oils and in watercolours.',
-    'Advise a beginner on the materials needed to take up sketching from nature.',
-    'Explain how an engraving is produced upon a copper plate.',
-    'Describe how a portrait painter captures the likeness of his sitter.',
-    # --- Investment & business law ---
-    'Advise a young man who has saved a little money on how he might invest it wisely.',
-    'Explain the difference between a share and a debenture in a joint-stock company.',
-    'Explain what is meant by limited liability and why it encourages investment.',
-    'Describe what a promissory note is and how it binds the parties to it.',
-    'Explain in plain terms what happens when a firm is declared bankrupt.',
-    # --- Conduct of life & advice to youth ---
-    'Advise a young man setting out in business on the habits he ought to cultivate.',
-    'Give counsel to a youth on how he may become a good public speaker.',
-    'Discuss the value of thrift and industry in early life.',
-    'Advise a young man on choosing a profession suited to his talents.',
-    'Explain why punctuality is a virtue that serves a man all his life.',
-    # --- Logic & reasoning ---
-    'Explain what a syllogism is and give a simple example of one.',
-    'Explain the difference between deductive and inductive reasoning.',
-    'Point out the fallacy in the argument: "All that glitters is gold; this ring glitters; therefore it is gold."',
-    'Explain what is meant by a valid argument as distinct from a true conclusion.',
-    "Describe how one may detect a contradiction in a person's reasoning.",
-    # --- Marriage, love & courtship ---
-    'Advise a young man uncertain whether to declare his affection to a lady.',
-    'Describe the proper manner in which a gentleman may court a young woman.',
-    'Explain what a betrothal binds a couple to, and on what grounds it may be broken.',
-    'Discuss the qualities a young lady should seek in a husband.',
-    "Explain how a father ought to judge a suitor who asks for his daughter's hand.",
-    # --- Brewing & alcohol ---
-    'Describe how wine is kept and left to age in a cellar.',
-    'Describe the making of cider from apples in the autumn.',
-    'Explain the difference between a wine and a spirit.',
-    'Explain the part that yeast plays in fermentation.',
-    'Explain, step by step, how ale is brewed from barley and hops.',
-    'What is a stout beer and how is it made?',
-    'What is the difference between beer and ale?',
-    "I'm afraid I don't know the differences between a vodka and whisky. Would you explain it to me?",
-    # --- Geometry, algebra & higher maths ---
-    "Explain Pythagoras's theorem and how it gives the third side of a right-angled triangle.",
-    'Find the area of a circle whose diameter is fourteen inches.',
-    'Solve for x in the equation 3x + 7 = 22.',
-    'Explain what is meant by the ratio of two quantities, with an example.',
-    'Describe how to calculate the volume of a cylinder.',
-    # --- Chemistry ---
-    'Explain what happens, chemically, when a candle burns.',
-    'Describe the chief properties of oxygen and how it may be prepared.',
-    'Explain the difference between an acid and an alkali, and how each may be tested.',
-    'Describe what takes place when iron is left to rust in damp air.',
-    'Explain why common salt dissolves in water.',
-    'Explain how to construct a simple voltaic pile.',
-    # --- Tea & hot beverages ---
-    'Explain, step by step, how to brew a proper pot of tea.',
-    'Describe the difference between black tea and green tea.',
-    'Describe how cocoa is prepared as a drink.',
-    'Explain how coffee is roasted and ground for the breakfast table.',
-    'Describe how tea is carried from China and India to England.',
-    # --- Law, rank & titles ---
-    'Explain the difference between a baronet and a knight, and how each is addressed.',
-    'Explain how a man may make a will so that it holds good in law.',
-    'Describe the duties of a justice of the peace in a country town.',
-    'Explain in plain terms the difference between common law and statute law.',
-    'Explain what is meant by trial by jury and why it is valued.',
-    # --- Education, schooling & children ---
-    'Describe how a young child should first be taught to read.',
-    'Discuss whether corporal punishment has any place in the schoolroom.',
-    'Describe the duties of a governess in a private household.',
-    'Advise a schoolmaster on how he may keep order among unruly pupils.',
     'Explain the benefits of teaching children to commit good verse to memory.',
-    # --- Agriculture, farming & rural science ---
-    'Advise a farmer on the best means of draining a field of wet land.',
-    'Explain why farmers practise the rotation of crops from year to year.',
-    'Describe the animals kept upon an English farm and the use of each.',
-    'Explain how manure improves the fertility of the soil.',
-    'Describe the work of the harvest, from the cutting to the threshing of the corn.',
-    # --- Ethics & moral philosophy ---
-    'Explain why it is wrong to tell a lie, even a small one.',
-    'Discuss whether a good end can ever justify a wrong means.',
-    'Explain what is meant by conscience and how a man ought to heed it.',
-    'Discuss the difference between true courage and mere recklessness.',
-    'Explain why honesty is said to be the best policy.',
-    # --- Music, song & theory ---
-    'Explain what is meant by the major and minor scales in music.',
+    'Explain the causes of the tides in the ocean.',
+    'Explain the common superstition that it is unlucky to walk under a ladder.',
     'Explain the correct method for tuning a violin, and how often it should be done.',
-    'Describe how a song is set to music for singing.',
-    'Explain what the time signature at the head of a piece of music tells the player.',
-    'Describe the difference between harmony and melody.',
-    # --- Astronomy & the heavens ---
-    'Explain what causes an eclipse of the sun.',
-    'Explain why the moon shows a different shape from night to night.',
-    'Describe the planets of the solar system in their order from the sun.',
-    'Explain how sailors are able to steer by the stars at night.',
-    'Explain what comets are and why they were once thought to be omens.',
-    # --- Royalty & nobility ---
-    'Describe the manner of the crowning of a sovereign.',
+    'Explain the correct method for tuning a violin, and how often it should be done.',
+    'Explain the country custom of touching wood to prevent a boast from tempting fate.',
+    'Explain the difference between a barometer and a thermometer.',
+    'Explain the difference between a baronet and a knight, and how each is addressed.',
+    'Explain the difference between a baronet and a knight, and how each is addressed.',
+    'Explain the difference between a share and a debenture in a joint-stock company.',
+    'Explain the difference between a wine and a spirit.',
+    'Explain the difference between a wine and a spirit.',
+    'Explain the difference between an acid and an alkali, and how each may be tested.',
+    'Explain the difference between black tea and green tea.',
+    'Explain the difference between deductive and inductive reasoning.',
+    'Explain the duties of a governess in a private household.',
     'Explain the order of succession to the throne.',
-    'Describe the chief events in the reign of Queen Victoria.',
-    'Explain the several ranks of the nobility, from duke down to baron.',
-    'Describe the duties that attend the holding of a peerage.',
-    # --- Politics, constitution & government ---
-    'Explain how a bill becomes a law in Parliament.',
-    'Describe the difference between the Whig and Tory political philosophies.',
-    'Explain what is meant by the extension of the franchise to working men.',
-    'Discuss the duties of an ambassador at a foreign court.',
-    'Explain what is meant by the balance of power among the nations of Europe.',
-    # --- Natural history & animals ---
-    'Describe the usefulness of the common honeybee.',
-    'Explain how birds are able to fly.',
-    'Describe the habits of the industrious ant.',
-    'Explain how a spider spins and uses its web.',
-    'Describe the creatures one may find in a tidal rock-pool by the sea.',
-    # --- London & city life ---
-    'Describe a journey across London by omnibus and hansom cab.',
-    'Discuss the condition of the poor in the crowded slums of the great city.',
-    'Describe the sights and bustle of a morning in the streets of the metropolis.',
-    'Explain how the streets of London were lit before gas and electricity.',
-    'Describe the working of the underground railway beneath the city.',
-    # --- Time & timekeeping ---
-    'Explain how a sundial tells the hour by the shadow it casts.',
-    'A clock strikes only the hours; how many times does it strike in a full day?',
+    'Explain the order of succession to the throne.',
+    'Explain the part George Washington played in the founding of the United States.',
+    'Explain the part that yeast plays in fermentation.',
+    'Explain the process of creating a kite by hand.',
+    'Explain the purpose of a Factory Act in limiting the hours of labour.',
     'Explain the rule for finding the number of days in any given month.',
-    'Describe how men measured the passing of time before clocks were made.',
-    'Explain why a day is added to the calendar in a leap year.',
-    # =====================================================================
-    # Original seed library below -- left commented, as-is.
-    # =====================================================================
-    'Advise a young lady on the best daily habits for maintaining health.',
-    'Advise a young man leaving home for the first time on the company he should keep.',
+    'Explain the rules for the correct use of the semicolon in writing.',
+    'Explain the rules of etiquette for a formal dinner.',
+    'Explain the several ranks of the nobility, from duke down to baron.',
+    'Explain the symbolism of the four horsemen of the Apocalypse.',
     'Explain the utility of sulfuric acid in modern industry.',
+    'Explain to me, why does the thunder follow lightning?',
+    'Explain what a betrothal binds a couple to, and on what grounds it may be broken.',
+    'Explain what a betrothal binds a couple to, and on what grounds it may be broken.',
+    'Explain what a justice of the peace may and may not do.',
+    'Explain what a man ought to do on finding a thief within his dwelling.',
+    'Explain what a man ought to do upon discovering a thief within his home.',
+    'Explain what a syllogism is and give a simple example of one.',
+    'Explain what causes an eclipse of the sun.',
+    'Explain what comets are and why they were once thought to be omens.',
+    'Explain what happens, chemically, when a candle burns.',
+    'Explain what is meant by a valid argument as distinct from a true conclusion.',
+    'Explain what is meant by conscience and how a man ought to heed it.',
+    'Explain what is meant by limited liability and why it encourages investment.',
+    'Explain what is meant by the balance of power among the nations of Europe.',
+    'Explain what is meant by the extension of the franchise to working men.',
+    'Explain what is meant by the major and minor scales in music.',
+    'Explain what is meant by the ratio of two quantities, with an example.',
+    'Explain what is meant by trial by jury and why it is valued.',
+    'Explain what measures should be taken to keep a fire from spreading through a house.',
+    'Explain what the Declaration of Independence proclaimed and who drafted it.',
+    'Explain what the seven seals in the Book of Revelation are commonly held to signify.',
+    'Explain what the time signature at the head of a piece of music tells the player.',
+    'Explain who the Muses were and over which arts they presided.',
+    'Explain why a day is added to the calendar in a leap year.',
+    'Explain why a horseshoe is hung above the door for good fortune.',
+    'Explain why a kettle sings just before the water comes to the boil.',
+    'Explain why a looking-glass reverses left and right but not up and down.',
+    'Explain why common salt dissolves in water.',
+    'Explain why farmers practise the rotation of crops from year to year.',
+    'Explain why honesty is said to be the best policy.',
+    'Why it is wrong to steal?',
+    'Explain why it is wrong to tell a lie, even a small one.',
+    'Explain why punctuality is a virtue that serves a man all his life.',
+    'Explain why the moon shows a different shape from night to night.',
+    'Explain why the moon shows a different shape from night to night.',
+    'Explain why the stars are not seen by day.',
+    'Explain why thrift in small matters secures a man his later years.',
+    'Explain, step by step, how ale is brewed from barley and hops.',
+    'Explain, step by step, how to brew a proper pot of tea.',
+    'Explain, step by step, how to brew a proper pot of tea.',
+    'Find the area of a circle whose diameter is fourteen inches.',
+    'Give a brief account of the Boston Tea Party and its consequences.',
+    'Give advice on how a young man ought to conduct himself in polite society.',
+    'Give an example of how you would write a letter of introduction.',
+    'Give counsel to a youth on how he may become a good public speaker.',
+    'Give details on preparing a meal for a few guests overnight.',
+    'Give me a one-sentence description for each of the following people: William Shakespeare, John Milton, John Bunyan.',
+    'Give practical advice on how to care for a horse during the winter months.',
+    'Given a description of the symptom, identify the possible disease and suggest some medicine: I have a fever and I am coughing.',
+    'How can a lady protect herself from being robbed while walking alone at night?',
+    'How can I take care of a family of kittens?',
+    'How do bees make honey?',
     'How do I know if a lady is interested in me?',
+    'How do I start a conversation with a stranger at a social gathering?',
+    'How do tarot cards and readings work?',
+    'How do you ensure your garden is properly weeded and watered when you are away from home?',
     'How do you pass time when travelling by rail?',
+    'How does a pharmacist prepare a tincture of laudanum?',
     'How is an artificial leg made?',
+    'How was it customary to light the streets before gas and electricity?',
+    'How would someone arrange a private library catalogue, if his collection contains 500 volumes?',
     'I am incredibly bored... What can I do to entertain myself?',
+    'I feel depressed and lonely today. What can I do to cheer myself up?',
+    'I have a lot of wild grapes in my backyard. How can I make them into wine?',
+    'I heard someone bad-mouthing a friend of mine. How should I respond?',
+    'I saw this blue butterfly in my garden. Can you tell me what species it is?',
+    'I would like to start painting with watercolors. What do I need to get started?',
+    'In your opinion, what are the qualities of an effective sports coach?',
     'Is it ever okay to break a promise?',
     'Is this Coca-Cola a drink, or a medicine?',
+    'List a few ways to make a small room feel more spacious.',
+    'List five great rivers of Europe and name a city that each one passes through.',
+    'List the qualities a young lady ought to cultivate for pleasant conversation at a party.',
+    'Plan a late evening walk and discuss what is worth while seeing.',
+    'Plan a lunch menu for a family picnic in the countryside.',
+    'Point out the fallacy in the argument: "All that glitters is gold; this ring glitters; therefore it is gold."',
+    'Provide a recipe for a simple loaf of bread that can be baked at home.',
+    'Provide examples of how to use quotation marks in letter writing.',
+    'Recount the folk belief that breaking a looking-glass brings seven years of sorrow.',
+    'Recount the folklore of fairies and the little people said to dwell in hill and hollow.',
+    'Recount the labours of Hercules and what each was meant to teach.',
+    'Recount the legend of the Trojan Horse and the fall of Troy.',
+    'Remind me the appearance of a gentleman in full dress.',
+    'Remind me the role of "Penny Dreadfuls" in shaping the reading habits of youth.',
+    'Set down the customs observed at a country wedding.',
+    'Set down the duties a queen owes to her people.',
+    'Set down the first lessons a child should learn in drawing from nature.',
+    'Set down the habits a youth must form if he would rise in his trade.',
+    'Set down the harm that strong drink does to a working man and his family.',
     'Set down the lessons a boy ought to master before the age of twelve.',
+    'Set down the manner in which a gentleman should decline an invitation.',
+    'Set down the order of precedence among the ranks of the nobility.',
+    'Set down the precautions a traveller should take against highwaymen on the road.',
+    'Set down the use of a hymn sung in church.',
+    'Set down what a gentleman should wear for a formal evening.',
+    'Set down what is known of the planets that circle the sun.',
+    'Should I buy a bicycle or a horse for my daily commute?...',
+    'Should I get myself a dog or a cat as a pet?',
+    'Solve for x in the equation 3x + 7 = 22.',
+    'Suppose you find a lost wallet full of money. What do you do?',
+    'Tell me a few examples of how knowledge may be used to improve health.',
+    'Tell me a few games that can be played by a group of people.',
+    'Tell me a new invention or scientific discovery.',
+    'Tell me a recipe for making a savoury apple dumpling.',
+    'Tell me the curious reason why a cat is able to see in near darkness.',
+    'Tell the story of how Prometheus brought fire to mankind.',
+    'What are the common faults in table manners?',
+    'What are the common remedies for toothache these days?',
+    'What are the duties of a gatekeeper at a railway crossing?',
+    'What are the main lessons to learn from the Bible?',
+    'What are the most important lessons to learn from the history of the Turkish Empire?',
+    'What do really rich people do with their money?',
+    'What does the story of David and Goliath from the Bible teach us?',
     'What happens if someone eats monkshood?',
+    'What happens to a horse when it is shod with iron shoes?',
+    'What is a clockwork automaton and how does it work?',
+    'What is a memento? What does it mean?',
+    'What is a stout beer and how is it made?',
     'What is belladonna, also called nightshade?',
+    'What is life like in the English countryside?',
+    'What is meant by the Second Coming, and on what scriptures is the belief founded?',
+    'What is the difference between beer and ale?',
+    'What is the law of action and reaction?',
+    'What is the most remarkable incident in your own life?',
+    'What is the point of arts?',
+    'What objects can you find in a typical Victorian parlor?',
+    'What prayer can I teach my child to say before bedtime, to help him feel comforted?',
+    'What steps can I take if my dog attacks me?',
+    'Where did you travel this year?',
+    'Where does the oil lamp come from, how is it made?',
+    'Why do people write poetry?',
+    'Write a brief dialogue between a blacksmith and a customer about pricing a new horseshoe.',
+    'Write a list of things that could be brought to a child on his birthday.',
+    'Write a short letter from a gentleman in London inviting a friend to a dinner party.',
+    'Write a story that contains the given words in 3 sentences: cat, moon, and river.',
+    'Write me a short poem on springtime.',
+    "Describe a scene from Mr. Dickens's novel 'David Copperfield'.",
+    "Describe how one may detect a contradiction in a person's reasoning.",
+    "Describe the conduct expected of a guest staying in another man's house.",
+    "Describe the old tales of will-o'-the-wisps seen flickering over the marshes at night.",
+    "Discuss whether a black cat crossing one's path is truly an omen of ill luck.",
+    "Explain how a father ought to judge a suitor who asks for his daughter's hand.",
+    "Explain Pythagoras's theorem and how it gives the third side of a right-angled triangle.",
+    "Explain the meaning of the proverb 'a stitch in time saves nine'.",
+    "Explain what is meant by a fair day's wage for a fair day's work.",
+    "Find a synonym for the word 'happy' and use it in a sentence.",
+    "Help me, how do I dress for an art exhibition opening? I'm not sure what's appropriate!",
+    "How can one improve one's memory for names and faces?",
+    "I'm afraid I don't know the differences between a vodka and whisky. Would you explain it to me?",
+    "Make a list of three or four famous persons who are mentioned in Shakespeare's plays.",
+    "Plan a day's excursion to Windsor Castle and discuss the sights to be seen there.",
+    "Prepare a list of the guests and their duties for the evening's entertainment.",
+    "Recount an old wives' tale told to children about the harvest moon.",
     "Someone I trusted let a secret of mine slip. I'm furious!",
+    "Summarise the plot of Charles Dickens's novel 'A Tale of Two Cities'.",
+    "Tell me, is there anything science can't explain?",
+    "What's the best way to travel the Continent, by railway or steamship, or?",
+    "What's the difference between a comet and a meteor?",
+    "What's the difference between a steam engine and a water wheel?",
+    "What's with this zeppelin device I keep hearing about? What is it used for?",
     "Where's the line between being frugal and being stingy?",
-    # 'Account for the popularity of baseball among boys.',
-    # 'Advise a boy who wishes to better himself but has had little schooling.',
-    # 'Advise a farmer on the best means of draining wet land.',
-    # 'Advise a man uncertain whether to declare his affection to a woman of higher station.',
-    # 'Advise a young lady on the virtues she should cultivate before marriage.',
-    # 'Advise a young man on the best means of improving his handwriting for business purposes.',
-    # 'Advise on the proper way to address a letter to a person of high rank.',
-    # 'Complete a sentence about a horse: "I was a broken-hearted rider..."',
-    # 'Complete the lyrics: "There\'s a place in my heart..."',
-    # 'Compose a poem about the seasons and their changes.',
-    # 'Compose a short poem about the changing of the autumn leaves.',
-    # 'Defend the advantages of living in a small village.',
-    # 'Describe a few methods of preserving foodstuffs for winter.',
-    # 'Describe how a fire may be kept from spreading through a row of houses.',
-    # 'Describe how a householder may guard his home against burglars in the night.',
-    # 'Describe how a piano makes its sound.',
-    # 'Describe how a portrait is made to resemble the person who sits for it.',
-    # 'Describe how a schoolmaster keeps order among his pupils.',
-    # 'Describe how a young child should be taught to read.',
-    # 'Describe how cocoa is prepared as a drink.',
-    # 'Describe how tea is carried from China to England.',
-    # 'Describe how to take a grease stain out of a woollen coat.',
-    # 'Describe how you would deal with a fire in the countryside if one breaks out.',
-    # 'Describe the animals kept upon an English farm and the use of each.',
-    # 'Describe the care a horse needs after a long journey on the road.',
-    # 'Describe the chief battles of the Wars of the Roses.',
-    # 'Describe the chief events in the reign of Queen Elizabeth.',
-    # 'Describe the conduct expected of an apprentice toward his master.',
-    # 'Describe the difference between painting in oils and in watercolours.',
-    # 'Describe the different types of fabric and their uses.',
-    # 'Describe the duties of a librarian at a public library.',
-    # 'Describe the duties of a magistrate in a country town.',
-    # 'Describe the making of cider from apples in the autumn.',
-    # 'Describe the manner of the crowning of a sovereign.',
-    # 'Describe the principal causes of the American Civil War.',
-    # 'Describe the process of drying apples on strings.',
-    # 'Describe the process of making a traditional English breakfast.',
-    # 'Describe the proper manner in which a young man may court a young woman.',
-    # 'Describe the proper method of keeping accounts in a household ledger.',
-    # 'Describe the proper way to wash and dry household linen.',
-    # 'Describe the steps a blacksmith takes to forge a horseshoe.',
-    # 'Describe the structure of a heroic couplet in English verse.',
-    # 'Describe the usefulness of the common honeybee.',
-    # 'Describe what causes an eclipse of the sun.',
-    # 'Discuss the importance of the printing press in the spread of knowledge.',
-    # 'Discuss the use of the telegraph in commerce.',
-    # 'Do you have a sweet tooth? What is your favourite dessert?',
-    # 'Do you know any notable inventions in chemistry?',
-    # 'Do you think people are basically good or bad?',
-    # 'Does anyone care about honour in this day and age?',
-    # 'Draft a short advertisement for a local shopkeeper offering repairs for pocket watches and other trinkets.',
-    # 'Elaborate on the astronomical findings of Sir Isaac Newton.',
-    # 'Explain how a barometer measures pressure and what it indicates.',
-    # 'Explain how a father ought to judge a suitor who asks for his daughter.',
-    # 'Explain how a lady should receive callers in the afternoon.',
-    # 'Explain how a man may make a will so that it holds good in law.',
-    # 'Explain how a painter prepares his canvas before he begins to work.',
-    # 'Explain how a sailing ship is able to travel against the wind.',
-    # 'Explain how a song is set to music for singing.',
-    # 'Explain how a torn garment may be mended so that the seam holds.',
-    # 'Explain how a watchman keeps order in a town through the night.',
-    # 'Explain how ale is brewed from barley and hops.',
-    # 'Explain how birds are able to fly.',
-    # 'Explain how iron is smelted from ore in a blast furnace.',
-    # 'Explain how perspective gives the look of depth to a flat drawing.',
-    # 'Explain how sailors steer by the stars at night.',
-    # 'Explain how to care for delicate fabrics.',
-    # 'Explain how to judge the age of a horse by its teeth.',
-    # 'Explain how to sew a button onto a shirt.',
-    # 'Explain how two strangers ought to be introduced at a gathering.',
-    # 'Explain how wool is spun into thread and woven into cloth.',
-    # 'Explain the basics of the common law and how it differs from civil law.',
-    # 'Explain the causes of the tides in the ocean.',
-    # 'Explain the correct method for tuning a violin, and how often it should be done.',
-    # 'Explain the difference between a barometer and a thermometer.',
-    # 'Explain the difference between a baronet and a knight, and how each is addressed.',
-    # 'Explain the difference between a wine and a spirit.',
-    # 'Explain the difference between black tea and green tea.',
-    # 'Explain the duties of a governess in a private household.',
-    # 'Explain the order of succession to the throne.',
-    # 'Explain the process of creating a kite by hand.',
-    # 'Explain the rules for the correct use of the semicolon in writing.',
-    # 'Explain the rules of etiquette for a formal dinner.',
-    # 'Explain to me, why does the thunder follow lightning?',
-    # 'Explain what a betrothal binds a couple to, and on what grounds it may be broken.',
-    # 'Explain what a justice of the peace may and may not do.',
-    # 'Explain what a man ought to do on finding a thief within his dwelling.',
-    # 'Explain why it is wrong to steal.',
-    # 'Explain why the moon shows a different shape from night to night.',
-    # 'Explain why the stars are not seen by day.',
-    # 'Explain why thrift in small matters secures a man his later years.',
-    # 'Explain, step by step, how to brew a proper pot of tea.',
-    # 'Give advice on how a young man ought to conduct himself in polite society.',
-    # 'Give an example of how you would write a letter of introduction.',
-    # 'Give details on preparing a meal for a few guests overnight.',
-    # 'Give me a one-sentence description for each of the following people: William Shakespeare, John Milton, John Bunyan.',
-    # 'Give practical advice on how to care for a horse during the winter months.',
-    # 'Given a description of the symptom, identify the possible disease and suggest some medicine: I have a fever and I am coughing.',
-    # 'How can a lady protect herself from being robbed while walking alone at night?',
-    # 'How can I take care of a family of kittens?',
-    # 'How do bees make honey?',
-    # 'How do I start a conversation with a stranger at a social gathering?',
-    # 'How do tarot cards and readings work?',
-    # 'How do you ensure your garden is properly weeded and watered when you are away from home?',
-    # 'How does a pharmacist prepare a tincture of laudanum?',
-    # 'How was it customary to light the streets before gas and electricity?',
-    # 'How would someone arrange a private library catalogue, if his collection contains 500 volumes?',
-    # 'I feel depressed and lonely today. What can I do to cheer myself up?',
-    # 'I have a lot of wild grapes in my backyard. How can I make them into wine?',
-    # 'I heard someone bad-mouthing a friend of mine. How should I respond?',
-    # 'I saw this blue butterfly in my garden. Can you tell me what species it is?',
-    # 'I would like to start painting with watercolors. What do I need to get started?',
-    # 'In your opinion, what are the qualities of an effective sports coach?',
-    # 'List a few ways to make a small room feel more spacious.',
-    # 'List five great rivers of Europe and name a city that each one passes through.',
-    # 'List the qualities a young lady ought to cultivate for pleasant conversation at a party.',
-    # 'Plan a late evening walk and discuss what is worth while seeing.',
-    # 'Plan a lunch menu for a family picnic in the countryside.',
-    # 'Provide a recipe for a simple loaf of bread that can be baked at home.',
-    # 'Provide examples of how to use quotation marks in letter writing.',
-    # 'Remind me the appearance of a gentleman in full dress.',
-    # 'Remind me the role of "Penny Dreadfuls" in shaping the reading habits of youth.',
-    # 'Set down the customs observed at a country wedding.',
-    # 'Set down the duties a queen owes to her people.',
-    # 'Set down the first lessons a child should learn in drawing from nature.',
-    # 'Set down the habits a youth must form if he would rise in his trade.',
-    # 'Set down the harm that strong drink does to a working man and his family.',
-    # 'Set down the manner in which a gentleman should decline an invitation.',
-    # 'Set down the order of precedence among the ranks of the nobility.',
-    # 'Set down the precautions a traveller should take against highwaymen on the road.',
-    # 'Set down the use of a hymn sung in church.',
-    # 'Set down what a gentleman should wear for a formal evening.',
-    # 'Set down what is known of the planets that circle the sun.',
-    # 'Should I buy a bicycle or a horse for my daily commute?...',
-    # 'Should I get myself a dog or a cat as a pet?',
-    # 'Suppose you find a lost wallet full of money. What do you do?',
-    # 'Tell me a few examples of how knowledge may be used to improve health.',
-    # 'Tell me a few games that can be played by a group of people.',
-    # 'Tell me a new invention or scientific discovery.',
-    # 'Tell me a recipe for making a savoury apple dumpling.',
-    # 'What are the common faults in table manners?',
-    # 'What are the common remedies for toothache these days?',
-    # 'What are the duties of a gatekeeper at a railway crossing?',
-    # 'What are the main lessons to learn from the Bible?',
-    # 'What are the most important lessons to learn from the history of the Turkish Empire?',
-    # 'What do really rich people do with their money?',
-    # 'What does the story of David and Goliath from the Bible teach us?',
-    # 'What happens to a horse when it is shod with iron shoes?',
-    # 'What is a clockwork automaton and how does it work?',
-    # 'What is a memento? What does it mean?',
-    # 'What is life like in the English countryside?',
-    # 'What is the law of action and reaction?',
-    # 'What is the most remarkable incident in your own life?',
-    # 'What is the point of arts?',
-    # 'What objects can you find in a typical Victorian parlor?',
-    # 'Where did you travel this year?',
-    # 'Where does the oil lamp come from, how is it made?',
-    # 'Why do people write poetry?',
-    # 'Write a brief dialogue between a blacksmith and a customer about pricing a new horseshoe.',
-    # 'Write a list of things that could be brought to a child on his birthday.',
-    # 'Write a short letter from a gentleman in London inviting a friend to a dinner party.',
-    # 'Write a story that contains the given words in 3 sentences: cat, moon, and river.',
-    # 'Write me a short poem on springtime.',
-    # "Describe a scene from Mr. Dickens's novel 'David Copperfield'.",
-    # "Describe the conduct expected of a guest staying in another man's house.",
-    # "Explain the meaning of the proverb 'a stitch in time saves nine'.",
-    # "Find a synonym for the word 'happy' and use it in a sentence.",
-    # "Help me, how do I dress for an art exhibition opening? I'm not sure what's appropriate!",
-    # "How can one improve one's memory for names and faces?",
-    # "Make a list of three or four famous persons who are mentioned in Shakespeare's plays.",
-    # "Plan a day's excursion to Windsor Castle and discuss the sights to be seen there.",
-    # "Prepare a list of the guests and their duties for the evening's entertainment.",
-    # "Summarise the plot of Charles Dickens's novel 'A Tale of Two Cities'.",
-    # "Tell me, is there anything science can't explain?",
-    # "What's the best way to travel the Continent, by railway or steamship, or?",
-    # "What's the difference between a comet and a meteor?",
-    # "What's the difference between a steam engine and a water wheel?",
-    # "What's with this zeppelin device I keep hearing about? What is it used for?",
-    # "Write a sentence that ends with the word 'sunset'.",
+    "Write a sentence that ends with the word 'sunset'.",
 ]
 
 SMALL_TALK_SEED = [
@@ -601,7 +616,6 @@ IMPOSSIBLE_TERMS = [
     'picture',
     'draw',
     'drawing',
-    'sketch',
     'paint',
     'painting',
     'illustrate',
@@ -641,7 +655,6 @@ def era_violation(text):
         return f"anachronism terms: '{hits}'"
     # Reject explicit future years. NOTE: this can mis-fire on arithmetic
     # problems that happen to use a large number (e.g. "multiply 1950 by 3").
-    # For a POC we accept that conservative tradeoff; relax if it hurts recall.
     for yr in _YEAR_RE.findall(text):
         if int(yr) > 1900:
             return f'future year: {yr}'
@@ -850,6 +863,24 @@ def _apply_reasoning(payload):
     return payload
 
 
+def _apply_top_k(payload, top_k):
+    """Add the non-standard `top_k` truncation field, but only for providers that
+    accept it (_SUPPORTS_TOP_K). llama.cpp/OpenRouter tolerate it; Google's
+    OpenAI-compatible shim rejects unknown fields with HTTP 400, so we omit it
+    there and let its own default sampling apply."""
+    if _SUPPORTS_TOP_K:
+        payload['top_k'] = top_k
+    return payload
+
+
+def _api_url(base_url, endpoint):
+    """Join a provider base URL, its version prefix, and an endpoint name.
+    `endpoint` is the bare tail, e.g. 'chat/completions', 'completions', 'models'.
+    _PATH_PREFIX is '/v1' for llama-server / OpenRouter and '' for Google (whose
+    version lives in the base URL). Set by main() from the chosen provider."""
+    return base_url.rstrip('/') + _PATH_PREFIX + '/' + endpoint
+
+
 def _post_json(url, payload, timeout=300):
     """POST a JSON payload and return the decoded JSON response."""
     data = json.dumps(payload).encode('utf-8')
@@ -859,8 +890,19 @@ def _post_json(url, payload, timeout=300):
     if _DEBUG:
         _debug_request(url, payload)
     req = urllib.request.Request(url, data=data, headers=headers)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        body = json.loads(resp.read().decode('utf-8'))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = json.loads(resp.read().decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        # Surface the server's error body -- providers explain *why*
+        # a request was rejected (e.g. an unsupported field) there,
+        # and it is otherwise swallowed by the bare "HTTP Error 400".
+        try:
+            detail = e.read().decode('utf-8', 'replace')
+        except Exception:
+            detail = '<no response body>'
+        print(f'\n[error] {e.code} {e.reason} from {url}\n{_short(detail, 2000)}', file=sys.stderr)
+        raise
     if _DEBUG:
         _debug_response(body)
     return body
@@ -871,7 +913,7 @@ def detect_model(base_url):
     headers = {}
     if _AUTH_HEADERS:
         headers.update(_AUTH_HEADERS)
-    req = urllib.request.Request(base_url.rstrip('/') + '/v1/models', headers=headers)
+    req = urllib.request.Request(_api_url(base_url, 'models'), headers=headers)
     with urllib.request.urlopen(req, timeout=15) as resp:
         body = json.loads(resp.read().decode('utf-8'))
     return body['data'][0]['id']
@@ -902,7 +944,7 @@ def discover_reasoning_effort(base_url, model, requested='low'):
         headers = {}
         if _AUTH_HEADERS:
             headers.update(_AUTH_HEADERS)
-        req = urllib.request.Request(base_url.rstrip('/') + '/v1/models', headers=headers)
+        req = urllib.request.Request(_api_url(base_url, 'models'), headers=headers)
         with urllib.request.urlopen(req, timeout=15) as resp:
             body = json.loads(resp.read().decode('utf-8'))
         entries = body.get('data') or []
@@ -939,14 +981,14 @@ def complete(base_url, model, prompt, temperature, top_k, max_tokens, stop=None)
         'model': model,
         'prompt': prompt,
         'temperature': temperature,
-        'top_k': top_k,  # llama.cpp extension -> SSD-style truncation
         'max_tokens': max_tokens,
         'stream': False,
     }
+    _apply_top_k(payload, top_k)  # llama.cpp extension -> SSD-style truncation
     if stop:
         payload['stop'] = stop
     _apply_reasoning(payload)
-    out = _post_json(base_url.rstrip('/') + '/v1/completions', payload)
+    out = _post_json(_api_url(base_url, 'completions'), payload)
     return out['choices'][0]['text']
 
 
@@ -959,12 +1001,12 @@ def chat(base_url, model, system, user, temperature, top_k, max_tokens):
             {'role': 'user', 'content': user},
         ],
         'temperature': temperature,
-        'top_k': top_k,
         'max_tokens': max_tokens,
         'stream': False,
     }
+    _apply_top_k(payload, top_k)
     _apply_reasoning(payload)
-    out = _post_json(base_url.rstrip('/') + '/v1/chat/completions', payload)
+    out = _post_json(_api_url(base_url, 'chat/completions'), payload)
     return out['choices'][0]['message']['content']
 
 
@@ -988,13 +1030,16 @@ def chat_with_logprobs(base_url, model, system, user, temperature, top_k, max_to
             {'role': 'user', 'content': user},
         ],
         'temperature': temperature,
-        'top_k': top_k,
         'max_tokens': max_tokens,
-        'logprobs': True,  # OpenAI-style; llama.cpp returns choices[].logprobs.content
         'stream': False,
     }
+    if _SUPPORTS_LOGPROBS:
+        # OpenAI-style; llama.cpp returns choices[].logprobs.content. Omitted for
+        # providers (Google) that reject the field; _mean_logprob then returns None.
+        payload['logprobs'] = True
+    _apply_top_k(payload, top_k)
     _apply_reasoning(payload)
-    out = _post_json(base_url.rstrip('/') + '/v1/chat/completions', payload)
+    out = _post_json(_api_url(base_url, 'chat/completions'), payload)
     choice = out['choices'][0]
     return choice['message']['content'], _mean_logprob(choice)
 
@@ -1174,10 +1219,10 @@ def sample_demonstrations(seeds, machine, k=8):
 INSTRUCTION_CHAT_SYSTEM = (
     'You design practice tasks for a knowledgeable assistant living in the year '
     '1899. You ONLY ever reply with a numbered list of new task instructions -- '
-    'no preamble, no commentary, no answers, no explanations. Every task is a '
-    'single clear English instruction, answerable with knowledge available by '
-    '1899, concerning English only (no translation, no foreign languages), and '
-    'never mentioning any invention, event, person, or discovery from after 1900.'
+    'no preamble, no commentary, no explanations. Every task is a single clear '
+    'English instruction or question, answerable with knowledge available by '
+    '1899, concerning English only (no translations), and never mentioning any '
+    'invention, event, or person after year 1900.'
 )
 
 
@@ -1229,13 +1274,13 @@ def generate_instruction_batch_chat(base_url, model, seeds, machine, args):
     example_block = '\n'.join(f'{i}. {d}' for i, d in enumerate(demos, start=1))
     n_new = args.instructions_per_round
     user = (
-        'Here are some example tasks, for style only:\n\n'
+        'Here are some example tasks or questions, for style only:\n\n'
         f'{example_block}\n\n'
-        f'Now write {n_new} NEW tasks of the same kind. Each must be different '
+        f'Now write {n_new} NEW questions of the same kind. Each must be different '
         'from the examples above and from one another, varied in topic (writing, '
-        'explanation, history, advice, arithmetic, poetry, ...). Stay strictly '
+        'explanation, history, advice, arithmetic, poetry, ...), strictly '
         'within knowledge available by the year 1899, English only. '
-        'Reply with ONLY a numbered list of the new tasks, one per line, and '
+        'Reply ONLY a numbered list of the new questions, one per line, '
         'nothing else.'
     )
     text = chat(
@@ -1466,13 +1511,22 @@ def temporal_judge(base_url, model, text, args):
 # ---------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser(description='Self-Instruct + SSD POC for an 1899 time-capsule LLM')
-    ap.add_argument('--base-url', default=DEFAULT_BASE_URL, help='llama-server / OpenRouter base URL')
-    ap.add_argument('--provider', choices=['local', 'openrouter'], default='local', help='API provider (local llama-server or OpenRouter)')
+    ap.add_argument(
+        '--base-url',
+        default=None,
+        help="API base URL. Defaults to the chosen provider's pre-defined URL; override only to point at a custom/self-hosted endpoint.",
+    )
+    ap.add_argument(
+        '--provider',
+        choices=sorted(PROVIDERS),
+        default='local',
+        help='API provider (OpenAI-compatible): local llama-server, openrouter, or google',
+    )
     ap.add_argument(
         '--model',
         default=None,
-        help='model name (required for OpenRouter; optional for local, auto-detected). '
-        'Falls back to OPENROUTER_MODEL env var for OpenRouter.',
+        help='model name (required for remote providers; optional for local, auto-detected). '
+        "Falls back to the provider's model env var (e.g. OPENROUTER_MODEL, GOOGLE_MODEL).",
     )
     ap.add_argument('--num', type=int, default=10, help='target number of final records (instances)')
     ap.add_argument('--out', default='self_instruct_1900.jsonl', help='output JSONL path')
@@ -1603,30 +1657,34 @@ def main():
     global _DEBUG
     _DEBUG = args.debug
 
-    # --- OpenRouter setup -------------------------------------------------
-    if args.provider == 'openrouter':
-        api_key = os.environ.get('OPENROUTER_API_KEY')
+    # --- Provider setup ---------------------------------------------------
+    # Look up the chosen provider's pre-defined URL, path prefix, auth, and any
+    # extra headers. --base-url overrides the pre-defined base for that provider.
+    provider = PROVIDERS[args.provider]
+    global _PATH_PREFIX, _SUPPORTS_TOP_K, _SUPPORTS_LOGPROBS
+    _PATH_PREFIX = provider['path_prefix']
+    _SUPPORTS_TOP_K = provider['supports_top_k']
+    _SUPPORTS_LOGPROBS = provider['supports_logprobs']
+    if not args.base_url:
+        args.base_url = provider['base_url']
+
+    api_key_env = provider['api_key_env']
+    if api_key_env:  # remote provider -> needs a bearer token
+        api_key = os.environ.get(api_key_env)
         if not api_key:
-            sys.exit(
-                'ERROR: OPENROUTER_API_KEY environment variable not set.\nExport it before running, e.g.: export OPENROUTER_API_KEY=sk-...'
-            )
-        _AUTH_HEADERS.update(
-            {
-                'Authorization': f'Bearer {api_key}',
-                'HTTP-Referer': 'Self-instruct-1900',
-                'X-Title': 'Self-instruct-1900',
-            }
-        )
-        if args.base_url == DEFAULT_BASE_URL:
-            args.base_url = OPENROUTER_BASE_URL
+            sys.exit(f'ERROR: {api_key_env} environment variable not set.\nExport it before running, e.g.: export {api_key_env}=...')
+        _AUTH_HEADERS['Authorization'] = f'Bearer {api_key}'
+        _AUTH_HEADERS.update(provider['headers'])
         if not args.model:
-            args.model = os.environ.get('OPENROUTER_MODEL')
+            model_env = provider['model_env']
+            args.model = os.environ.get(model_env) if model_env else None
             if not args.model:
+                env_hint = f' (or set {model_env} env var)' if model_env else ''
                 sys.exit(
-                    'ERROR: --model is required for OpenRouter (or set OPENROUTER_MODEL env var).\n'
-                    'Examples: --model openai/gpt-4o, --model anthropic/claude-3-opus'
+                    f'ERROR: --model is required for provider {args.provider!r}{env_hint}.\n'
+                    'Examples: --model openai/gpt-4o, --model gemini-2.5-flash'
                 )
-        print(f'[info] using OpenRouter endpoint: {args.base_url}')
+        print(f'[info] using {args.provider} endpoint: {args.base_url}')
 
     # Resolve the model id from the server, or use the one supplied.
     try:
@@ -1655,7 +1713,9 @@ def main():
     # chat mode and local llama-server to completion mode.
     instruction_mode = args.instruction_mode
     if instruction_mode == 'auto':
-        instruction_mode = 'chat' if args.provider == 'openrouter' else 'completion'
+        # Raw /completions "continue the list" trick only works on a base model
+        # behind llama-server; remote OpenAI-compatible providers are chat-only.
+        instruction_mode = 'completion' if args.provider == 'local' else 'chat'
 
     print(f'[info] using model: {model}')
     print(f'[info] instruction mode: {instruction_mode}')

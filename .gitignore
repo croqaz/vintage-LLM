@@ -159,8 +159,11 @@ training/*-data/
 training/*.bin
 
 knowledge/cutoff
-knowledge/oldify/*.txt
-knowledge/oldify/*.jsonl
+knowledge/dialog/*.json*
 knowledge/dialog/dialogs*
 knowledge/dialog/gutenberg*
 knowledge/genStruct/*.json*
+knowledge/oldify/*.jsonl
+knowledge/oldify/*.txt
+knowledge/pre1900/
+knowledge/synth/*.json*
