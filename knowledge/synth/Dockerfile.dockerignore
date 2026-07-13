@@ -1,0 +1,14 @@
+# BuildKit reads this file (named after the Dockerfile) so we can keep the
+# build context small even though it must be the parent `knowledge/` folder.
+# Exclude everything, then re-include only the files the image needs.
+*
+!pre1900
+!pre1900/banned_terms.py
+!pre1900/data
+!pre1900/data/*.txt
+!synth
+!synth/entrypoint.sh
+!synth/self_instruct_1900.py
+pre1900/*.py
+pre1900/data/*.txt
+synth/*

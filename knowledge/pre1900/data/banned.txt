@@ -1,16 +1,29 @@
-# Curated post-1900 anachronisms -> HARD VETO (D1).
+# Curated post-1900 anachronisms -> HARD VETO.
 # A hit forces the text to be dropped. Terms here are AUTHORITATIVE: they are
 # never overridden by the allow-list (unlike the auto-parsed banned_seed.txt).
 # Phrases match whole-word, case-insensitive; a short phrase ("world war") also
 # matches longer mentions ("world war ii").
 
-#ClimateAction
+# holocaust # burnt offering Bible
+# computer # A person who computes
+# drone # male bee, idler
+# gaming # It's OK
+# hardware # ironmongery, metal goods
+# molecule # OK-ish
+# satellite
+
+
 ```go
 ```js
 ```py
 ```python
 ```ruby
+```rust
 ```ts
+<body>
+<head>
+<html>
+<img src
 1000W of power
 100W of power
 180W of power
@@ -22,6 +35,7 @@
 abortion law
 Ada program
 aeroplane
+agenda
 AI and human
 AI assistant
 AI language model
@@ -36,6 +50,8 @@ algorithm in Java
 always-on display
 android phone
 Angular application
+anime
+anon
 antibiotic
 antimatter
 apartheid
@@ -44,15 +60,22 @@ app store
 arcade games
 artificial general intelligence
 artificial intelligence
+as an ai
 as an AI
 Assassin's Creed
 astronaut
+atom bomb
 atomic bomb
 audio amplifier
+auschwitz
 authentication process
+autism
+autistic
 automation
 autonomous vehicles
+ballpoint
 bash script
+basically
 berlin wall
 big bang
 big data
@@ -60,6 +83,7 @@ big-bang
 binary pulsar
 bioacoustic
 biophysicist
+bitcoin
 black hole
 blitzkrieg
 blockchain
@@ -68,26 +92,34 @@ blog post
 blogger
 bluetooth
 boeing 777
+boomer
+brexit
 bubble gum
 bubblegum
+bullshit
 C code
 C function
 C language
 C library
 C program
 C#
-c++
 C++
+caching strategy
+carbon dating
 cell phone
 cell tower
 cellphone
 cellular connectivity
+chain reaction
 chatbot
 chatgpt
 chemotherapy
 chromosome
+CI/CD
+CIA
 cinema
 climate change
+ClimateAction
 Clojure function
 Clojure program
 code in C
@@ -95,20 +127,30 @@ code in R
 code snippet
 coding algorithm
 cold war
+comfy
 command-line
+commie
 compiler
 computer
+computer program
 coronavirus
+cosmonaut
 COVID vaccine
 COVID-19
 CPU
 credit card
 credit-card
+crispr
+cryptocurrency
 cryptographic method
 CSS
 CSV file
+cultural
+cybersecurity
 cyborg
+cyclotron
 d-day
+Daft Punk
 dark energy
 dark matter
 dark nebula
@@ -127,14 +169,20 @@ DDR7
 deep learning
 def __init__
 desktop computer
+deuterium
+digital computer
 digital edition
 digital media
 digital music
 digital transformation
 digital watch
 diode
+disney world
 DNA
+Docker build
+Docker run
 document summarization
+double helix
 download
 drag queen
 drone
@@ -144,16 +192,21 @@ e-book
 e-commerce
 e-learning
 e-mail
+e-text
 ebook
 effective field theory
 electric beard trimmer
 electric toothbrush
 electro-optic
+electron microscope
+electronic computer
+electronic version
 Elixir function
 Elixir program
 email
 emoji
 empire state building
+encrypting data
 EU countries
 European Union
 eurovision
@@ -164,23 +217,29 @@ FAQ page
 fascism
 fascist
 fax
+FBI
+federal agents
 Federal Reserve
+feminism
+feminist
 ferromagnetic material
 ferromagnetism
 fiber-optic
 fibre-optic
+filesystem
 final fantasy X
+fintech
 first world war
 FizzBuzz
 fortran
 Frenkel defect
 FTP server
+fuckin
 function in C
 function in Go
 function in Java
 function in R
 function in Rust
-gaming
 gaming industry
 gay rights
 gender affirming
@@ -189,22 +248,30 @@ gender nonconforming
 gene expression
 gene therapy
 general relativity
+genetic
+genetic code
+genetic engineering
 genome
 gestapo
 gigabyte
 global variable
 global warming
+globalist
 Go code
 Go function
 Go program
+goddamn
 godzilla
 Golang function
 Golang microservice
 Golang program
+gonna
+gotta
 GPS
 GPT
 GPU
 graphene
+gravatar
 gravitational redshift
 great depression
 Grignard reagent
@@ -230,8 +297,10 @@ hormone
 HTML
 http
 HTTP POST
+https
 Hubble's Law
 hydrogen bomb
+hyperlink
 illegal immigration
 import datetime
 import numpy
@@ -241,13 +310,16 @@ import sys
 in Python
 infographic
 infotainment
+infrastructure
 int main
+integrated circuit
 internet
 ionic compounds
 iOS application
 iPad
 iPhone
 iron curtain
+ISBN
 iWatch
 java applet
 Java application
@@ -260,16 +332,21 @@ Java object
 java program
 JavaScript
 jazz
+jet aircraft
 jet engine
 jet flight
+jet plane
 jetliner
 JPEG
 JPG
 JS snippet
 Julia script
+kinda
+kleenex
 korean war
 kotlin function
 kotlin program
+kubernetes
 language model
 laptop
 Large Hadron Collider
@@ -279,23 +356,33 @@ Lattice QCD
 LCD
 League of Legends
 league of nations
-lepton‑jet
+leftist
+legit
+lepton-jet
 leptoquark
 lesbian
 lgbt
 lgbtq
 LINQ syntax
 Liquid-crystal display
+lmao
 low bass
+luftwaffe
 machine learning
+machine readable
+mainstream
 Major League Baseball
+makeup
+manhattan project
 Maroon 5
+maser
 matlab
 matplotlib
 mechanisation
 mechanization
 megabyte
 metal-organic
+Metallica
 metamaterial
 Michelson-Morley experiment
 microchip
@@ -303,9 +390,11 @@ microprocessor
 microservice
 microwave
 minecraft
+mobile app
 mobile phone
-molecule
+mommy
 moon landing
+moron
 motherboard
 motion picture
 movie
@@ -314,35 +403,49 @@ MRI
 mRNA
 MySQL
 NAFTA
+nagasaki
+nasa
+nato
 natural language generation
 natural language processing
 navigation system
 Navy Seals
 nazi
+nazi germany
 nazism
 NBA championship
 neural network
 neurology
 neutrino
 neutron
+new deal
 Nim program
 NLP algorithm
 Node.js
+normandy landing
+normie
 nuclear bomb
+nuclear energy
 nuclear fission
 nuclear fusion
+nuclear physics
+nuclear power
 nuclear reaction
 nuclear reactor
 nuclear weapon
+nuke
 nuremberg trials
 nylon
 OCaml function
 official website
+okay
 omega-3
 online
 open source
+operating system
 optical fiber
 overfitting
+paperback
 Pascal function
 Pascal program
 PDF version
@@ -351,9 +454,13 @@ penicillin
 perl function
 perl program
 perl script
+personal computer
 photocopier
+photocopy
 PHP
 pink floyd
+Pink Floyd
+pissed
 pixel
 Planck constant
 plastic-free
@@ -364,8 +471,12 @@ polyester
 polyethylene
 polymer
 polystyrene
+porn
 pornographic
+positron
+posted on twitter
 PostgreSQL
+power plant
 PowerShell
 private String
 program in C++
@@ -373,9 +484,11 @@ program in Javascript
 program in Python
 programming algorithm
 programming language
+project gutenberg
 proton
 public String
 public void
+public-key
 Python class
 python code
 Python dictionary
@@ -389,17 +502,24 @@ python script
 Python's built-in
 Pythonic
 pytorch
-quantum
 quantum chromodynamics
+quantum computer
+quantum entanglement
 quantum field theory
 quark-gluon plasma
 R code
+racism
+racist
 radar
 radio broadcast
+radioactive fallout
+radiocarbon
+RAFT consensus
 reality television
 reality TV
 reboot
 Redis key-value
+redpilled
 RegEx
 regular expression
 Resident Evil
@@ -417,8 +537,8 @@ Ruby program
 Ruby script
 Rust function
 Rust program
+SaaS
 same-sex marriage
-satellite
 satellite-dish
 Scala code
 Scala program
@@ -431,11 +551,19 @@ second world war
 security camera
 selfie
 semiconductor
+senpai
 sentiment analysis
 server in Java
+sexy
 shamebloody
 Shell command
 Shell script
+shills
+shithole
+shitposting
+shitty
+silicon chip
+SIMD
 smart phone
 smart watch
 smartphone
@@ -444,6 +572,7 @@ social media
 software
 solar cell
 sonar
+source code
 soviet union
 space race
 space shuttle
@@ -451,6 +580,7 @@ space station
 spacecraft
 spaceflight
 spaceship
+spanish civil war
 special effects
 spectral classification
 spectrometry
@@ -459,23 +589,33 @@ spin electronics
 spintronics
 SQL
 SSD
+standard model
 star wars
 stellar classification
+stem cell
 stereo
 strong nuclear
+sulfa drug
+sulfanilamide
+super bowl
 Super Bowl
 super mario
 superconductivity
 superconductor
+supersonic
 swift app
 swift function
 synthetic tissue
+TCP
+tech company
+tech obsolescence
 television
 tensorflow
 terrabyte
 text classification
 the beatles
 the movies
+theory of relativity
 trans activist
 trans people
 transistor
@@ -487,11 +627,13 @@ TV show
 tweet about
 twentieth century
 TypeScript
+UDP
 UEFA Cup
 UFC champion
 ultra lightweight
 united nations
 upload
+USB
 use AI
 using Python
 using Ruby
@@ -507,16 +649,25 @@ virtual reality
 vitamin
 VR game
 weak nuclear
+web browser
 web development
+web page
 web site
 website
+websocket
 WebSocket
+wehrmacht
 went viral
 wi-fi
 wifi
 wikipedia
 Wittig reagent
+wordpress
 world war
+world war 2
+world war ii
+world wide web
+wtf
 WW1
 WW2
 WW3
@@ -527,14 +678,19 @@ X-files
 X-men
 X-ray astronomy
 xanthan gum
+xerox
+youtube
+yummy
 
 # --- people ---
 adolf hitler
+Johnny Cash
+Marvin Gaye
+Bob Marley
 albert einstein
 anne sexton
 benito mussolini
 bob dylan
-bob marley
 carlos santana
 Cristiano Ronaldo
 Diego Maradona
@@ -552,9 +708,10 @@ j.d. salinger
 j.r.r. tolkien
 James Bond
 Joe Biden
-john f. kennedy
+John F. Kennedy
 john fitzgerald kennedy
 joseph stalin
+Justin Bieber
 Lara Croft
 lenin
 Lionel Messi
@@ -593,6 +750,7 @@ nintendo
 openai
 panasonic
 samsung
+Reddit
 tiktok
-twitter
+WhatsApp
 youtube

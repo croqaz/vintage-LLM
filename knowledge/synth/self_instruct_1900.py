@@ -2,54 +2,9 @@
 """
 self_instruct_1900.py
 =========================================================================
-A small, heavily-commented proof-of-concept that borrows ideas from the two
-papers in this folder and adapts them to a *time-capsule* model whose
-knowledge is supposed to stop in 1899-1900.
 
-What it borrows
----------------
-1. SELF-INSTRUCT (Wang et al., ACL 2023)
-   - Bootstrap an instruction dataset from a tiny seed set of hand-written
-     tasks by few-shot prompting the model to invent *new* instructions.
-   - Each round samples a few examples from the pool (the paper uses 6 human
-     + 2 machine-generated) as in-context demonstrations to push diversity.
-   - Filter new instructions for novelty using ROUGE-L overlap (the paper
-     rejects a candidate whose ROUGE-L vs. any existing instruction >= 0.7)
-     plus simple length / keyword heuristics.
-   - INSTANCE GENERATION: for each surviving instruction we use the paper's
-     "input-first" approach -- first ask the model for an example INPUT
-     (or NONE for self-contained tasks), then ask for the OUTPUT conditioned
-     on (instruction, input). We can generate several instances per instruction
-     and de-duplicate them.
-
-2. SIMPLE SELF-DISTILLATION / SSD (Zhang et al., 2026)
-   - The data is nothing but the model's *own* raw, unverified samples.
-   - SSD's central lesson is that the *sampling configuration* (training-time
-     temperature `T_train` and truncation top-k / top-p) is the real lever,
-     not answer correctness.
-   - DECOUPLED TEMPERATURES: SSD distinguishes a high, exploratory training-time
-     temperature from a lower evaluation-time one, and ties the win to its
-     "precision-exploration conflict" -- forks (where many continuations are valid)
-     want exploration, locks (where one answer is right) want precision.
-     We map that onto data generation:
-       * --gen-temp / --gen-top-k : used to BRAINSTORM instructions and INPUTS,
-         where we *want* variety/coverage  -> the "fork" / exploration side.
-       * --ans-temp / --ans-top-k : used to write the ANSWER, where we want a
-         coherent, correct response     -> the "lock" / precision side.
-     NOTE: a *true* T_eval only exists when you decode the fine-tuned model.
-     We do NOT fine-tune here, so this two-temperature split is the
-     data-generation analogue of SSD's idea, not the literal T_train/T_eval
-     experiment. The collected JSONL is exactly the corpus you would later SFT
-     on to "self-distill" -- that step is left for a future iteration.
-   - N-SAMPLE SELECTION: SSD finds that multiple samples *cover* more good
-     solutions (pass@k > pass@1). With --candidates-per-instance > 1 we sample
-     several answers per instance and keep one, chosen WITHOUT a verifier --
-     by the model's own mean token logprob (default), answer length, or at random.
-     Random is a deliberate baseline: SSD's "bad data, good results" warns that
-     hard selection is not always a win, so it is worth measuring logprob/longest against it.
-
-The time-capsule twist (the important part)
---------------------------------------------
+The time-capsule model is a "well-read person in 1899"
+------------------------------------------------------
 Every instruction we keep must stay within "what a well-read person in 1899
 could know". We enforce this in THREE layers now:
 
@@ -142,7 +97,7 @@ from banned_terms import find_anachronisms  # NOQA: import from sibling folder
 #                   (rejects it with HTTP 400); when False we skip it and the
 #                   logprob score comes back None (--selection logprob then just
 #                   degrades to no scoring).
-# To add another OpenAI-compatible provider, just add an entry here.
+# To add another OpenAI-compatible provider, add an entry here.
 PROVIDERS = {
     'local': {
         'base_url': 'http://127.0.0.1:1234',
@@ -240,7 +195,6 @@ SEED_INSTRUCTIONS = [
     'Describe how a young child should first be taught to read.',
     'Describe how an ordinary lead pencil is made and why it leaves a mark.',
     'Describe how cocoa is prepared as a drink.',
-    'Describe how cocoa is prepared as a drink.',
     'Describe how men measured the passing of time before clocks were made.',
     'Describe how tea is carried from China and India to England.',
     'Describe how tea is carried from China to England.',
@@ -249,7 +203,6 @@ SEED_INSTRUCTIONS = [
     'Describe how wine is kept and left to age in a cellar.',
     'Describe how you would deal with a fire in the countryside if one breaks out.',
     'Describe some country charms believed to ward off the evil eye.',
-    'Describe the animals kept upon an English farm and the use of each.',
     'Describe the animals kept upon an English farm and the use of each.',
     'Describe the care a horse needs after a long journey on the road.',
     'Describe the chief battles of the Wars of the Roses.',
@@ -262,7 +215,6 @@ SEED_INSTRUCTIONS = [
     'Describe the difference between black tea and green tea.',
     'Describe the difference between harmony and melody.',
     'Describe the difference between painting in oils and in watercolours.',
-    'Describe the difference between painting in oils and in watercolours.',
     'Describe the difference between the Whig and Tory political philosophies.',
     'Describe the different types of fabric and their uses.',
     'Describe the duties of a governess in a private household.',
@@ -274,8 +226,6 @@ SEED_INSTRUCTIONS = [
     'Describe the gods of Mount Olympus and the dominion of each.',
     'Describe the habits of the industrious ant.',
     'Describe the making of cider from apples in the autumn.',
-    'Describe the making of cider from apples in the autumn.',
-    'Describe the manner of the crowning of a sovereign.',
     'Describe the manner of the crowning of a sovereign.',
     'Describe the omens and signs by which country folk foretell coming changes in the weather.',
     'Describe the planets of the solar system in their order from the sun.',
@@ -292,7 +242,6 @@ SEED_INSTRUCTIONS = [
     'Describe the steps a blacksmith takes to forge a horseshoe.',
     'Describe the structure of a heroic couplet in English verse.',
     'Describe the superstitions surrounding the number thirteen at a dinner table.',
-    'Describe the usefulness of the common honeybee.',
     'Describe the usefulness of the common honeybee.',
     'Describe the work of the harvest, from the cutting to the threshing of the corn.',
     'Describe the working of the underground railway beneath the city.',
@@ -325,7 +274,6 @@ SEED_INSTRUCTIONS = [
     'Explain how a father ought to judge a suitor who asks for his daughter.',
     'Explain how a lady should receive callers in the afternoon.',
     'Explain how a man may make a will so that it holds good in law.',
-    'Explain how a man may make a will so that it holds good in law.',
     'Explain how a painter prepares his canvas before he begins to work.',
     'Explain how a painter uses perspective to give depth to a flat canvas.',
     'Explain how a sailing ship is able to travel against the wind.',
@@ -336,7 +284,6 @@ SEED_INSTRUCTIONS = [
     'Explain how a watchman keeps order in a town through the night.',
     'Explain how ale is brewed from barley and hops.',
     'Explain how an engraving is produced upon a copper plate.',
-    'Explain how birds are able to fly.',
     'Explain how birds are able to fly.',
     'Explain how coffee is roasted and ground for the breakfast table.',
     'Explain how iron is smelted from ore in a blast furnace.',
@@ -360,19 +307,15 @@ SEED_INSTRUCTIONS = [
     'Explain the causes of the tides in the ocean.',
     'Explain the common superstition that it is unlucky to walk under a ladder.',
     'Explain the correct method for tuning a violin, and how often it should be done.',
-    'Explain the correct method for tuning a violin, and how often it should be done.',
     'Explain the country custom of touching wood to prevent a boast from tempting fate.',
     'Explain the difference between a barometer and a thermometer.',
     'Explain the difference between a baronet and a knight, and how each is addressed.',
-    'Explain the difference between a baronet and a knight, and how each is addressed.',
     'Explain the difference between a share and a debenture in a joint-stock company.',
-    'Explain the difference between a wine and a spirit.',
     'Explain the difference between a wine and a spirit.',
     'Explain the difference between an acid and an alkali, and how each may be tested.',
     'Explain the difference between black tea and green tea.',
     'Explain the difference between deductive and inductive reasoning.',
     'Explain the duties of a governess in a private household.',
-    'Explain the order of succession to the throne.',
     'Explain the order of succession to the throne.',
     'Explain the part George Washington played in the founding of the United States.',
     'Explain the part that yeast plays in fermentation.',
@@ -385,7 +328,6 @@ SEED_INSTRUCTIONS = [
     'Explain the symbolism of the four horsemen of the Apocalypse.',
     'Explain the utility of sulfuric acid in modern industry.',
     'Explain to me, why does the thunder follow lightning?',
-    'Explain what a betrothal binds a couple to, and on what grounds it may be broken.',
     'Explain what a betrothal binds a couple to, and on what grounds it may be broken.',
     'Explain what a justice of the peace may and may not do.',
     'Explain what a man ought to do on finding a thief within his dwelling.',
@@ -414,15 +356,12 @@ SEED_INSTRUCTIONS = [
     'Explain why common salt dissolves in water.',
     'Explain why farmers practise the rotation of crops from year to year.',
     'Explain why honesty is said to be the best policy.',
-    'Why it is wrong to steal?',
     'Explain why it is wrong to tell a lie, even a small one.',
     'Explain why punctuality is a virtue that serves a man all his life.',
-    'Explain why the moon shows a different shape from night to night.',
     'Explain why the moon shows a different shape from night to night.',
     'Explain why the stars are not seen by day.',
     'Explain why thrift in small matters secures a man his later years.',
     'Explain, step by step, how ale is brewed from barley and hops.',
-    'Explain, step by step, how to brew a proper pot of tea.',
     'Explain, step by step, how to brew a proper pot of tea.',
     'Find the area of a circle whose diameter is fourteen inches.',
     'Give a brief account of the Boston Tea Party and its consequences.',
@@ -515,6 +454,7 @@ SEED_INSTRUCTIONS = [
     'Where did you travel this year?',
     'Where does the oil lamp come from, how is it made?',
     'Why do people write poetry?',
+    'Why it is wrong to steal?',
     'Write a brief dialogue between a blacksmith and a customer about pricing a new horseshoe.',
     'Write a list of things that could be brought to a child on his birthday.',
     'Write a short letter from a gentleman in London inviting a friend to a dinner party.',

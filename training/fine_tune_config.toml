@@ -12,7 +12,7 @@ attn_implementation = "sdpa"
 
 [data]
 # ── Source (choose one) ─────────────────────────────────────────────────────
-dataset_path = "./fine-data/knowledge.jsonl"
+dataset_path = ["./fine-data/ALL.jsonl"]
 
 # ── Split ───────────────────────────────────────────────────────────────────
 # Fraction held out for validation (train_test_split applied to the full file)
@@ -38,8 +38,8 @@ num_train_epochs = 1
 
 # ── Batch sizes ──────────────────────────────────────────────────────────────
 # Effective batch size = num_GPUs × per_device_train_batch_size × gradient_accumulation_steps
-per_device_train_batch_size  = 16
-per_device_eval_batch_size   = 16  # no gradients at eval → can be larger
+per_device_train_batch_size  = 2
+per_device_eval_batch_size   = 4  # no gradients at eval → can be larger
 gradient_accumulation_steps  = 2
 
 # ── Optimizer ────────────────────────────────────────────────────────────────
@@ -54,16 +54,16 @@ max_grad_norm = 1.0
 
 # ── LR schedule ──────────────────────────────────────────────────────────────
 lr_scheduler_kwargs = { min_lr_rate = 0.1 } # floor at 10% of peak LR
-lr_scheduler_type   = "cosine_with_min_lr"
-warmup_steps = 10
+lr_scheduler_type   = "linear"
+warmup_steps = 100
 
 # ── Precision ────────────────────────────────────────────────────────────────
-bf16 = true   # Ampere+ (RTX 3090, A100, H100)
+bf16 = false   # Ampere+ (RTX 3090, A100, H100)
 
 # ── Performance ──────────────────────────────────────────────────────────────
 # torch_compile: helpful on large datasets with many steps; overhead not always
 # worth it for short SFT runs. Enable if training for >1000 steps.
-torch_compile          = false
+torch_compile          = true
 gradient_checkpointing = false  # set true only if OOM; adds ~30% compute overhead
 
 # ── Packing ──────────────────────────────────────────────────────────────────
@@ -85,13 +85,13 @@ neftune_noise_alpha = 0.1
 # ── Checkpointing ────────────────────────────────────────────────────────────
 # save_steps and eval_steps must be equal when load_best_model_at_end = true.
 save_strategy          = "steps"
-save_steps             = 100
+save_steps             = 500
 save_total_limit       = 3
 load_best_model_at_end = true   # keep the best checkpoint by val loss, not the last
 
 # ── Evaluation ───────────────────────────────────────────────────────────────
 eval_strategy = "steps"
-eval_steps    = 100             # must equal save_steps when load_best_model_at_end=true
+eval_steps    = 500             # must equal save_steps when load_best_model_at_end=true
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logging_strategy  = "steps"
