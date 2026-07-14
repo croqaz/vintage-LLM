@@ -8,7 +8,4 @@
 !pre1900/data/*.txt
 !synth
 !synth/entrypoint.sh
-!synth/self_instruct_1900.py
-pre1900/*.py
-pre1900/data/*.txt
-synth/*
+!synth/*.py

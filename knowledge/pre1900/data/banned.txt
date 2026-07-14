@@ -60,7 +60,6 @@ app store
 arcade games
 artificial general intelligence
 artificial intelligence
-as an ai
 as an AI
 Assassin's Creed
 astronaut
@@ -240,6 +239,7 @@ function in Go
 function in Java
 function in R
 function in Rust
+functional language
 gaming industry
 gay rights
 gender affirming
@@ -274,6 +274,7 @@ graphene
 gravatar
 gravitational redshift
 great depression
+green thread
 Grignard reagent
 hardware
 harry potter
@@ -284,6 +285,7 @@ haskell program
 Hawking radiation
 HDD
 headphone
+heap fragmentation
 helicopter
 herd immunity
 Higgs boson
@@ -341,6 +343,7 @@ JPEG
 JPG
 JS snippet
 Julia script
+just-in-time
 kinda
 kleenex
 korean war
@@ -364,6 +367,7 @@ lesbian
 lgbt
 lgbtq
 LINQ syntax
+Linux kernel
 Liquid-crystal display
 lmao
 low bass
@@ -381,6 +385,7 @@ matplotlib
 mechanisation
 mechanization
 megabyte
+memory safety
 metal-organic
 Metallica
 metamaterial
@@ -401,6 +406,8 @@ movie
 MQTT broker
 MRI
 mRNA
+multi-thread
+multi-threaded
 MySQL
 NAFTA
 nagasaki
@@ -525,6 +532,7 @@ regular expression
 Resident Evil
 REST API
 RESTful API
+Riemann zeta
 rna
 rock 'n' roll
 rock and roll
@@ -535,6 +543,10 @@ Ruby function
 Ruby method
 Ruby program
 Ruby script
+ruleset
+runtime
+runtimeError
+runtimeException
 Rust function
 Rust program
 SaaS
@@ -610,6 +622,7 @@ TCP
 tech company
 tech obsolescence
 television
+temporal interference
 tensorflow
 terrabyte
 text classification
@@ -635,6 +648,7 @@ united nations
 upload
 USB
 use AI
+userspace
 using Python
 using Ruby
 ussr
@@ -653,6 +667,7 @@ web browser
 web development
 web page
 web site
+WebAssembly
 website
 websocket
 WebSocket

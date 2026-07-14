@@ -11,11 +11,11 @@
 #
 #   Build:
 #     cd knowledge
-#     docker build -f synth/Dockerfile -t typewriter-synth .
+#     docker build -f synth/Dockerfile -t vintage-synth .
 #
 #   Run (any args after the image name are forwarded to self_instruct_1900.py):
 #     docker run --gpus all -v "$PWD/out:/app/synth/out" \
-#         typewriter-synth --num 50 --temporal-judge --out out/dataset.jsonl
+#         vintage-synth --num 50 --temporal-judge --out out/dataset.jsonl
 # ---------------------------------------------------------------------------
 
 # Base image: Llama.cpp server with CUDA 13 support
@@ -33,8 +33,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # --- Model -----------------------------------------------------------------
-ARG HF_REPO=croqaz/TypeWriter-7.2B-1938-GGUF
-ARG HF_FILE=typewriter-1938-7B-instruct-Q8_0.gguf
+ARG HF_REPO=zakarth/talkie-1930-13b-it-vulkan-fixed-GGUF
+ARG HF_FILE= talkie-1930-13b-it.Q8_0.gguf
 ENV MODEL_PATH=/models/${HF_FILE}
 RUN mkdir -p /models \
     && curl -fL --retry 3 --retry-delay 5 -o "${MODEL_PATH}" \
