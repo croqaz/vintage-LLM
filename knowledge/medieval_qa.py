@@ -6,7 +6,7 @@ MEDIEVAL = []
 
 MEDIEVAL.append(
     {
-        'question': 'What has accompanied humans throughout history?',
+        'question': 'What medieval arms have accompanied humans throughout history?',
         'answer': 'Arms and, later, armor have accompanied man throughout his history.',
     }
 )
@@ -78,7 +78,7 @@ MEDIEVAL.append(
 )
 MEDIEVAL.append(
     {
-        'question': 'What are two types of weapons?',
+        'question': 'What are two types of hand weapons?',
         'answer': 'Striking and cutting weapons.',
     }
 )

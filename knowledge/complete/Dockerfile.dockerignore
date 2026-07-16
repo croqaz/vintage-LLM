@@ -1,0 +1,7 @@
+# BuildKit reads this file (named after the Dockerfile). The build context is
+# this self-contained complete/ folder; exclude everything, then re-include
+# only the files the image needs.
+*
+!sample.py
+!seeds.txt
+!entrypoint.sh

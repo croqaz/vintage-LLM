@@ -18,7 +18,7 @@ import random
 import re
 from pathlib import Path
 
-import bible_lookup
+from . import bible_lookup
 
 # ---------------------------------------------------------------------------
 # Verse references to include in the training set
@@ -102,15 +102,17 @@ VERSES = [
     'Proverbs 3:5',
     'Proverbs 3:6',
     'Proverbs 3:6',
+    'Proverbs 8:22-31',
+    'Psalms 103:2',
     'Psalms 119:105',
+    'Psalms 119:114',
+    'Psalms 148:4',
     'Psalms 150:6',
     'Psalms 23:1',
-    'Psalms 34:18',
-    'Psalms 103:2',
-    'Psalms 119:114',
     'Psalms 28:7',
     'Psalms 31:24',
     'Psalms 32:8',
+    'Psalms 34:18',
     'Psalms 46:1',
     'Psalms 51:10',
     'Psalms 91:4',
@@ -161,18 +163,21 @@ def generate_pairs(
     verses: list[str],
     templates: list[str],
     full_text: str,
+    verbose: bool = True,
 ) -> list[list[dict[str, str]]]:
     """Return a list of [[user_msg, assistant_msg], ...] ready for JSON export."""
     pairs: list[list[dict[str, str]]] = []
 
     for ref in verses:
         book_name, verse_spec = parse_reference(ref)
-        print(f'Processing {book_name} {verse_spec}...')
+        if verbose:
+            print(f'Processing {book_name} {verse_spec}...')
 
         # Pick a random template and fill the placeholders
         template = random.choice(templates)
         question = template.replace('[BOOK NAME]', book_name).replace('[CHAPTER:VERSE]', verse_spec)
-        print(f'  Question: {question}')
+        if verbose:
+            print(f'  Question: {question}')
 
         # Resolve the actual verse text via bible_lookup
         answer = bible_lookup.lookup(full_text, ref)
@@ -185,6 +190,17 @@ def generate_pairs(
         )
 
     return pairs
+
+
+def generate_verse(seed: int = 42) -> list[list[dict[str, str]]]:
+    """Build verse Q&A pairs for the built-in VERSES list.
+
+    Convenience wrapper used when this module is imported (e.g. by bible.py):
+    seeds the RNG, loads the Bible text, and returns the pairs quietly.
+    """
+    random.seed(seed)
+    full_text = bible_lookup.BIBLE_PATH.read_text(encoding='utf-8-sig')
+    return generate_pairs(VERSES, TEMPLATES, full_text, verbose=False)
 
 
 # ---------------------------------------------------------------------------

@@ -21,8 +21,10 @@ from pathlib import Path
 from typing import Iterator, List, Optional, Sequence
 
 import requests
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+
+# torch and transformers are imported lazily inside LocalModelBackend so the
+# API backend (and the Docker image built around it) doesn't need the heavy
+# torch stack installed.
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -30,6 +32,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def _device(name: str) -> 'torch.device':  # type: ignore[valid-type]
+    import torch
+
     if name == 'auto':
         if torch.cuda.is_available():
             return torch.device('cuda')
@@ -40,6 +44,8 @@ def _device(name: str) -> 'torch.device':  # type: ignore[valid-type]
 
 
 def _dtype(name: str, dev: 'torch.device') -> 'torch.dtype':  # type: ignore[valid-type]
+    import torch
+
     mapping = {'float32': torch.float32, 'float16': torch.float16, 'bfloat16': torch.bfloat16}
     if name in mapping:
         return mapping[name]
@@ -131,6 +137,9 @@ class LocalModelBackend:
         device_str: str = 'auto',
         dtype_str: str = 'auto',
     ) -> None:
+        import torch  # noqa: F401  (used via _device/_dtype and torch.no_grad below)
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
         self.device = _device(device_str)
         self.dtype = _dtype(dtype_str, self.device)
 
@@ -168,6 +177,8 @@ class LocalModelBackend:
         lets the caller persist each batch's results to disk as soon as they are
         ready, so a crash midway through a long run doesn't lose everything.
         """
+        import torch
+
         do_sample = temperature > 0.0
         # Use the model's configured stop tokens (generation_config may list
         # several, e.g. [4, 2]). The tokenizer only knows about a single
@@ -355,6 +366,12 @@ examples:
         help='Limit the number of seeds to process (for testing).',
     )
     p.add_argument(
+        '--shuffle',
+        action='store_true',
+        default=True,
+        help='Shuffle the seed prompts before generating (default: preserve order).',
+    )
+    p.add_argument(
         '--seed-words',
         type=str,
         default='2-4',
@@ -485,6 +502,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     # ── Build prompt list (repeat each seed N times) ────────────────────────
     prompts: List[str] = []
     seed_labels: List[str] = []  # track which original seed each prompt came from
+    if args.shuffle:
+        random.shuffle(raw_seeds)
+
     for seed_text in raw_seeds:
         for _ in range(args.samples_per_seed):
             prompts.append(seed_text)

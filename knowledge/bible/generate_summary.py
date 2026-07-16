@@ -10,38 +10,15 @@ import json
 import random
 import sys
 from collections import Counter
+from pathlib import Path
 
-# --- 1. Load all files ---
-with open('bible1611 scores.json') as f:
-    scores_data = json.load(f)
-
-with open('bible1611 by Kimi-2.6.json') as f:
-    kimi_data = json.load(f)
-
-with open('bible1611 by Deepseek-v4-Pro.json') as f:
-    deepseek_data = json.load(f)
-
-with open('bible1611 Gemini-3.5-Flash.json') as f:
-    gemini_data = json.load(f)
+HERE = Path(__file__).parent
 
 # --- 2. Map score model keys to file names ---
 MODEL_FILE_MAP = {
     'Kimi-k': 'bible1611 by Kimi-2.6.json',
     'Deepseek': 'bible1611 by Deepseek-v4-Pro.json',
     'Gemini': 'bible1611 Gemini-3.5-Flash.json',
-}
-
-# --- 3. Build lookup for summaries ---
-# Kimi and Deepseek are lists of {book, summary}
-kimi_lookup = {item['book']: item['summary'] for item in kimi_data}
-deepseek_lookup = {item['book']: item['summary'] for item in deepseek_data}
-# Gemini is a dict {book: summary}
-gemini_lookup = gemini_data
-
-SUMMARY_LOOKUP = {
-    'bible1611 by Kimi-2.6.json': kimi_lookup,
-    'bible1611 by Deepseek-v4-Pro.json': deepseek_lookup,
-    'bible1611 Gemini-3.5-Flash.json': gemini_lookup,
 }
 
 # --- 4. Book name mapping (short → long KJV 1611 title) ---
@@ -144,66 +121,103 @@ def calc_score(correctness, style, completeness):
     return correctness * 3 + style * 2 + completeness
 
 
-fine_tuning_pairs = []
+def generate_summary():
+    """Build book-summary Q&A pairs, picking the best-scored model per book.
 
-for entry in scores_data['scores']:
-    book = entry['book']
+    Returns a list of dicts shaped like
+    ``{'messages': [user, assistant], 'source': ..., 'score': ...}``.
+    """
+    # --- Load all files ---
+    with open(HERE / 'bible1611 scores.json') as f:
+        scores_data = json.load(f)
 
-    # Compute scores for each model
-    model_scores = {}
-    for model_key in ['Kimi-k', 'Deepseek', 'Gemini']:
-        s = entry[model_key]
-        total = calc_score(s['correctness'], s['style'], s['completeness'])
-        model_scores[model_key] = {
-            'score': total,
-            'correctness': s['correctness'],
-            'style': s['style'],
-            'completeness': s['completeness'],
-            'note': s.get('note', ''),
-        }
+    with open(HERE / 'bible1611 by Kimi-2.6.json') as f:
+        kimi_data = json.load(f)
 
-    # Find the best (maximum) score
-    best_score = max(ms['score'] for ms in model_scores.values())
+    with open(HERE / 'bible1611 by Deepseek-v4-Pro.json') as f:
+        deepseek_data = json.load(f)
 
-    # Collect all models that achieve the best score (ties allowed)
-    for model_key, ms in model_scores.items():
-        if ms['score'] == best_score:
-            file_name = MODEL_FILE_MAP[model_key]
-            summary = SUMMARY_LOOKUP[file_name].get(book)
-            if summary is None:
-                print(f'WARNING: Missing summary for {book} in {file_name}', file=sys.stderr)
-                continue
+    with open(HERE / 'bible1611 Gemini-3.5-Flash.json') as f:
+        gemini_data = json.load(f)
 
-            pair = {
-                'messages': [
-                    {'role': 'user', 'content': make_question(book)},
-                    {'role': 'assistant', 'content': summary},
-                ],
-                'source': file_name,
-                'score': ms['score'],
-                '_score_detail': {
-                    'correctness': ms['correctness'],
-                    'style': ms['style'],
-                    'completeness': ms['completeness'],
-                    'note': ms['note'],
-                },
+    # --- Build lookup for summaries ---
+    # Kimi and Deepseek are lists of {book, summary}
+    kimi_lookup = {item['book']: item['summary'] for item in kimi_data}
+    deepseek_lookup = {item['book']: item['summary'] for item in deepseek_data}
+    # Gemini is a dict {book: summary}
+    gemini_lookup = gemini_data
+
+    summary_lookup = {
+        'bible1611 by Kimi-2.6.json': kimi_lookup,
+        'bible1611 by Deepseek-v4-Pro.json': deepseek_lookup,
+        'bible1611 Gemini-3.5-Flash.json': gemini_lookup,
+    }
+
+    fine_tuning_pairs = []
+
+    for entry in scores_data['scores']:
+        book = entry['book']
+
+        # Compute scores for each model
+        model_scores = {}
+        for model_key in ['Kimi-k', 'Deepseek', 'Gemini']:
+            s = entry[model_key]
+            total = calc_score(s['correctness'], s['style'], s['completeness'])
+            model_scores[model_key] = {
+                'score': total,
+                'correctness': s['correctness'],
+                'style': s['style'],
+                'completeness': s['completeness'],
+                'note': s.get('note', ''),
             }
-            fine_tuning_pairs.append(pair)
 
-# --- 7. Write output ---
-output_path = 'bible1611_summary.json'
-with open(output_path, 'w') as f:
-    json.dump(fine_tuning_pairs, f, indent=2, ensure_ascii=False)
+        # Find the best (maximum) score
+        best_score = max(ms['score'] for ms in model_scores.values())
 
-print(f'Generated {len(fine_tuning_pairs)} Q&A pairs → {output_path}')
+        # Collect all models that achieve the best score (ties allowed)
+        for model_key, ms in model_scores.items():
+            if ms['score'] == best_score:
+                file_name = MODEL_FILE_MAP[model_key]
+                summary = summary_lookup[file_name].get(book)
+                if summary is None:
+                    print(f'WARNING: Missing summary for {book} in {file_name}', file=sys.stderr)
+                    continue
 
-# --- 8. Print summary statistics ---
-print('\nScore distribution:')
-score_dist = Counter(p['score'] for p in fine_tuning_pairs)
-for score in sorted(score_dist):
-    print(f'  Score {score}: {score_dist[score]} pairs')
+                pair = {
+                    'messages': [
+                        {'role': 'user', 'content': make_question(book)},
+                        {'role': 'assistant', 'content': summary},
+                    ],
+                    'source': file_name,
+                    'score': ms['score'],
+                    '_score_detail': {
+                        'correctness': ms['correctness'],
+                        'style': ms['style'],
+                        'completeness': ms['completeness'],
+                        'note': ms['note'],
+                    },
+                }
+                fine_tuning_pairs.append(pair)
 
-print('\nSource distribution:')
-source_dist = Counter(p['source'] for p in fine_tuning_pairs)
-for src, count in source_dist.most_common():
-    print(f'  {src}: {count} pairs')
+    return fine_tuning_pairs
+
+
+if __name__ == '__main__':
+    fine_tuning_pairs = generate_summary()
+
+    # --- Write output ---
+    output_path = HERE / 'bible1611_summary.json'
+    with open(output_path, 'w') as f:
+        json.dump(fine_tuning_pairs, f, indent=2, ensure_ascii=False)
+
+    print(f'Generated {len(fine_tuning_pairs)} Q&A pairs → {output_path}')
+
+    print('\nScore distribution:')
+    score_dist = Counter(p['score'] for p in fine_tuning_pairs)
+    for score in sorted(score_dist):
+        print(f'  Score {score}: {score_dist[score]} pairs')
+
+    print('\nSource distribution:')
+    source_dist = Counter(p['source'] for p in fine_tuning_pairs)
+    for src, count in source_dist.most_common():
+        print(f'  {src}: {count} pairs')

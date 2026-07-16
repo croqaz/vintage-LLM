@@ -1,12 +1,12 @@
 """
 Generate Q&A pairs from philosophical quotes in the quotes/ folder.
 
-Produces three types of conversations:
+Produces a few types of conversations:
 
-1. **Multi-turn** — ask for a quote by an author, get a quote, then ask for
+**Multi-turn** — ask for a quote by an author, get a quote, then ask for
    another and get a second quote from the same author.
-2. **Reverse** — given a quote, name the author who said it (every quote used).
-3. **Cross-author** — questions that span multiple philosophers (lists,
+**Reverse** — given a quote, name the author who said it (every quote used).
+**Cross-author** — questions that span multiple philosophers (lists,
    categories, random picks).
 """
 
@@ -66,14 +66,6 @@ def _pick_author() -> str:
 
 def _pick_quote(author: str) -> str:
     return random.choice(_AUTHORS[author])
-
-
-def _two_different_quotes(author: str):
-    """Return two *different* quotes by *author* (author must have ≥2 quotes)."""
-    pool = _AUTHORS[author]
-    if len(pool) < 2:
-        raise ValueError(f'{author} has fewer than 2 quotes')
-    return tuple(random.sample(pool, 2))
 
 
 # ---------------------------------------------------------------------------
