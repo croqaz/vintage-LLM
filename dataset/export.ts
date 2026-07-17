@@ -125,7 +125,13 @@ function makeFieldSelector(fieldNames: string[]): (doc: Doc) => Doc {
 // Export mode — iterate + filter + export
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function exportDocs(db: ClassicLevel<string, Doc>, expr: string, fields: string[] | null, limit: number, output: string | null): Promise<void> {
+async function exportDocs(
+  db: ClassicLevel<string, Doc>,
+  expr: string,
+  fields: string[] | null,
+  limit: number,
+  output: string | null
+): Promise<void> {
   // Compile the expression into a filter function
   let filter: (doc: Doc) => boolean;
   try {
