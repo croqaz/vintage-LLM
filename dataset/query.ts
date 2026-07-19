@@ -146,7 +146,7 @@ async function queryDocs(db: ClassicLevel<string, Doc>, expr: string, limit: num
     // Compute derived score so expressions can reference doc.score.
     // Quality larger than 100 is good, smaller is bad.
     // All the others have to be close to 100 to be good.
-    // Perfect score > 0 (all seven = 100).
+    // Perfect score > 0 (all scores = 100).
     doc.score = -(
       ((doc.quality as number) ?? 0) -
       100 +
