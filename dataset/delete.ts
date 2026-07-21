@@ -11,8 +11,8 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { ClassicLevel } from 'classic-level';
-
-type Doc = Record<string, unknown>;
+import type { DocValue } from './features.ts';
+import { globalScore } from './features.ts';
 
 const BATCH_SIZE = 512;
 
@@ -104,8 +104,8 @@ Examples:
 // ID mode — delete a single document
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function deleteById(db: ClassicLevel<string, Doc>, id: string, dryRun: boolean): Promise<void> {
-  let doc: Doc | undefined;
+async function deleteById(db: ClassicLevel<string, DocValue>, id: string, dryRun: boolean): Promise<void> {
+  let doc: DocValue | undefined;
   try {
     doc = await db.get(id);
   } catch {
@@ -127,11 +127,11 @@ async function deleteById(db: ClassicLevel<string, Doc>, id: string, dryRun: boo
 // Query mode — iterate + filter + delete
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function queryAndDelete(db: ClassicLevel<string, Doc>, expr: string, limit: number, dryRun: boolean): Promise<void> {
+async function queryAndDelete(db: ClassicLevel<string, DocValue>, expr: string, limit: number, dryRun: boolean): Promise<void> {
   // Compile the expression into a filter function.
-  let filter: (doc: Doc) => boolean;
+  let filter: (doc: DocValue) => boolean;
   try {
-    filter = new Function('doc', `return (${expr});`) as (doc: Doc) => boolean;
+    filter = new Function('doc', `return (${expr});`) as (doc: DocValue) => boolean;
   } catch (err) {
     console.error(`Error: Invalid expression — ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
@@ -143,22 +143,9 @@ async function queryAndDelete(db: ClassicLevel<string, Doc>, expr: string, limit
 
   for await (const [key, doc] of db.iterator()) {
     scanned++;
-
-    // Quality larger than 100 is good, smaller is bad.
-    // All the others have to be close to 100 to be good.
-    doc.score = -(
-      ((doc.quality as number) ?? 0) -
-      100 +
-      Math.abs(((doc.compress as number) ?? 0) - 100) +
-      Math.abs(((doc.entropy as number) ?? 0) - 100) +
-      Math.abs(((doc.dictHit as number) ?? 0) - 100) +
-      Math.abs(((doc.alpha as number) ?? 0) - 100) +
-      Math.abs(((doc.vowel as number) ?? 0) - 100) +
-      Math.abs(((doc.ascii as number) ?? 0) - 100)
-    );
-
+    doc.score = globalScore(doc);
     try {
-      if (filter(doc)) {
+      if (filter!(doc)) {
         matched++;
         matchedKeys.push(key);
         if (matched >= limit) break;
@@ -222,7 +209,7 @@ async function queryAndDelete(db: ClassicLevel<string, Doc>, expr: string, limit
 async function main(): Promise<void> {
   const parsed = parseArgs();
 
-  const db = new ClassicLevel<string, Doc>(parsed.dbPath, {
+  const db = new ClassicLevel<string, DocValue>(parsed.dbPath, {
     valueEncoding: 'json',
     maxFileSize: 1_000_000_000,
   });

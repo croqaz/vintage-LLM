@@ -13,26 +13,11 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { ClassicLevel } from 'classic-level';
+import type { DocValue } from './features.ts';
+import { globalScore } from './features.ts';
 
 // Number of samples kept per metric for percentile estimation.
 const RESERVOIR_SIZE = 1_000_000;
-
-type Doc = Record<string, unknown>;
-
-interface DocRecord {
-  source?: string;
-  len?: number;
-  uniqChar?: number;
-  tokens?: number;
-  sentences?: number;
-  quality?: number;
-  compress?: number;
-  entropy?: number;
-  dictHit?: number;
-  alpha?: number;
-  vowel?: number;
-  ascii?: number;
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Reservoir sampler — keeps a uniform random sample of a stream in O(k) memory.
@@ -145,7 +130,7 @@ function fmtInt(n: number): string {
 async function main(): Promise<void> {
   const { dbPath, limit } = parseArgs();
 
-  const db = new ClassicLevel<string, Doc>(dbPath, {
+  const db = new ClassicLevel<string, DocValue>(dbPath, {
     valueEncoding: 'json',
     maxFileSize: 1_000_000_000,
   });
@@ -174,7 +159,7 @@ async function main(): Promise<void> {
 
   // Stream values only; never materialise the whole DB in memory.
   for await (const value of db.values()) {
-    const doc = value as DocRecord;
+    const doc = value as DocValue;
     totalRows++;
 
     if (doc.source) {
@@ -193,21 +178,9 @@ async function main(): Promise<void> {
     reservoirs.vowel.add(doc.vowel);
     reservoirs.ascii.add(doc.ascii);
 
-    // Score: negative sum of absolute deviations from 100 across 7 quality metrics.
-    // Quality larger than 100 is good, smaller is bad.
-    // Perfect score > 0 (all seven = 100).
-    reservoirs.score.add(
-      -(
-        ((doc.quality as number) ?? 0) -
-        100 +
-        Math.abs((doc.compress ?? 0) - 100) +
-        Math.abs((doc.entropy ?? 0) - 100) +
-        Math.abs((doc.dictHit ?? 0) - 100) +
-        Math.abs((doc.alpha ?? 0) - 100) +
-        Math.abs((doc.vowel ?? 0) - 100) +
-        Math.abs((doc.ascii ?? 0) - 100)
-      )
-    );
+    // Score: sum of absolute deviations from 100 across 7 quality metrics.
+    // Perfect score > 100 (all seven ~= 100).
+    reservoirs.score.add(globalScore(doc));
 
     if (limit > 0 && totalRows >= limit) break;
   }

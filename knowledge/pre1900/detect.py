@@ -35,7 +35,7 @@ import re
 import sys
 from typing import Any
 
-from banned_terms import find_anachronisms
+from banned_terms import find_anachronisms, find_anachronisms_fast
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 
@@ -163,7 +163,7 @@ class Scorer:
         style_weight / marker_weight / old_prior override the instance defaults
         for this one call (lets you judge, say, prompts and answers differently).
         """
-        hits = find_anachronisms(text)  # D1
+        hits = find_anachronisms_fast(text, tokens)  # D1 (fast: uses the tokens)
         feats = self.featurize(tokens)
         logit = self._modern_logit(feats, style_weight, marker_weight, old_prior)
         p = 0.0 if logit > 700 else 1.0 / (1.0 + math.exp(logit))  # D2 (overflow-safe)

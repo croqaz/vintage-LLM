@@ -169,6 +169,61 @@ function prefilter(text: string, maxLength: number): Record<string, any> {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GZIP file support (Bun native gunzip)
+// ──────────────────────────────────────────────────────────────────────────────
+
+const GZIP_EXT = '.gz';
+
+function isGzipped(filePath: string): boolean {
+  return filePath.endsWith(GZIP_EXT);
+}
+
+function stripGz(filePath: string): string {
+  return filePath.slice(0, -GZIP_EXT.length);
+}
+
+/** Read and optionally decompress a file to a UTF-8 string. */
+async function readFileContent(filePath: string): Promise<string> {
+  if (isGzipped(filePath)) {
+    const compressed = await Bun.file(filePath).bytes();
+    const decompressed = Bun.gunzipSync(compressed);
+    return new TextDecoder().decode(decompressed);
+  }
+  return readFileSync(filePath, 'utf8');
+}
+
+/**
+ * Create an async iterable from a file path. Gzip files are transparently
+ * decompressed in memory and yielded as a single chunk.
+ */
+function fileToAsyncIterable(filePath: string): AsyncIterable<string> {
+  if (isGzipped(filePath)) {
+    // For gzip files, decompress everything first, then yield as a single chunk.
+    // Bun.gunzipSync is fast; the existing line-splitting loop handles the rest.
+    let loaded = false;
+    let content = '';
+    const iterable: AsyncIterable<string> = {
+      [Symbol.asyncIterator]() {
+        return {
+          async next(): Promise<IteratorResult<string>> {
+            if (!loaded) {
+              loaded = true;
+              const compressed = await Bun.file(filePath).bytes();
+              const decompressed = Bun.gunzipSync(compressed);
+              content = new TextDecoder().decode(decompressed);
+              return { value: content, done: false };
+            }
+            return { value: undefined as unknown as string, done: true };
+          },
+        };
+      },
+    };
+    return iterable;
+  }
+  return createReadStream(filePath, { encoding: 'utf8' });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // File type detection
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -176,7 +231,9 @@ const JSONL_EXTENSIONS = new Set(['.json', '.jsonl', '.ndjson']);
 const TEXT_EXTENSIONS = new Set(['.txt', '.md']);
 
 function detectFileType(filePath: string): 'jsonl' | 'text' {
-  const ext = extname(filePath).toLowerCase();
+  // Strip .gz suffix before checking the underlying file extension
+  const stripped = isGzipped(filePath) ? stripGz(filePath) : filePath;
+  const ext = extname(stripped).toLowerCase();
   if (JSONL_EXTENSIONS.has(ext)) return 'jsonl';
   if (TEXT_EXTENSIONS.has(ext)) return 'text';
   console.error(`Fatal: unsupported file extension "${ext}" for ${basename(filePath)}.`);
@@ -203,7 +260,7 @@ async function processTextFile(
     rowsIndexed: 0,
   };
 
-  const text = readFileSync(filePath, 'utf8');
+  const text = await readFileContent(filePath);
 
   const filtered = prefilter(text, maxLength);
   if (!filtered.ok) {
@@ -305,8 +362,8 @@ async function processFile(
     }
   }
 
-  // Stream the file line by line
-  const fileStream = createReadStream(filePath, { encoding: 'utf8' });
+  // Stream the file line by line (gzip files are decompressed on-the-fly)
+  const fileStream = fileToAsyncIterable(filePath);
   let lineBuffer = '';
 
   for await (const chunk of fileStream) {

@@ -31,6 +31,27 @@ const ALPHA_TOKEN_RE = /^[A-Za-z][A-Za-z'’\-]*$/;
 const NOISE_CODES = new Set(Array.from('•▪■□●○◦·※†‡§¶¤¦¨¬¯´¸×÷=~^|\\{}<>@#$%&*_+', c => c.charCodeAt(0)));
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Stored value type (no `id` — the id is the LevelDB key)
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface DocValue {
+  source?: string;
+  len: number;
+  uniqChar: number;
+  tokens: number;
+  sentences: number;
+  quality: number; // Cro's custom quality score
+  compress: number; // normalized ZLIB compression ratio
+  entropy: number; // normalized Shannon entropy
+  dictHit: number; // dict hit rate over alpha tokens
+  alpha: number; // share of well-formed alphabetic tokens
+  vowel: number; // share of alpha tokens containing a vowel
+  ascii: number; // 1 - amplified share of noise chars
+  score?: number; // derived global score (higher is better)
+  text: string;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // ID generation — SHA-512/256
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -144,26 +165,6 @@ function charEntropy(text: string): number {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Stored value type (no `id` — the id is the LevelDB key)
-// ──────────────────────────────────────────────────────────────────────────────
-
-export interface DocValue {
-  source: string;
-  len: number;
-  uniqChar: number;
-  tokens: number;
-  sentences: number;
-  quality: number; // Cro's custom quality score
-  compress: number; // normalized ZLIB compression ratio
-  entropy: number; // normalized Shannon entropy
-  dictHit: number; // dict hit rate over alpha tokens
-  alpha: number; // share of well-formed alphabetic tokens
-  vowel: number; // share of alpha tokens containing a vowel
-  ascii: number; // 1 - amplified share of noise chars
-  text: string;
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
 // Compute the id + stored value for a document
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -224,4 +225,23 @@ export function computeRecord(text: string, source: string, vocab: Set<string>):
       text,
     },
   };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Global score — higher is better
+//
+// Reward `quality` above its 100 midpoint, and penalize the absolute distance
+// from 100 for six normalized signals (except `quality` itself).
+// ──────────────────────────────────────────────────────────────────────────────
+
+export function globalScore(v: DocValue): number {
+  return (
+    (v.quality ?? 0) -
+    Math.abs((v.compress ?? 0) - 100) -
+    Math.abs((v.entropy ?? 0) - 100) -
+    Math.abs((v.dictHit ?? 0) - 100) -
+    Math.abs((v.alpha ?? 0) - 100) -
+    Math.abs((v.vowel ?? 0) - 100) -
+    Math.abs((v.ascii ?? 0) - 100)
+  );
 }

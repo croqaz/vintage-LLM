@@ -66,7 +66,7 @@ def _build_regex():
     pats = sorted((re.escape(t) for t in terms), key=len, reverse=True)
     # (?<!\w)...(?!\w) instead of \b...\b so terms ending in punctuation match
     # too: \b needs a word char at the edge, so it never matched "c#" or "c++".
-    return re.compile(r"(?<!\w)(?:" + '|'.join(pats) + r")(?:'s|es|s|ed)?(?!\w)", re.I)
+    return re.compile(r'(?<!\w)(?:' + '|'.join(pats) + r")(?:'s|es|s|ed)?(?!\w)", re.I)
 
 
 def _regex():
@@ -74,6 +74,87 @@ def _regex():
     if _REGEX is None:
         _REGEX = _build_regex()
     return _REGEX
+
+
+# ---- fast path -----------------------------------------------------------
+# The single big regex is slow on long documents (it scans megabytes with a
+# 700+ alternation and lookarounds). Split it: pure single-word terms become
+# O(1) set lookups against the already-tokenized words; only multi-word / special
+# terms (spaces, '+', '#', '<', code fences, ...) stay in a smaller regex.
+_ALPHA = re.compile(r'[a-z]+')
+_ALPHA_PHRASE = re.compile(r'[a-z]+( [a-z]+)+')
+_FAST = None
+
+
+def _build_fast():
+    """single: pure-word terms (token lookup); by_n: {n: set of n-word phrases}
+    (token n-gram lookup); other_re: regex for the rest (c++, <html>, ```py, ...)."""
+    banned = _load_list('banned.txt')
+    allowed = _load_list('allowed.txt')
+    single, by_n, other = set(), {}, []
+    for t in banned - allowed:
+        if _ALPHA.fullmatch(t):
+            single.add(t)
+        elif _ALPHA_PHRASE.fullmatch(t):
+            by_n.setdefault(t.count(' ') + 1, set()).add(t)
+        else:
+            other.append(t)
+    pats = sorted((re.escape(t) for t in other), key=len, reverse=True)
+    other_re = re.compile(r'(?<!\w)(?:' + '|'.join(pats) + r")(?:'s|es|s|ed)?(?!\w)", re.I) if pats else None
+    return single, by_n, other_re
+
+
+def _fast():
+    global _FAST
+    if _FAST is None:
+        _FAST = _build_fast()
+    return _FAST
+
+
+def _forms(w):
+    """Yield a token and its singular/base forms (mirrors the '?:'s|es|s|ed' suffix)."""
+    yield w
+    if "'" in w:
+        yield w.split("'", 1)[0]
+        return
+    if len(w) > 2:
+        if w.endswith(('es', 'ed')):
+            yield w[:-2]
+        if w.endswith('s'):
+            yield w[:-1]
+
+
+def find_anachronisms_fast(text, tokens, check_years=True) -> list[str]:
+    """Fast equivalent of find_anachronisms() when the tokens are already known.
+
+    Same keep/drop decision as find_anachronisms() (may report a superset of hit
+    labels, never fewer). Single words + phrases are matched against the tokens;
+    only special terms (punctuation/code/HTML) and years touch the raw text.
+    """
+    single, by_n, other_re = _fast()
+    hits = set()
+    if check_years:
+        hits.update(m.group(0) for m in _YEAR_RE.finditer(text))
+    if other_re:
+        hits.update(m.group(0).lower() for m in other_re.finditer(text))
+    # single words
+    for tok in set(tokens):
+        for f in _forms(tok):
+            if f in single:
+                hits.add(f)
+                break
+    # multi-word phrases via token n-grams (plural allowed on the last word)
+    ntok = len(tokens)
+    for n, phrases in by_n.items():
+        for i in range(ntok - n + 1):
+            head = ' '.join(tokens[i : i + n - 1])
+            prefix = head + ' ' if head else ''
+            for last in _forms(tokens[i + n - 1]):
+                p = prefix + last
+                if p in phrases:
+                    hits.add(p)
+                    break
+    return sorted(hits)
 
 
 def find_anachronisms(text, check_years=True) -> list[str]:

@@ -13,11 +13,12 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { ClassicLevel } from 'classic-level';
+import type { DocValue } from './features.ts';
+import { globalScore } from './features.ts';
 
 type Doc = Record<string, unknown>;
 
-const EXAMPLE: Doc = {
-  id: 'abc123',
+const EXAMPLE: DocValue = {
   text: 'Hello world',
   source: 'A',
   len: 100,
@@ -25,13 +26,13 @@ const EXAMPLE: Doc = {
   tokens: 25,
   sentences: 3,
   entropy: 111.25,
-  quality: 103.36,
-  compress: 105.85,
+  quality: 123.36,
+  compress: 99.85,
   dictHit: 92.5,
   alpha: 95.0,
   vowel: 88.0,
   ascii: 99.5,
-  score: -10,
+  score: 75,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -126,16 +127,16 @@ function makeFieldSelector(fieldNames: string[]): (doc: Doc) => Doc {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function exportDocs(
-  db: ClassicLevel<string, Doc>,
+  db: ClassicLevel<string, DocValue>,
   expr: string,
   fields: string[] | null,
   limit: number,
   output: string | null
 ): Promise<void> {
   // Compile the expression into a filter function
-  let filter: (doc: Doc) => boolean;
+  let filter: (doc: DocValue) => boolean;
   try {
-    filter = new Function('doc', `return (${expr});`) as (doc: Doc) => boolean;
+    filter = new Function('doc', `return (${expr});`) as (doc: DocValue) => boolean;
     filter(EXAMPLE); // catch syntax errors early
   } catch (err) {
     console.error(`Error: Invalid expression — ${err instanceof Error ? err.message : String(err)}`);
@@ -170,21 +171,13 @@ async function exportDocs(
 
     // Quality larger than 100 is good, smaller is bad.
     // All the others have to be close to 100 to be good.
-    doc.score = -(
-      ((doc.quality as number) ?? 0) -
-      100 +
-      Math.abs(((doc.compress as number) ?? 0) - 100) +
-      Math.abs(((doc.entropy as number) ?? 0) - 100) +
-      Math.abs(((doc.dictHit as number) ?? 0) - 100) +
-      Math.abs(((doc.alpha as number) ?? 0) - 100) +
-      Math.abs(((doc.vowel as number) ?? 0) - 100) +
-      Math.abs(((doc.ascii as number) ?? 0) - 100)
-    );
+    doc.score = globalScore(doc);
 
     try {
-      if (filter(doc)) {
+      if (filter!(doc)) {
         // Build the output record
-        const out: Doc = { id: key };
+        // const out: Record<string, unknown> = { id: key };
+        const out: Record<string, unknown> = {};
 
         // Merge doc fields (filtered if --fields specified)
         if (selectFields) {
@@ -192,6 +185,8 @@ async function exportDocs(
         } else {
           Object.assign(out, doc);
         }
+
+        out.text = out.text.slice(0, 196);
 
         // Write as JSONL
         writeLine(JSON.stringify(out));
@@ -221,7 +216,7 @@ async function exportDocs(
 async function main(): Promise<void> {
   const parsed = parseArgs();
 
-  const db = new ClassicLevel<string, Doc>(parsed.dbPath, {
+  const db = new ClassicLevel<string, DocValue>(parsed.dbPath, {
     valueEncoding: 'json',
     maxFileSize: 1_000_000_000,
   });

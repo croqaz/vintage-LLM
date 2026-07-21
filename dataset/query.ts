@@ -8,11 +8,10 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { ClassicLevel } from 'classic-level';
+import type { DocValue } from './features.ts';
+import { globalScore } from './features.ts';
 
-type Doc = Record<string, unknown>;
-
-const EXAMPLE: Doc = {
-  id: 'abc123',
+const EXAMPLE: DocValue = {
   text: 'Hello world',
   source: 'A',
   len: 100,
@@ -26,7 +25,7 @@ const EXAMPLE: Doc = {
   alpha: 95.0,
   vowel: 88.0,
   ascii: 99.5,
-  score: -10,
+  score: 75,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -113,7 +112,7 @@ Examples:
 // ID mode — fetch a single document
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function fetchById(db: ClassicLevel<string, Doc>, id: string): Promise<void> {
+async function fetchById(db: ClassicLevel<string, DocValue>, id: string): Promise<void> {
   const doc = await db.get(id);
   if (doc === undefined) {
     console.log(`Key "${id}" not found.`);
@@ -126,11 +125,11 @@ async function fetchById(db: ClassicLevel<string, Doc>, id: string): Promise<voi
 // Query mode — iterate + filter
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function queryDocs(db: ClassicLevel<string, Doc>, expr: string, limit: number): Promise<void> {
+async function queryDocs(db: ClassicLevel<string, DocValue>, expr: string, limit: number): Promise<void> {
   // Compile the expression into a filter function.
-  let filter: (doc: Doc) => boolean;
+  let filter: (doc: DocValue) => boolean;
   try {
-    filter = new Function('doc', `return (${expr});`) as (doc: Doc) => boolean;
+    filter = new Function('doc', `return (${expr});`) as (doc: DocValue) => boolean;
     filter(EXAMPLE); // catch syntax errors early
   } catch (err) {
     console.error(`Error: Invalid expression — ${err instanceof Error ? err.message : String(err)}`);
@@ -146,20 +145,10 @@ async function queryDocs(db: ClassicLevel<string, Doc>, expr: string, limit: num
     // Compute derived score so expressions can reference doc.score.
     // Quality larger than 100 is good, smaller is bad.
     // All the others have to be close to 100 to be good.
-    // Perfect score > 0 (all scores = 100).
-    doc.score = -(
-      ((doc.quality as number) ?? 0) -
-      100 +
-      Math.abs(((doc.compress as number) ?? 0) - 100) +
-      Math.abs(((doc.entropy as number) ?? 0) - 100) +
-      Math.abs(((doc.dictHit as number) ?? 0) - 100) +
-      Math.abs(((doc.alpha as number) ?? 0) - 100) +
-      Math.abs(((doc.vowel as number) ?? 0) - 100) +
-      Math.abs(((doc.ascii as number) ?? 0) - 100)
-    );
+    doc.score = globalScore(doc);
 
     try {
-      if (filter(doc)) {
+      if (filter!(doc)) {
         matched++;
         if (doc.text.length > 16_000) {
           doc.text = doc.text.slice(0, 8_000) + '\n... [TRUNCATED] ...\n' + doc.text.slice(-8_000);
@@ -187,7 +176,7 @@ async function queryDocs(db: ClassicLevel<string, Doc>, expr: string, limit: num
 async function main(): Promise<void> {
   const parsed = parseArgs();
 
-  const db = new ClassicLevel<string, Doc>(parsed.dbPath, {
+  const db = new ClassicLevel<string, DocValue>(parsed.dbPath, {
     valueEncoding: 'json',
     maxFileSize: 1_000_000_000,
   });

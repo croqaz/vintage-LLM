@@ -13,44 +13,20 @@
 // The record key is a SHA-512/256 hash of the *normalized* text So when the
 // same ID appears in two DBs, the two records are the same underlying text
 // — but their stored `text` and metrics can differ. On collision we keep the
-// copy with the higher quality score (see qualityScore).
+// copy with the higher global score (see globalScore).
 // Ties keep whatever is already in the target, which makes re-runs idempotent.
 // The source DB identity does NOT influence the winner — it is purely quality.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { ClassicLevel } from 'classic-level';
 import type { DocValue } from './features.ts';
+import { globalScore } from './features.ts';
 
 const BATCH_SIZE = 512; // LevelDB batch flush size
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Quality score — higher is better
-//
-// Reward `quality` above its 100 midpoint, and penalize the absolute distance
-// from 100 for the six normalized signals.
-//
-// Caveat: `dictHit` depends on the vocab used at import time. If sources were
-// imported with different vocabularies the signal is not perfectly comparable
-// across DBs — but we trust the stored metrics rather than recompute, keeping
-// the merge fast (no re-hashing / vocab reload).
-// ──────────────────────────────────────────────────────────────────────────────
-
-function qualityScore(v: DocValue): number {
-  return (
-    (v.quality ?? 0) -
-    100 -
-    Math.abs((v.compress ?? 0) - 100) -
-    Math.abs((v.entropy ?? 0) - 100) -
-    Math.abs((v.dictHit ?? 0) - 100) -
-    Math.abs((v.alpha ?? 0) - 100) -
-    Math.abs((v.vowel ?? 0) - 100) -
-    Math.abs((v.ascii ?? 0) - 100)
-  );
-}
-
 // Returns the value that should win. Strict `>` so ties keep `existing`.
 function resolveConflict(existing: DocValue, incoming: DocValue): DocValue {
-  return qualityScore(incoming) > qualityScore(existing) ? incoming : existing;
+  return globalScore(incoming) > globalScore(existing) ? incoming : existing;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -188,7 +164,7 @@ async function mergeSource(
         const winner = resolveConflict(old, incoming);
         if (winner === incoming) {
           stats.replaced++;
-          stats.qualityGain += qualityScore(incoming) - qualityScore(old);
+          stats.qualityGain += globalScore(incoming) - globalScore(old);
           ops.push({ type: 'put', key, value: incoming });
         } else {
           stats.kept++;

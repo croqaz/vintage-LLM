@@ -19,7 +19,7 @@ import { ClassicLevel } from 'classic-level';
 
 type Doc = Record<string, unknown>;
 
-const DEFAULT_BATCH_SIZE = 50_000;
+const DEFAULT_BATCH_SIZE = 500_000;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // CLI argument parsing

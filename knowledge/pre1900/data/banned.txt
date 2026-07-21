@@ -699,22 +699,23 @@ yummy
 
 # --- people ---
 adolf hitler
-Johnny Cash
-Marvin Gaye
-Bob Marley
+alan turing
 albert einstein
 anne sexton
 benito mussolini
 bob dylan
+bob marley
 carlos santana
-Cristiano Ronaldo
-Diego Maradona
+cristiano ronaldo
+diego maradona
 donald trump
 einstein
 elvis presley
 ernest hemingway
 franklin roosevelt
 franz kafka
+johnny cash
+marvin gaye
 gandhi
 hitler
 j. d. salinger

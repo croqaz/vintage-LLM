@@ -9,8 +9,8 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { ClassicLevel } from 'classic-level';
-
-type Doc = Record<string, unknown>;
+import type { DocValue } from './features.ts';
+import { globalScore } from './features.ts';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // CLI argument parsing
@@ -58,11 +58,11 @@ Examples:
 // Count mode — iterate + filter + tally
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function countDocs(db: ClassicLevel<string, Doc>, expr: string): Promise<void> {
+async function countDocs(db: ClassicLevel<string, DocValue>, expr: string): Promise<void> {
   // Compile the expression into a filter function.
-  let filter: (doc: Doc) => boolean;
+  let filter: (doc: DocValue) => boolean;
   try {
-    filter = new Function('doc', `return (${expr});`) as (doc: Doc) => boolean;
+    filter = new Function('doc', `return (${expr});`) as (doc: DocValue) => boolean;
   } catch (err) {
     console.error(`Error: Invalid expression — ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
@@ -77,17 +77,8 @@ async function countDocs(db: ClassicLevel<string, Doc>, expr: string): Promise<v
     // Compute derived score so expressions can reference doc.score.
     // Quality larger than 100 is good, smaller is bad.
     // All the others have to be close to 100 to be good.
-    // Perfect score > 0 (all seven = 100).
-    doc.score = -(
-      ((doc.quality as number) ?? 0) -
-      100 +
-      Math.abs(((doc.compress as number) ?? 0) - 100) +
-      Math.abs(((doc.entropy as number) ?? 0) - 100) +
-      Math.abs(((doc.dictHit as number) ?? 0) - 100) +
-      Math.abs(((doc.alpha as number) ?? 0) - 100) +
-      Math.abs(((doc.vowel as number) ?? 0) - 100) +
-      Math.abs(((doc.ascii as number) ?? 0) - 100)
-    );
+    // Perfect score > 100 (all seven = 100).
+    doc.score = globalScore(doc);
 
     try {
       if (filter(doc)) {
@@ -98,7 +89,7 @@ async function countDocs(db: ClassicLevel<string, Doc>, expr: string): Promise<v
     }
   }
 
-  const pct = scanned > 0 ? ((matched / scanned) * 100).toFixed(2) : '0.00';
+  const pct = scanned > 0 ? ((matched / scanned) * 100).toFixed(3) : '0.00';
   console.log(`\n${matched.toLocaleString('en-US')} / ${scanned.toLocaleString('en-US')} documents match (${pct}%).\n`);
 }
 
@@ -109,7 +100,7 @@ async function countDocs(db: ClassicLevel<string, Doc>, expr: string): Promise<v
 async function main(): Promise<void> {
   const { expr, dbPath } = parseArgs();
 
-  const db = new ClassicLevel<string, Doc>(dbPath, {
+  const db = new ClassicLevel<string, DocValue>(dbPath, {
     valueEncoding: 'json',
     maxFileSize: 1_000_000_000,
   });
