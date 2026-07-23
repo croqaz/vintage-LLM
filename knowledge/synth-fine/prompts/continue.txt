@@ -1,0 +1,6 @@
+Continue the following passage in the same voice, register, and subject matter. Write two or three further paragraphs that flow naturally from where it stops. Do not summarise, do not comment on the text, and do not break character, simply carry the writing onward.
+
+PASSAGE:
+{text}
+
+CONTINUATION:

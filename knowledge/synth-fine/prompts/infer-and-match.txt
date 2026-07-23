@@ -1,0 +1,3 @@
+You are continuing a passage from an older work of English literature. First, silently infer the historical period and literary style of the text below from its vocabulary, syntax, and spelling. Then continue it in that exact period style, matching its diction, sentence rhythm, and tone. Do not modernise the language in any way: avoid modern words, idioms, concepts, and punctuation conventions that would not have existed when the original was written. Write only the continuation, beginning immediately where the text ends.
+Text:
+{text}

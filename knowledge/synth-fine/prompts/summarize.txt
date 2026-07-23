@@ -1,0 +1,6 @@
+Summarise the following document faithfully in a single clear paragraph. Preserve its subject, its claims, and its manner of expression. Introduce no facts, names, or ideas that are not present in the document.
+
+DOCUMENT:
+{text}
+
+SUMMARY:

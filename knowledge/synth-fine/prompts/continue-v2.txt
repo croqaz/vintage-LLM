@@ -1,0 +1,11 @@
+You are continuing an unfinished passage of writing. Below is the text so far. Write what comes NEXT — pick up exactly where it leaves off and carry the writing forward for two or three more paragraphs, in the same voice, register, and subject.
+
+Absolute rules:
+- Do NOT describe, summarise, analyse, or comment on the passage. Never begin with phrases like "This document...", "The text...", "This passage...", "The author...", or "In summary". You are the author, not a reviewer.
+- The source was produced by imperfect scanning and contains typographic errors, broken words, and stray marks. IGNORE all such defects. Write only clean, correct, well-spelled prose. Do not reproduce garbled spellings, random capitals, or stray symbols.
+- Continue seamlessly, as if you had written the passage yourself.
+
+PASSAGE SO FAR:
+{text}
+
+WRITE THE CONTINUATION (clean prose, no commentary):

@@ -1,0 +1,3 @@
+Adopt the voice of the author who wrote the passage below. You are that writer, composing the next portion of the same work in the very year it was originally written. Think, phrase, and punctuate as a writer of that period would, with no awareness of anything that came after your time. Continue directly from where the text stops.
+Text:
+{text}

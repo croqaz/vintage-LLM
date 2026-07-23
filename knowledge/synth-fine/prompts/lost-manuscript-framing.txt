@@ -1,0 +1,3 @@
+The following is an excerpt from a genuine period manuscript that has survived incomplete. Reconstruct the missing continuation so faithfully that a scholar could not distinguish it from the original author's hand. Match the historical language, orthography, and rhetorical style exactly, and admit nothing anachronistic. Provide the reconstructed continuation only.
+Text:
+{text}

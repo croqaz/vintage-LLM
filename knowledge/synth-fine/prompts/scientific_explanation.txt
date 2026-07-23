@@ -1,0 +1,6 @@
+Rewrite the following document so as to give clear, orderly explanations of the principles and reasoning it contains, as a learned lecturer of the mid-nineteenth century would set them before an attentive audience. Proceed step by step from cause to consequence. Explain only by means of the knowledge and natural philosophy available in that era, and admit plainly where a matter was then uncertain.
+
+DOCUMENT:
+{text}
+
+EXPLANATION:

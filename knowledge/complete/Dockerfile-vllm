@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+# ---------------------------------------------------------------------------
+# TypeWriter completion sampler — vLLM backend
+# ---------------------------------------------------------------------------
+# Serves typewriter-ai/typewriter-1913-7B-base-v2 with vLLM's OpenAI-compatible
+# server and drives it with sample.py / bench.py.
+#
+# The model is NOT baked in; mount the local cache read-only at /models/typewriter:
+#
+#   Build:
+#     docker build -f Dockerfile.vllm -t typewriter-vllm .
+#
+#   Run (GPU 1 only), generate completions:
+#     docker run --rm --gpus '"device=1"' \
+#       -v "$PWD/model-cache/typewriter-1913-7B-base-v2:/models/typewriter:ro" \
+#       -v "$PWD/out:/app/complete/out" \
+#       typewriter-vllm sample --limit 100 --concurrency 32 --format jsonl
+#
+#   Benchmark:
+#     docker run --rm --gpus '"device=1"' \
+#       -v "$PWD/model-cache/typewriter-1913-7B-base-v2:/models/typewriter:ro" \
+#       typewriter-vllm bench --limit 64 --concurrency 1,8,32,64
+# ---------------------------------------------------------------------------
+FROM vllm/vllm-openai:latest
+
+# curl for the health probe; requests for the Python clients (usually present).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir requests
+
+ENV LLAMA_HOST=127.0.0.1 \
+    LLAMA_PORT=1234 \
+    SERVED_MODEL_NAME=typewriter \
+    HEALTH_URL=http://127.0.0.1:1234/health \
+    HEALTH_TIMEOUT=900
+
+# Default server flags. Override the whole line at run time with
+#   -e SERVER_CMD='vllm serve /models/typewriter ...'
+# or append extras with  -e SERVER_EXTRA_ARGS='--enforce-eager'.
+ENV SERVER_CMD="vllm serve /models/typewriter \
+    --served-model-name typewriter \
+    --host 127.0.0.1 --port 1234 \
+    --dtype bfloat16 \
+    --max-model-len 4096 \
+    --gpu-memory-utilization 0.90"
+
+COPY sample.py bench.py seeds.txt entrypoint.sh /app/complete/
+RUN chmod +x /app/complete/entrypoint.sh && mkdir -p /app/complete/out
+
+WORKDIR /app/complete
+ENTRYPOINT ["/app/complete/entrypoint.sh"]

@@ -2,7 +2,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // explorer.ts — browser explorer for a LevelDB text-corpus DB (Bun)
 //
-//   bun explorer.ts -d ./Gutenberg-DB [-p 8080] [--vocab ./vocab.json]
+//   bun explorer.ts -d ./Gutenberg-DB [-p 8080]
 //
 // Opens ONE classic-level DB (read-write) and serves a single-page browser UI
 // plus a small JSON API. Designed for DBs with up to ~100M records:
@@ -36,24 +36,21 @@ function firstDbDir(): string {
   return './levelDB';
 }
 
-function parseArgs(): { dbPath: string; port: number; vocabPath: string } {
+function parseArgs(): { dbPath: string; port: number } {
   const args = process.argv.slice(2);
   let dbPath = '';
   let port = 8080;
-  let vocabPath = './vocab.json';
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if ((a === '-d' || a === '--db') && i + 1 < args.length) dbPath = args[++i];
     else if ((a === '-p' || a === '--port') && i + 1 < args.length) {
       port = parseInt(args[++i], 10);
-    } else if (a === '--vocab' && i + 1 < args.length) vocabPath = args[++i];
-    else if (a === '-h' || a === '--help') {
+    }  else if (a === '-h' || a === '--help') {
       console.log(`Usage: bun explorer.ts [options]
 
 Options:
   -d, --db <path>      LevelDB directory to explore (default: first *-DB dir in cwd)
   -p, --port <n>       HTTP port (default: 8080)
-  --vocab <path>       Vocabulary JSON for metric recompute on edit (default: ./vocab.json)
   -h, --help           Show this help`);
       process.exit(0);
     }
@@ -63,7 +60,7 @@ Options:
     console.error('Error: --port must be a positive integer.');
     process.exit(1);
   }
-  return { dbPath, port, vocabPath };
+  return { dbPath, port };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -198,7 +195,7 @@ const json = (data: unknown, status = 200) =>
 // Main
 // ──────────────────────────────────────────────────────────────────────────────
 
-const { dbPath, port, vocabPath } = parseArgs();
+const { dbPath, port } = parseArgs();
 
 const db = new ClassicLevel<string, DocValue>(dbPath, {
   valueEncoding: 'json',
@@ -208,9 +205,9 @@ await db.open();
 
 let vocab = new Set<string>();
 try {
-  vocab = await loadVocabFromFile(vocabPath);
+  vocab = await loadVocabFromFile('./vocab.json');
 } catch (err) {
-  console.warn(`[warn] Could not load vocab from ${vocabPath}: ${err instanceof Error ? err.message : err}`);
+  console.warn(`[warn] Could not load vocab from ./vocab.json: ${err instanceof Error ? err.message : err}`);
   console.warn('[warn] Edits will recompute dictHit against an EMPTY vocabulary (dictHit → 0).');
 }
 
@@ -359,8 +356,8 @@ const server = Bun.serve({
 });
 
 console.log(`\nLevelDB explorer running:`);
-console.log(`  DB:    ${dbPath}`);
-console.log(`  URL:   http://localhost:${server.port}`);
+console.log(`  DB:   ${dbPath}`);
+console.log(`  URL:  http://localhost:${server.port}`);
 
 process.on('SIGINT', async () => {
   console.log('\nClosing DB…');
@@ -398,10 +395,13 @@ const PAGE = /* html */ `<!doctype html>
   #jump { width:min(60vw,520px); }
   .idline { color:var(--muted); word-break:break-all; margin:6px 0; }
   .idline code { color:var(--accent); }
-  table.meta { border-collapse:collapse; margin:12px 0; }
-  table.meta td { border:1px solid var(--border); padding:3px 10px; }
-  table.meta td.k { color:var(--muted); }
-  table.meta td.v { text-align:right; color:var(--fg); }
+  .srcline { margin:8px 0 4px; }
+  .srcline .lbl { color:var(--muted); }
+  .srcline b { color:var(--accent); font-weight:900; }
+  .metagrid { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border); border:1px solid var(--border); margin:12px 0; max-width:640px; }
+  .metagrid .cell { display:flex; justify-content:space-between; gap:12px; padding:4px 10px; background:var(--panel); }
+  .metagrid .cell .k { color:var(--muted); }
+  .metagrid .cell .v { color:var(--fg); font-variant-numeric:tabular-nums; }
   textarea { width:100%; min-height:45vh; font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:10px; resize:vertical; }
   .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
   .msg { padding:6px 10px; border-radius:6px; margin:8px 0; display:none; }
@@ -436,13 +436,14 @@ const PAGE = /* html */ `<!doctype html>
 
   <div id="record" style="display:none">
     <div class="idline">id: <code id="recId"></code></div>
-    <table class="meta" id="metaTable"></table>
+    <div class="srcline"><span class="lbl">source:</span> <b id="recSource"></b></div>
+    <div class="metagrid" id="metaTable"></div>
     <div class="row">
       <strong>text</strong>
       <span class="muted" id="textInfo"></span>
     </div>
     <div id="textWrap"></div>
-    <div class="row">
+    <div class="row" style="margin-top:12px; margin-bottom:24px">
       <button class="primary" id="saveBtn" disabled>Save (recompute + re-key)</button>
       <button id="revertBtn" disabled>Revert</button>
       <button class="danger" id="deleteBtn">Delete</button>
@@ -468,8 +469,8 @@ function clearMsg() { $('#msg').className = 'msg'; }
 
 // score derived exactly like query.ts:150
 function scoreOf(d) {
-  return -(((d.quality??0)-100) + Math.abs((d.compress??0)-100) + Math.abs((d.entropy??0)-100)
-    + Math.abs((d.dictHit??0)-100) + Math.abs((d.alpha??0)-100) + Math.abs((d.vowel??0)-100) + Math.abs((d.ascii??0)-100));
+  return ((d.quality??0) - Math.abs((d.compress??0)-100) - Math.abs((d.entropy??0)-100)
+    - Math.abs((d.dictHit??0)-100) - Math.abs((d.alpha??0)-100) - Math.abs((d.vowel??0)-100) - Math.abs((d.ascii??0)-100));
 }
 
 async function loadInfo() {
@@ -502,11 +503,17 @@ function toggleExact() {
 }
 
 function renderMeta(v) {
-  const keys = ['source','len','uniqChar','tokens','sentences','quality','compress','entropy','dictHit','alpha','vowel','ascii'];
-  let rows = '';
-  for (const k of keys) rows += '<tr><td class="k">'+k+'</td><td class="v">'+(v[k]??'')+'</td></tr>';
-  rows += '<tr><td class="k">score</td><td class="v">'+scoreOf(v).toFixed(2)+'</td></tr>';
-  $('#metaTable').innerHTML = rows;
+  $('#recSource').textContent = v.source ?? '—';
+  // 12 metric fields laid out row-major in a 3-col x 4-row grid.
+  const cells = [
+    ['len', v.len], ['uniqChar', v.uniqChar], ['tokens', v.tokens],
+    ['sentences', v.sentences], ['quality', v.quality], ['compress', v.compress],
+    ['entropy', v.entropy], ['dictHit', v.dictHit], ['alpha', v.alpha],
+    ['vowel', v.vowel], ['ascii', v.ascii], ['score', scoreOf(v).toFixed(2)],
+  ];
+  $('#metaTable').innerHTML = cells
+    .map(([k, val]) => '<div class="cell"><span class="k">' + k + '</span><span class="v">' + (val ?? '') + '</span></div>')
+    .join('');
 }
 
 function renderText(v) {

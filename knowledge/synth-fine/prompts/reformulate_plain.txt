@@ -1,0 +1,6 @@
+Rewrite the following document in plain, correct prose, mending any garbled or ill-transcribed passages while keeping faithfully to its meaning and to the diction of its own age. Do not modernise the vocabulary, the spelling conventions, or the sensibility; simply render the same matter clearly and readably.
+
+DOCUMENT:
+{text}
+
+PLAIN REWRITING:

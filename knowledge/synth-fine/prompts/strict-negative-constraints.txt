@@ -1,0 +1,3 @@
+Continue the text below in its original historical style. Strict rules: (1) use only vocabulary and idioms that existed in the original period; (2) no modern words, slang, technology, brands, or concepts; (3) do not impose modern punctuation habits if the original does not use them; (4) match the original's sentence length and formality; (5) do not explain, summarise, or comment. Begin the continuation immediately.
+Text:
+{text}

@@ -186,8 +186,6 @@ async function exportDocs(
           Object.assign(out, doc);
         }
 
-        out.text = out.text.slice(0, 196);
-
         // Write as JSONL
         writeLine(JSON.stringify(out));
 

@@ -1,0 +1,3 @@
+Study the passage below as a stylistic model. Identify what makes its language distinctive — its era, its cadence, its vocabulary, its formality — then produce a continuation that imitates that model as closely as possible, as though extracted from the same book. Any drift toward modern phrasing is a failure. Return the continuation and nothing else.
+Text:
+{text}

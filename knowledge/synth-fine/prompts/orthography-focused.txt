@@ -1,0 +1,3 @@
+Continue the passage below. Reproduce the original's spelling conventions, capitalisation habits, and punctuation style exactly as they appear — including any archaic or non-standard forms — and extend them consistently into your continuation. Keep the diction and syntax within the same historical period. Output only the continuation.
+Text:
+{text}

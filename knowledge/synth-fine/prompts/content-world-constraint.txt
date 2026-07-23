@@ -1,0 +1,3 @@
+Continue the following passage in its original style and period. Beyond matching the language, keep the content within the world of the original: reference only objects, customs, technologies, and ideas that would plausibly exist in that setting. Nothing modern may enter, in either the wording or the subject matter. Begin the continuation directly.
+Text:
+{text}

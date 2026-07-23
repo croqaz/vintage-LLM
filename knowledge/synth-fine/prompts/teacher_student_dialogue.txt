@@ -1,0 +1,7 @@
+Reformulate the following document as an instructive dialogue between a Master and his Pupil, in the manner of the didactic catechisms of the eighteenth and nineteenth centuries. The Master questions and explains; the Pupil enquires and answers. Convey the substance of the document through their exchange, and let neither speaker refer to anything unknown in their own day.
+
+DOCUMENT:
+{text}
+
+DIALOGUE:
+Master.

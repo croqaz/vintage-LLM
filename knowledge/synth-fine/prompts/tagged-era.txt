@@ -1,0 +1,3 @@
+The passage below is written in {era} English. Continue it in authentic {era} style, matching the period's diction, syntax, spelling, and tone precisely. Avoid any word, idea, or construction that would be anachronistic for {era}. Write only the continuation, starting where the text ends.
+Text:
+{text}

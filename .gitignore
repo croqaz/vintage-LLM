@@ -160,10 +160,12 @@ training/*.bin
 
 knowledge/cutoff
 knowledge/dialog/*.json*
-knowledge/dialog/dialogs*
+knowledge/dialog/vintage*
 knowledge/dialog/gutenberg*
 knowledge/genStruct/*.json*
+knowledge/genStruct/*.txt
 knowledge/oldify/*.jsonl
 knowledge/oldify/*.txt
 knowledge/pre1900/
-knowledge/synth/*.json*
+knowledge/synth-ft1/*.json*
+knowledge/synth-fine/out/*.json*

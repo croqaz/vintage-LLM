@@ -1,0 +1,3 @@
+Continue the following passage seamlessly, as if written by the same author in the same era. Preserve every stylistic feature of the original: its vocabulary and archaic word choices, its long and subordinated sentence structure, its formal register, its narrative voice, and its spelling and punctuation conventions. Introduce nothing that postdates the original — no modern terms, technologies, or turns of phrase. Output the continuation only, with no preface or commentary.
+Text:
+{text}

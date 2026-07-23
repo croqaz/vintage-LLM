@@ -1,0 +1,6 @@
+Transform the following document into a magazine-style feature article suitable for a literary periodical of the mid-nineteenth century. Give it an engaging opening, develop the subject in flowing prose, and preserve the substance and the period sensibility of the source. Draw only on matters an educated writer of that day could know; introduce nothing that would be unknown before the present age.
+
+DOCUMENT:
+{text}
+
+FEATURE ARTICLE:

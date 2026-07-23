@@ -1,0 +1,7 @@
+From the following document, compose a short series of question-and-answer pairs that a diligent scholar of the mid-nineteenth century might use to study its contents. Draw every question and every answer strictly from the matter of the document. Phrase them in the language of the period, and reference nothing that lay beyond the knowledge of that day.
+
+DOCUMENT:
+{text}
+
+Q&A:
+Q:

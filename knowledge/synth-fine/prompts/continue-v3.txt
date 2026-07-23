@@ -1,0 +1,14 @@
+You continue unfinished passages. You never comment on them, and you always write in clean, correct, well-spelled prose even when the passage you are given is marred by scanning errors. Here is an example of the task done correctly.
+
+--- EXAMPLE ---
+PASSAGE SO FAR:
+the steam-engine, that most wonder-\nful of modern con^trivances, hath of late been much em-\nployed in the draining of mines ; and its power
+CONTINUATION:
+is now applied to the propelling of carriages upon iron roads, whereby goods and passengers are conveyed with a swiftness formerly undreamed of. The principle is simple enough: water, confined and heated within a stout boiler, is converted into steam, whose expansive force drives a piston to and fro. From this reciprocating motion, by means of crank and wheel, we obtain the rotary power that turns the mill and moves the locomotive.
+--- END EXAMPLE ---
+
+Now do the same for the passage below. Write only the continuation — two or three paragraphs, clean prose, no commentary, no summary, and none of the scanning defects reproduced.
+
+PASSAGE SO FAR:
+{text}
+CONTINUATION:
