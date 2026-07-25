@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vintage-core"
+version = "1.0.0"
+description = "Evaluation of the pre-1900-restyled CORE benchmark on any API model"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = ["requests>=2.25", "PyYAML>=5.4"]
+
+[project.scripts]
+vintage-core = "vintage_core.cli:main"
+
+[tool.setuptools]
+packages = ["vintage_core"]
+
+[tool.setuptools.package-data]
+vintage_core = []

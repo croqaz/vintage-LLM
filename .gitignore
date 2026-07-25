@@ -159,6 +159,7 @@ training/*-data/
 training/*.bin
 
 knowledge/cutoff
+knowledge/bible/*.txt
 knowledge/complete/seeds.*
 knowledge/dialog/*.json*
 knowledge/dialog/vintage*
