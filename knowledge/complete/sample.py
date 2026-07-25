@@ -237,10 +237,14 @@ class LocalModelBackend:
 class ApiBackend:
     """Generate completions via an OpenAI-compatible /v1/completions endpoint."""
 
-    def __init__(self, api_url: str, model_name: Optional[str] = None, seed: int = 42) -> None:
+    def __init__(self, api_url: str, model_name: Optional[str] = None, seed: int = 42, concurrency: int = 1) -> None:
         self.api_url = api_url.rstrip('/')
         self.model_name = model_name
         self.seed = seed
+        # How many requests to keep in flight at once. The batching engines
+        # (vLLM / SGLang) only reach high throughput when many sequences run
+        # concurrently; querying one-at-a-time leaves the GPU mostly idle.
+        self.concurrency = max(1, concurrency)
         # Quick health-check — non-fatal if it fails, just warn.
         try:
             resp = requests.get(f'{self.api_url}/health', timeout=5)
@@ -250,6 +254,31 @@ class ApiBackend:
                 print(f'[sample] ⚠ API health-check returned {resp.status_code}; will try anyway')
         except Exception:
             print(f'[sample] ⚠ Could not reach {self.api_url}/health — will try completions endpoint directly')
+
+    def _request(self, i: int, prompt: str, gen: dict, timeout: int) -> 'tuple[int, str]':
+        payload: dict = {
+            'prompt': prompt,
+            'max_tokens': gen['max_new_tokens'],
+            'temperature': gen['temperature'],
+            'top_p': gen['top_p'],
+            'top_k': gen['top_k'],
+            'min_p': gen['min_p'],
+            # Send both spellings so the same code works against llama.cpp
+            # (`repeat_penalty`) and vLLM / SGLang (`repetition_penalty`).
+            'repeat_penalty': gen['repetition_penalty'],
+            'repetition_penalty': gen['repetition_penalty'],
+            'seed': self.seed + i,
+            'stream': False,
+        }
+        if self.model_name:
+            payload['model'] = self.model_name
+
+        resp = requests.post(f'{self.api_url}/v1/completions', json=payload, timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json()
+        choice = data['choices'][0]
+        text = choice.get('text', '')
+        return i, text.strip()
 
     def generate_iter(
         self,
@@ -264,29 +293,30 @@ class ApiBackend:
         repetition_penalty: float,
         chat: bool = False,
     ) -> 'Iterator[tuple[int, str]]':
-        timeout = 120
+        timeout = 600
+        gen = dict(
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            min_p=min_p,
+            repetition_penalty=repetition_penalty,
+        )
 
-        for i, prompt in enumerate(prompts):
-            payload: dict = {
-                'prompt': prompt,
-                'max_tokens': max_new_tokens,
-                'temperature': temperature,
-                'top_p': top_p,
-                'top_k': top_k,
-                'min_p': min_p,
-                'repeat_penalty': repetition_penalty,
-                'seed': self.seed + i,
-                'stream': False,
-            }
-            if self.model_name:
-                payload['model'] = self.model_name
+        if self.concurrency <= 1:
+            for i, prompt in enumerate(prompts):
+                yield self._request(i, prompt, gen, timeout)
+            return
 
-            resp = requests.post(f'{self.api_url}/v1/completions', json=payload, timeout=timeout)
-            resp.raise_for_status()
-            data = resp.json()
-            choice = data['choices'][0]
-            text = choice.get('text', '')
-            yield i, text.strip()
+        # Keep up to `concurrency` requests in flight and yield each as soon as
+        # it completes. Order is not preserved, but the caller keys everything
+        # off the yielded index (seed_labels[idx]), so out-of-order is fine.
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        with ThreadPoolExecutor(max_workers=self.concurrency) as pool:
+            futures = {pool.submit(self._request, i, p, gen, timeout): i for i, p in enumerate(prompts)}
+            for fut in as_completed(futures):
+                yield fut.result()
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +450,13 @@ examples:
         default=1.075,
         help='Repetition penalty > 1 discourages repeats (default: 1.075).',
     )
+    gen.add_argument(
+        '--concurrency',
+        type=int,
+        default=1,
+        help='API backend only: number of requests to keep in flight at once. '
+        '>1 lets the server (vLLM / SGLang) batch, hugely raising throughput (default: 1).',
+    )
     gen.add_argument('--chat', action='store_true', help='Apply chat template to seeds before generation.')
     gen.add_argument(
         '--show-special-tokens',
@@ -525,6 +562,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         backend = ApiBackend(
             api_url=args.api_url,
             model_name=args.model,
+            concurrency=args.concurrency,
         )
 
     # ── Open output sink ──────────────────────────────────────────────────────

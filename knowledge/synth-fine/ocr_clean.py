@@ -12,8 +12,6 @@ Use ``clean(text)`` for the default profile, or ``clean(text, aggressive=True)``
 to also drop stray Greek/box glyphs that are usually mis-scans.
 """
 
-from __future__ import annotations
-
 import re
 import unicodedata
 

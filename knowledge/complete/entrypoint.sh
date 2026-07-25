@@ -1,43 +1,73 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Start the local llama-server, wait until it is ready, then run the seed
-# completion sampler. Any arguments passed to `docker run` after the image
-# name are forwarded verbatim to sample.py.
+# Engine-agnostic launcher for a completion sampler.
+#
+# 1. Starts an OpenAI-compatible inference server in the background. The full
+#    server command comes from $SERVER_CMD (set per-engine by the Dockerfile);
+#    extra flags can be appended at run time via $SERVER_EXTRA_ARGS.
+# 2. Waits until the server's health endpoint is live.
+# 3. Runs a client workload against 127.0.0.1:
+#       sample <args...>   -> python3 sample.py seeds.txt --api-url ... <args>
+#       bench  <args...>   -> python3 bench.py  seeds.txt --api-url ... <args>
+#       serve              -> just keep the server in the foreground
+#       <anything else>    -> exec verbatim (server still running)
+#    Default (no args) == `sample`.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-LLAMA_HOST="${LLAMA_HOST:-127.0.0.1}"
-LLAMA_PORT="${LLAMA_PORT:-1234}"
+HOST="${LLAMA_HOST:-127.0.0.1}"
+PORT="${LLAMA_PORT:-1234}"
+API_URL="http://${HOST}:${PORT}"
+HEALTH_URL="${HEALTH_URL:-${API_URL}/health}"
+MODEL_NAME="${SERVED_MODEL_NAME:-typewriter}"
 
-echo "[entrypoint] starting llama-server (model: ${MODEL_PATH})"
-/app/llama-server \
-    --model "${MODEL_PATH}" \
-    --host "${LLAMA_HOST}" \
-    --port "${LLAMA_PORT}" \
-    --n-gpu-layers "${N_GPU_LAYERS:-999}" \
-    --ctx-size "${CTX_SIZE:-8192}" \
-    ${LLAMA_EXTRA_ARGS:-} &
+if [ -z "${SERVER_CMD:-}" ]; then
+    echo "[entrypoint] ERROR: SERVER_CMD is not set" >&2
+    exit 1
+fi
+
+echo "[entrypoint] starting inference server:"
+echo "             ${SERVER_CMD} ${SERVER_EXTRA_ARGS:-}"
+# shellcheck disable=SC2086
+eval "${SERVER_CMD} ${SERVER_EXTRA_ARGS:-}" &
 SERVER_PID=$!
 
-# Tear the server down when this script exits for any reason.
 cleanup() { kill "${SERVER_PID}" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
 
-echo "[entrypoint] waiting for llama-server on ${LLAMA_HOST}:${LLAMA_PORT} ..."
-until python -c "import urllib.request; urllib.request.urlopen('http://${LLAMA_HOST}:${LLAMA_PORT}/health', timeout=2)" >/dev/null 2>&1; do
+echo "[entrypoint] waiting for server health at ${HEALTH_URL} ..."
+ATTEMPTS=0
+until curl -fsS "${HEALTH_URL}" >/dev/null 2>&1; do
     if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
-        echo "[entrypoint] llama-server exited before becoming ready" >&2
+        echo "[entrypoint] server exited before becoming ready" >&2
         wait "${SERVER_PID}" || true
         exit 1
     fi
-    sleep 2
+    ATTEMPTS=$((ATTEMPTS + 1))
+    if [ "${ATTEMPTS}" -gt "${HEALTH_TIMEOUT:-600}" ]; then
+        echo "[entrypoint] server not healthy after ${ATTEMPTS}s — giving up" >&2
+        exit 1
+    fi
+    sleep 1
 done
-echo "[entrypoint] llama-server ready; launching sample.py"
+echo "[entrypoint] server ready after ${ATTEMPTS}s"
 
-# Default: read the bundled seeds, hit the local server, write to the mountable
-# out/ folder. The positional seeds file, --api-url and -o defaults can all be
-# overridden by passing your own args to `docker run`.
-python sample.py seeds.txt \
-    --api-url "http://${LLAMA_HOST}:${LLAMA_PORT}" \
-    -o out/completions.txt \
-    "$@"
+MODE="${1:-sample}"
+[ "$#" -gt 0 ] && shift || true
+
+case "${MODE}" in
+    sample)
+        exec python3 sample.py seeds.txt --api-url "${API_URL}" --model "${MODEL_NAME}" \
+            -o out/completions.txt "$@"
+        ;;
+    bench)
+        exec python3 bench.py seeds.txt --api-url "${API_URL}" --model "${MODEL_NAME}" "$@"
+        ;;
+    serve)
+        echo "[entrypoint] serve mode — server running on ${API_URL}"
+        wait "${SERVER_PID}"
+        ;;
+    *)
+        exec "${MODE}" "$@"
+        ;;
+esac

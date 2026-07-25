@@ -159,6 +159,7 @@ training/*-data/
 training/*.bin
 
 knowledge/cutoff
+knowledge/complete/seeds.*
 knowledge/dialog/*.json*
 knowledge/dialog/vintage*
 knowledge/dialog/gutenberg*
@@ -168,4 +169,5 @@ knowledge/oldify/*.jsonl
 knowledge/oldify/*.txt
 knowledge/pre1900/
 knowledge/synth-ft1/*.json*
+knowledge/synth-fine/seeds.*
 knowledge/synth-fine/out/*.json*
