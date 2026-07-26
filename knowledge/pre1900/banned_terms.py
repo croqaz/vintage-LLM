@@ -35,7 +35,12 @@ DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 # A pre-1900 author cannot reference a year >= 1900. Matched on raw text because
 # years are digits. Bounded to 1900-2099 so we don't catch arbitrary numbers
 # like "the year 1066" (pre-1900, fine) or unrelated 4-digit quantities far off.
-_YEAR_RE = re.compile(r'\b(?:19\d\d|20\d\d)\b')
+# Match 1901-2099, but exclude:
+#   - 1900 (pre-1900 year, allowed)
+#   - years followed by B.C. / BCE (e.g. "2080 B. C.", "2000 B.C.")
+#   - years that are the endpoint of a BC range (e.g. "from 2700 B.C. to 2080")
+_YEAR_RE = re.compile(r'\b(?!1900\b)(?:19\d\d|20\d\d)\b(?!\s*B\.?\s*C\.?)')
+_BC_RANGE_RE = re.compile(r'\bB\.?\s*C\.?\s*,?\s*to\s+(\d{4})\b', re.I)
 
 _REGEX = None
 
@@ -135,6 +140,9 @@ def find_anachronisms_fast(text, tokens, check_years=True) -> list[str]:
     hits = set()
     if check_years:
         hits.update(m.group(0) for m in _YEAR_RE.finditer(text))
+        # Remove years that are the endpoint of a BC range (e.g. "from 2700 B.C. to 2080")
+        bc_years = set(m.group(1) for m in _BC_RANGE_RE.finditer(text))
+        hits.difference_update(bc_years)
     if other_re:
         hits.update(m.group(0).lower() for m in other_re.finditer(text))
     # single words
@@ -168,17 +176,14 @@ def find_anachronisms(text, check_years=True) -> list[str]:
         hits.update(m.group(0).lower() for m in rx.finditer(text))
     if check_years:
         hits.update(m.group(0) for m in _YEAR_RE.finditer(text))
+        bc_years = set(m.group(1) for m in _BC_RANGE_RE.finditer(text))
+        hits.difference_update(bc_years)
     return sorted(hits)
 
 
 def contains_anachronism(text, check_years=True) -> bool:
     """True if the text contains ANY banned term or post-1900 year."""
-    rx = _regex()
-    if rx and rx.search(text):
-        return True
-    if check_years and _YEAR_RE.search(text):
-        return True
-    return False
+    return bool(find_anachronisms(text, check_years=check_years))
 
 
 def _main(argv):

@@ -94,24 +94,31 @@ BOOK_LONG_NAMES = {
 
 # --- 5. Random question templates ---
 def make_question(book_short):
-    """Return a user question using one of 4 templates, randomly chosen."""
+    """Return a user question using one of several templates, randomly chosen."""
     book_long = BOOK_LONG_NAMES.get(book_short, f'the Book of {book_short}')
     templates = [
-        f'Be so good as to declare unto me, in short compass, what {book_long} doth contain.'
-        f'Canst thou give me a short account of what is written in {book_long}?'
-        f'I beseech thee, make plain unto me the chiefest matters and histories set down in {book_long}.'
+        # Group 1 (4 separate questions)
+        f'Be so good as to declare unto me, in short compass, what {book_long} doth contain.',
+        f'Canst thou give me a short account of what is written in {book_long}?',
+        f'I beseech thee, make plain unto me the chiefest matters and histories set down in {book_long}.',
         f'I prithee, good sir, set forth for me a brief rehearsal of all that is written in {book_long}.',
-        f'I would fain know the general argument and sum of {book_long}: wilt thou therefore set it forth briefly before me, that mine understanding be enlightened?'
-        f'In brief, what happeneth in {book_long}?'
+        # Group 2 (3 separate questions)
+        f'I would fain know the general argument and sum of {book_long}: wilt thou therefore set it forth briefly before me, that mine understanding be enlightened?',
+        f'In brief, what happeneth in {book_long}?',
         f'Make known unto me, in few words, what {book_long} doth declare.',
-        f'Of thy courtesy, rehearse for me the principal histories and ordinances recorded in {book_long}, that I may have a sure understanding thereof.'
-        f'Pray thee, recount unto me in brief the sum and substance of {book_long}, that I may comprehend the great works of the Lord.'
-        f'Pray, what doth {book_long} speak of?'
-        f'Tell me, what are the chief matters set down in {book_long}?'
-        f'Vouchsafe, I pray thee, to give me a short recapitulation of that which the first {book_long} doth declare!'
+        # Group 3 (6 separate questions)
+        f'Of thy courtesy, rehearse for me the principal histories and ordinances recorded in {book_long}, that I may have a sure understanding thereof.',
+        f'Pray thee, recount unto me in brief the sum and substance of {book_long}, that I may comprehend the great works of the Lord.',
+        f'Pray, what doth {book_long} speak of?',
+        f'Tell me, what are the chief matters set down in {book_long}?',
+        f'Vouchsafe, I pray thee, to give me a short recapitulation of that which the first {book_long} doth declare!',
         f'What are the principal things recorded in {book_long}?',
-        f'What doth {book_long} contain?What is the general matter and argument of {book_long}?',
-        f'What is the sum of {book_long}?Wouldst thou be pleased to give me a compendious account of {book_long}?',
+        # Group 4 (2 separate questions — were concatenated without separator)
+        f'What doth {book_long} contain?',
+        f'What is the general matter and argument of {book_long}?',
+        # Group 5 (2 separate questions — were concatenated without separator)
+        f'What is the sum of {book_long}?',
+        f'Wouldst thou be pleased to give me a compendious account of {book_long}?',
     ]
     return random.choice(templates)
 

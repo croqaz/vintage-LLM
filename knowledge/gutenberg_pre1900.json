@@ -846,15 +846,6 @@
     "on_disk": false
   },
   {
-    "id": "200",
-    "title": "The Project Gutenberg Encyclopedia, Volume 1 of 28",
-    "author": "Project Gutenberg",
-    "date": 1818,
-    "date_source": "catalog_date",
-    "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
     "id": "201",
     "title": "Flatland: A Romance of Many Dimensions",
     "author": "Abbott, Edwin Abbott",
@@ -4336,15 +4327,6 @@
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
-  },
-  {
-    "id": "1062",
-    "title": "First Project Gutenberg Collection of Edgar Allan Poe",
-    "author": "Poe, Edgar Allan",
-    "date": 1849,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": false
   },
   {
     "id": "1063",
@@ -13509,15 +13491,6 @@
     "on_disk": true
   },
   {
-    "id": "3136",
-    "title": "The Complete Project Gutenberg Writings of Charles Dudley Warner",
-    "author": "Warner, Charles Dudley",
-    "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "3141",
     "title": "The Irish Race in the Past and the Present",
     "author": "Thébaud, Augustus J.",
@@ -13767,15 +13740,6 @@
     "date": 1895,
     "date_source": "authors_json_year",
     "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
-    "id": "3252",
-    "title": "Complete Project Gutenberg Oliver Wendell Holmes, Sr. Works",
-    "author": "Holmes, Oliver Wendell",
-    "date": 1894,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
     "on_disk": true
   },
   {
@@ -14310,15 +14274,6 @@
     "on_disk": true
   },
   {
-    "id": "3399",
-    "title": "Complete Project Gutenberg William Dean Howells Literature Essays",
-    "author": "Howells, William Dean",
-    "date": 1853,
-    "date_source": "catalog_date",
-    "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
     "id": "3404",
     "title": "Dombey and Son",
     "author": "Howells, William Dean",
@@ -14499,15 +14454,6 @@
     "on_disk": true
   },
   {
-    "id": "3471",
-    "title": "Quotations from the Project Gutenberg Editions of the Works of Charles Dudley Warner",
-    "author": "Warner, Charles Dudley",
-    "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "3473",
     "title": "The Poems of Emma Lazarus, Volume 2 Jewish poems: Translations",
     "author": "Lazarus, Emma",
@@ -14544,15 +14490,6 @@
     "on_disk": true
   },
   {
-    "id": "3493",
-    "title": "Widger's Quotations from the Project Gutenberg Editions of the Works of Oliver W. Holmes, Sr.",
-    "author": "Holmes, Oliver Wendell",
-    "date": 1894,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "3499",
     "title": "Jo's Boys",
     "author": "Alcott, Louisa May",
@@ -14577,15 +14514,6 @@
     "date": 1795,
     "date_source": "authors_json_year",
     "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
-    "id": "3531",
-    "title": "Widger's Quotations from the Project Gutenberg Editions of the Works of Lord Chesterfield",
-    "author": "Chesterfield, Philip Dormer Stanhope, Earl of",
-    "date": 1773,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
     "on_disk": true
   },
   {
@@ -14620,15 +14548,6 @@
     "title": "The Love-chase",
     "author": "Knowles, James Sheridan",
     "date": 1862,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "3542",
-    "title": "Widger's Quotations from the Project Gutenberg Editions of the Works of Jacques Casanova",
-    "author": "Casanova, Giacomo",
-    "date": 1798,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -15129,15 +15048,6 @@
     "on_disk": true
   },
   {
-    "id": "3603",
-    "title": "Widger's Quotations from the Project Gutenberg Editions of the Works of Guy de Maupassant",
-    "author": "Maupassant, Guy de",
-    "date": 1893,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "3606",
     "title": "Antonina; Or, The Fall of Rome",
     "author": "Collins, Wilkie",
@@ -15192,15 +15102,6 @@
     "on_disk": true
   },
   {
-    "id": "3617",
-    "title": "Widger's Quotations from the Project Gutenberg Editions of Dumas' Celebrated Crimes",
-    "author": "Dumas, Alexandre",
-    "date": 1870,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "3620",
     "title": "Geological Observations on South America",
     "author": "Darwin, Charles",
@@ -15216,15 +15117,6 @@
     "date": 1857,
     "date_source": "catalog_date",
     "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
-    "id": "3626",
-    "title": "Widger's Quotations from the Project Gutenberg Editions of the Works of Abraham Lincoln",
-    "author": "Lincoln, Abraham",
-    "date": 1865,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
     "on_disk": true
   },
   {
@@ -15304,15 +15196,6 @@
     "title": "Wild Beasts and Their Ways, Reminiscences of Europe, Asia, Africa and America — Volume 1",
     "author": "Baker, Samuel White, Sir",
     "date": 1893,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "3661",
-    "title": "Widger's Quotations from the Project Gutenberg Editions of the Works of Montaigne",
-    "author": "Montaigne, Michel de",
-    "date": 1592,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -15624,15 +15507,6 @@
     "on_disk": true
   },
   {
-    "id": "3729",
-    "title": "Widger's Quotations from Project Gutenberg Edition of Memoirs of Napoleon",
-    "author": "H. G. Wells",
-    "date": 1896,
-    "date_source": "catalog_date",
-    "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
     "id": "3731",
     "title": "Disturbances of the Heart Discussion of the Treatment of the Heart in Its Various Disorders, With a Chapter on Blood Pressure",
     "author": "Osborne, Oliver T. (Oliver Thomas)",
@@ -15682,15 +15556,6 @@
     "title": "The Writings of Thomas Paine — Volume 4 (1794-1796): The Age of Reason",
     "author": "Paine, Thomas",
     "date": 1809,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "3749",
-    "title": "Widger's Quotations from Project Gutenberg Edition of The Confessions of Jean Jacques Rousseau",
-    "author": "Rousseau, Jean-Jacques",
-    "date": 1778,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -64152,15 +64017,6 @@
     "on_disk": true
   },
   {
-    "id": "25808",
-    "title": "Index of the Project Gutenberg works of Thomas Carlyle",
-    "author": "Carlyle, Thomas",
-    "date": 1881,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "25815",
     "title": "A New Voyage Round the World, in the years 1823, 24, 25, and 26, Vol. 2",
     "author": "Kotzebue, Otto von",
@@ -68184,15 +68040,6 @@
     "on_disk": true
   },
   {
-    "id": "28747",
-    "title": "The Works of Oliver Wendell Holmes: An Index of the Project Gutenberg Editions",
-    "author": "Holmes, Oliver Wendell",
-    "date": 1894,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "28753",
     "title": "Domestic Cookery, Useful Receipts, and Hints to Young Housekeepers",
     "author": "Lea, Elizabeth E. (Elizabeth Ellicott)",
@@ -68382,15 +68229,6 @@
     "on_disk": true
   },
   {
-    "id": "28821",
-    "title": "The Works of Charles Dudley Warner Project Gutenberg Editions",
-    "author": "Warner, Charles Dudley",
-    "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "28824",
     "title": "The mermaid's prophecy, and other songs relating to Queen Dagmar",
     "author": "Borrow, George",
@@ -68499,15 +68337,6 @@
     "on_disk": true
   },
   {
-    "id": "28860",
-    "title": "The Memoirs, Correspondence, and Miscellanies, From the Papers of Thomas Jefferson A Linked Index to the Project Gutenberg Editions",
-    "author": "Jefferson, Thomas",
-    "date": 1826,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "28879",
     "title": "A Popular History of France from the Earliest Times A Linked Index to the Project Gutenberg Editions",
     "author": "Guizot, François",
@@ -68526,28 +68355,10 @@
     "on_disk": true
   },
   {
-    "id": "28884",
-    "title": "A History of England from Early Times: A Linked Index to the Project Gutenberg Editions",
-    "author": "Hume, David; Smollett, T. (Tobias)",
-    "date": 1771,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "28885",
     "title": "Alice's Adventures in Wonderland Illustrated by Arthur Rackham. With a Proem by Austin Dobson",
     "author": "Carroll, Lewis",
     "date": 1898,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "28896",
-    "title": "Stories and Tales of the Irish: A Linked Index to the Project Gutenberg Editions",
-    "author": "Carleton, William",
-    "date": 1869,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -68559,24 +68370,6 @@
     "date": 1868,
     "date_source": "catalog_date",
     "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
-    "id": "28898",
-    "title": "The Historical Novels of Georg Ebers A Linked Index to the Project Gutenberg Editions",
-    "author": "Ebers, Georg",
-    "date": 1898,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "28905",
-    "title": "The Works of Edward Bulwer-Lytton: A Linked Index to the Project Gutenberg Editions",
-    "author": "Lytton, Edward Bulwer Lytton, Baron",
-    "date": 1873,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
     "on_disk": true
   },
   {
@@ -68668,15 +68461,6 @@
     "date_source": "authors_json_year",
     "date_is_upper_bound": false,
     "on_disk": false
-  },
-  {
-    "id": "28969",
-    "title": "The Illustrated Works of Friedrich Schiller A Linked Index to the Project Gutenberg Editions",
-    "author": "Schiller, Friedrich",
-    "date": 1805,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
   },
   {
     "id": "28979",
@@ -69246,15 +69030,6 @@
     "on_disk": true
   },
   {
-    "id": "29381",
-    "title": "The Works of Charles James Lever An Index of the Project Gutenberg Works of Lever",
-    "author": "Lever, Charles",
-    "date": 1872,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "29412",
     "title": "The Phantom World; or, The philosophy of spirits, apparitions, &c, &c.",
     "author": "Calmet, Augustin",
@@ -69291,28 +69066,10 @@
     "on_disk": true
   },
   {
-    "id": "29441",
-    "title": "The Project Gutenberg Works of Plato: An Index",
-    "author": "Plato",
-    "date": -348,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "29456",
     "title": "The Comic Latin Grammar: A new and facetious introduction to the Latin tongue",
     "author": "Leigh, Percival",
     "date": 1889,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "29459",
-    "title": "The Project Gutenberg Works of Xenophon: An Index",
-    "author": "Xenophon",
-    "date": -351,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -71361,15 +71118,6 @@
     "on_disk": true
   },
   {
-    "id": "31100",
-    "title": "The Complete Project Gutenberg Works of Jane Austen A Linked Index of all PG Editions of Jane Austen",
-    "author": "Austen, Jane",
-    "date": 1817,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "31101",
     "title": "Spenser",
     "author": "Church, R. W. (Richard William)",
@@ -71995,15 +71743,6 @@
     "title": "Walladmor, Vol. 1 (of 2) \"Freely Translated into German from the English of Sir Walter Scott.\" And Now Freely Translated from the German into English.",
     "author": "Alexis, Willibald",
     "date": 1871,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "31565",
-    "title": "The Works of Balzac: A linked index to all Project Gutenberg editions",
-    "author": "Balzac, Honoré de",
-    "date": 1850,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -110070,15 +109809,6 @@
     "on_disk": true
   },
   {
-    "id": "57383",
-    "title": "Project Gutenberg Edition of The Memoirs of Four Civil War Generals",
-    "author": "Grant, Ulysses S. (Ulysses Simpson); Logan, John Alexander; Sheridan, Philip Henry; Sherman, William T. (William Tecumseh)",
-    "date": 1885,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "57385",
     "title": "The collected works of William Hazlitt, Vol. 09 (of 12)",
     "author": "Hazlitt, William",
@@ -110340,15 +110070,6 @@
     "on_disk": true
   },
   {
-    "id": "57588",
-    "title": "Index for the Project Gutenberg Series \"American Pioneers and Patriots\"",
-    "author": "Abbott, John S. C. (John Stevens Cabot)",
-    "date": 1877,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "57589",
     "title": "Silverspur; or, The Mountain Heroine: A Tale of the Arapaho Country",
     "author": "Willett, Edward",
@@ -110380,15 +110101,6 @@
     "title": "In Savage Africa Or, The adventures of Frank Baldwin from the Gold Coast to Zanzibar.",
     "author": "Cameron, Verney Lovett",
     "date": 1894,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "57626",
-    "title": "Index of the Project Gutenberg Works of Frank E. Smedley",
-    "author": "Smedley, Frank E. (Frank Edward)",
-    "date": 1864,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -110493,15 +110205,6 @@
     "on_disk": true
   },
   {
-    "id": "57683",
-    "title": "Index of the Project Gutenberg Works of William Harrison Ainsworth",
-    "author": "Ainsworth, William Harrison",
-    "date": 1882,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "57685",
     "title": "Griffith Gaunt; or, Jealousy Volumes 1 to 3 (of 3)",
     "author": "Reade, Charles",
@@ -110511,28 +110214,10 @@
     "on_disk": true
   },
   {
-    "id": "57691",
-    "title": "Index of the Project Gutenberg Memoirs of Casanova",
-    "author": "Casanova, Giacomo",
-    "date": 1798,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "57701",
     "title": "The History of Duelling. Vol. 2 (of 2)",
     "author": "Millingen, J. G. (John Gideon)",
     "date": 1862,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "57702",
-    "title": "Index of the Project Gutenberg Works of Victor Hugo",
-    "author": "Hugo, Victor",
-    "date": 1885,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -110808,15 +110493,6 @@
     "on_disk": true
   },
   {
-    "id": "57966",
-    "title": "Index of the Project Gutenberg Works of Thackeray",
-    "author": "Thackeray, William Makepeace",
-    "date": 1863,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "57970",
     "title": "Two Tracts on Civil Liberty, the War with America, and the Debts and Finances of the Kingdom With a General Introduction and Supplement",
     "author": "Price, Richard",
@@ -110970,33 +110646,6 @@
     "on_disk": true
   },
   {
-    "id": "58024",
-    "title": "Index of the Project Gutenberg Works of Alexandre Dumas, [père]",
-    "author": "Dumas, Alexandre",
-    "date": 1870,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58025",
-    "title": "Index of the Project Gutenberg Works of Friedrich Nietzsche",
-    "author": "Nietzsche, Friedrich Wilhelm",
-    "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58029",
-    "title": "Index of the Project Gutenberg Works of Oliver Goldsmith",
-    "author": "Goldsmith, Oliver",
-    "date": 1774,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58039",
     "title": "The Foundling; or, The Child of Providence",
     "author": "Church, J. (John)",
@@ -111078,15 +110727,6 @@
     "on_disk": true
   },
   {
-    "id": "58064",
-    "title": "Index of the Project Gutenberg Works of Grant Allen",
-    "author": "Allen, Grant",
-    "date": 1899,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58070",
     "title": "Home Life in Russia, Volumes 1 and 2 [Dead Souls]",
     "author": "Gogol, Nikolai Vasilevich",
@@ -111123,15 +110763,6 @@
     "on_disk": true
   },
   {
-    "id": "58079",
-    "title": "Index of the Project Gutenberg Works of Madame D'Arblay (Frances Burney)",
-    "author": "Burney, Fanny",
-    "date": 1840,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58081",
     "title": "The French in Algiers The Soldier of the Foreign Legion; and The Prisoners of Abd-el-Kader",
     "author": "Alby, Ernest; Lamping, Clemens",
@@ -111154,15 +110785,6 @@
     "title": "Roland Yorke A Sequel to \"The Channings\"",
     "author": "Wood, Henry, Mrs.",
     "date": 1887,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58089",
-    "title": "Index of the Project Gutenberg Works of Wilkie Collins",
-    "author": "Collins, Wilkie",
-    "date": 1889,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -111294,55 +110916,10 @@
     "on_disk": true
   },
   {
-    "id": "58157",
-    "title": "Index of the Project Gutenberg Works of Charles Dickens",
-    "author": "Dickens, Charles",
-    "date": 1870,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58158",
-    "title": "Index of the Project Gutenberg Works of Louisa M. Alcott",
-    "author": "Alcott, Louisa May",
-    "date": 1888,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58162",
-    "title": "Index of the Project Gutenberg Works of R. D. Blackmore",
-    "author": "Blackmore, R. D. (Richard Doddridge)",
-    "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58169",
     "title": "Hegel's Lectures on the History of Philosophy: Volume 3 (of 3)",
     "author": "Hegel, Georg Wilhelm Friedrich",
     "date": 1831,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58171",
-    "title": "Index of the Project Gutenberg Works of George William Curtis",
-    "author": "Curtis, George William",
-    "date": 1892,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58172",
-    "title": "Index of the Project Gutenberg Works of Washington Irving",
-    "author": "Irving, Washington",
-    "date": 1859,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -111361,15 +110938,6 @@
     "title": "The Life and Experiences of an Ex-Convict in Port Macquarie",
     "author": "Woomera",
     "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58181",
-    "title": "Index of the Project Gutenberg works of Robert Louis Stevenson",
-    "author": "Stevenson, Robert Louis",
-    "date": 1894,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -111438,15 +111006,6 @@
     "on_disk": true
   },
   {
-    "id": "58249",
-    "title": "Index of the Project Gutenberg Works of Henry Fielding",
-    "author": "Fielding, Henry",
-    "date": 1754,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58253",
     "title": "The Minister's Wife",
     "author": "Oliphant, Mrs. (Margaret)",
@@ -111474,37 +111033,10 @@
     "on_disk": true
   },
   {
-    "id": "58272",
-    "title": "Index of the Project Gutenberg Works of Aleksandr Pushkin",
-    "author": "Pushkin, Aleksandr Sergeevich",
-    "date": 1837,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58273",
-    "title": "Index of the Project Gutenberg Works of Henry David Thoreau",
-    "author": "Thoreau, Henry David",
-    "date": 1862,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58288",
     "title": "Bessy Rane: A Novel",
     "author": "Wood, Henry, Mrs.",
     "date": 1887,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58301",
-    "title": "Index of the Project Gutenberg Works of Harriet Beecher Stowe",
-    "author": "Stowe, Harriet Beecher",
-    "date": 1896,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -111573,24 +111105,6 @@
     "on_disk": true
   },
   {
-    "id": "58328",
-    "title": "Index of the Project Gutenberg Works of Miguel de Cervantes Saavedra",
-    "author": "Cervantes Saavedra, Miguel de",
-    "date": 1616,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58329",
-    "title": "Index of the Project Gutenberg Works of Oscar Wilde",
-    "author": "Wilde, Oscar",
-    "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58332",
     "title": "Autobiography of Miss Cornelia Knight, lady companion to the Princess Charlotte of Wales, Volume 1 (of 2) with extracts from her journals and anecdote books",
     "author": "Knight, Ellis Cornelia",
@@ -111649,15 +111163,6 @@
     "title": "The Wreck of the \"Royal Charter\" Compiled from Authentic Sources, with Some Original Matter",
     "author": "Fowler, Frank",
     "date": 1863,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58383",
-    "title": "Index of the Project Gutenberg Works of Anthony Trollope",
-    "author": "Trollope, Anthony",
-    "date": 1882,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -111831,15 +111336,6 @@
     "date": 1888,
     "date_source": "authors_json_year",
     "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
-    "id": "58477",
-    "title": "Index of the Project Gutenberg Works of Herman Melville",
-    "author": "Melville, Herman",
-    "date": 1891,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
     "on_disk": true
   },
   {
@@ -112059,15 +111555,6 @@
     "on_disk": true
   },
   {
-    "id": "58572",
-    "title": "Index of the Project Gutenberg Works of Tobias Smollett",
-    "author": "Smollett, T. (Tobias)",
-    "date": 1771,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58575",
     "title": "Audubon's western journal: 1849-1850 Being the MS. record of a trip from New York to Texas, and an overland journey through Mexico and Arizona to the gold-fields of California",
     "author": "Audubon, John Woodhouse",
@@ -112083,24 +111570,6 @@
     "date": 1866,
     "date_source": "catalog_date",
     "date_is_upper_bound": false,
-    "on_disk": true
-  },
-  {
-    "id": "58583",
-    "title": "Index of the Project Gutenberg Works of John Stuart Mill",
-    "author": "Mill, John Stuart",
-    "date": 1873,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58584",
-    "title": "Index of the Project Gutenberg Works of Frédéric Bastiat",
-    "author": "Bastiat, Frédéric",
-    "date": 1850,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
     "on_disk": true
   },
   {
@@ -112176,33 +111645,6 @@
     "on_disk": true
   },
   {
-    "id": "58644",
-    "title": "Index of the Project Gutenberg Works of Alexis de Tocqueville",
-    "author": "Tocqueville, Alexis de",
-    "date": 1859,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58646",
-    "title": "Index of the Project Gutenberg Works of Edmund Burke",
-    "author": "Burke, Edmund",
-    "date": 1797,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58676",
-    "title": "Index of the Project Gutenberg Works of Benjamin Franklin",
-    "author": "Franklin, Benjamin",
-    "date": 1790,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58677",
     "title": "A Parisian Sultana, Vol. 1 (of 3)",
     "author": "Belot, Adolphe",
@@ -112243,15 +111685,6 @@
     "title": "Highland Legends",
     "author": "Lauder, Thomas Dick, Sir",
     "date": 1848,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58696",
-    "title": "Index of the Project Gutenberg Works of Robert G. Ingersoll",
-    "author": "Ingersoll, Robert Green",
-    "date": 1899,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -112302,37 +111735,10 @@
     "on_disk": true
   },
   {
-    "id": "58722",
-    "title": "Index of the Project Gutenberg Works of Richard F. Burton",
-    "author": "Burton, Richard Francis, Sir",
-    "date": 1890,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58731",
     "title": "A View of Society and Manners in France, Switzerland, and Germany, Vol. 2 (of 2) With Anecdotes Relating to Some Eminent Characters",
     "author": "Moore, John",
     "date": 1802,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58737",
-    "title": "Index of the Project Gutenberg Works of Charles Darwin",
-    "author": "Darwin, Charles",
-    "date": 1882,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58739",
-    "title": "Index of the Project Gutenberg Works of Benjamin Disraeli",
-    "author": "Disraeli, Benjamin, Earl of Beaconsfield",
-    "date": 1881,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -112401,24 +111807,6 @@
     "on_disk": true
   },
   {
-    "id": "58777",
-    "title": "Index of the Project Gutenberg Works of George Eliot",
-    "author": "Eliot, George",
-    "date": 1880,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58778",
-    "title": "Index of the Project Gutenberg Works of Francis Parkman",
-    "author": "Parkman, Francis",
-    "date": 1893,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58791",
     "title": "Precepts in Practice; or, Stories Illustrating the Proverbs",
     "author": "A. L. O. E.",
@@ -112455,15 +111843,6 @@
     "on_disk": true
   },
   {
-    "id": "58825",
-    "title": "Index of the Project Gutenberg Works of Jonathan Swift",
-    "author": "Swift, Jonathan",
-    "date": 1745,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58829",
     "title": "Teutonic Mythology: Gods and Goddesses of the Northland, Vol. 2",
     "author": "Rydberg, Viktor",
@@ -112495,24 +111874,6 @@
     "title": "The king's ring : $b being a romance of the days of Gustavus Adolphus and the Thirty Years' War",
     "author": "Topelius, Zacharias",
     "date": 1898,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58843",
-    "title": "Index of the Project Gutenberg Works of Walt Whitman",
-    "author": "Whitman, Walt",
-    "date": 1892,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "58845",
-    "title": "Index of the Project Gutenberg Works of Alexander Pope",
-    "author": "Pope, Alexander",
-    "date": 1744,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -112653,15 +112014,6 @@
     "on_disk": true
   },
   {
-    "id": "58920",
-    "title": "Index of the Project Gutenberg Works of Horatio Alger, Jr.",
-    "author": "Alger, Horatio, Jr.",
-    "date": 1899,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "58924",
     "title": "The Crayfish: An Introduction to the Study of Zoology.",
     "author": "Huxley, Thomas Henry",
@@ -112752,15 +112104,6 @@
     "on_disk": true
   },
   {
-    "id": "58994",
-    "title": "Index of the Project Gutenberg Works of Ralph Waldo Emerson",
-    "author": "Emerson, Ralph Waldo",
-    "date": 1882,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59000",
     "title": "Memoirs of an American Lady With Sketches of Manners and Scenery in America, as They Existed Previous to the Revolution",
     "author": "Grant, Anne MacVicar",
@@ -112788,47 +112131,11 @@
     "on_disk": true
   },
   {
-    "id": "59009",
-    "title": "Index of the Project Gutenberg Works of Mrs. Henry Wood",
-    "author": "Wood, Henry, Mrs.",
-    "date": 1887,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59021",
     "title": "The Boy Travellers in the Far East, Part Fifth Adventures of Two Youths in a Journey through Africa",
     "author": "Knox, Thomas Wallace",
     "date": 1896,
     "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59023",
-    "title": "Index of the Project Gutenberg Works of Immanuel Kant",
-    "author": "Kant, Immanuel",
-    "date": 1804,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59024",
-    "title": "Index of the Project Gutenberg Works of Arthur Schopenhauer",
-    "author": "Schopenhauer, Arthur",
-    "date": 1860,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59025",
-    "title": "Index of the Project Gutenberg Works of Lucius Annaeus Seneca",
-    "author": "Seneca, Lucius Annaeus",
-    "date": -1,
-    "date_source": "bce",
     "date_is_upper_bound": true,
     "on_disk": true
   },
@@ -112851,37 +112158,10 @@
     "on_disk": true
   },
   {
-    "id": "59048",
-    "title": "Index of the Project Gutenberg Works of Antoine de La Salle",
-    "author": "La Sale, Antoine de",
-    "date": 1461,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59049",
-    "title": "Index of the Project Gutenberg Works of Rabelais",
-    "author": "Rabelais, François",
-    "date": 1553,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59055",
     "title": "The Heir Presumptive and the Heir Apparent",
     "author": "Oliphant, Mrs. (Margaret)",
     "date": 1897,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59056",
-    "title": "Index of the Project Gutenberg Prose Works of Hector Berlioz",
-    "author": "Berlioz, Hector",
-    "date": 1869,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -112909,15 +112189,6 @@
     "title": "Peru as It Is, Volume 2 (of 2) A Residence in Lima, and Other Parts of the Peruvian Republic, Comprising an Account of the Social and Physical Features of That Country",
     "author": "Smith, Archibald",
     "date": 1870,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59070",
-    "title": "Index of the Project Gutenberg Works of Gustave Doré",
-    "author": "Doré, Gustave",
-    "date": 1883,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -112968,15 +112239,6 @@
     "on_disk": true
   },
   {
-    "id": "59111",
-    "title": "Index of the Project Gutenberg Works of Lewis Carroll",
-    "author": "Carroll, Lewis",
-    "date": 1898,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59114",
     "title": "My Southern Home: Or, the South and Its People",
     "author": "Brown, William Wells",
@@ -112990,24 +112252,6 @@
     "title": "Why is the Negro Lynched?",
     "author": "Douglass, Frederick",
     "date": 1895,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59122",
-    "title": "Index of the Project Gutenberg Works of Lord Byron",
-    "author": "Byron, George Gordon Byron, Baron",
-    "date": 1824,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59123",
-    "title": "Index of the Project Gutenberg Works of Robert Browning",
-    "author": "Browning, Robert",
-    "date": 1889,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -113031,24 +112275,6 @@
     "on_disk": true
   },
   {
-    "id": "59145",
-    "title": "Index of the Project Gutenberg Works of John Leech",
-    "author": "Leech, John",
-    "date": 1864,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59146",
-    "title": "Index of the Project Gutenberg Works of George Cruikshank",
-    "author": "Cruikshank, George",
-    "date": 1878,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59162",
     "title": "The French Revolution of 1789, as Viewed in the Light of Republican Institutions",
     "author": "Abbott, John S. C. (John Stevens Cabot)",
@@ -113058,37 +112284,10 @@
     "on_disk": true
   },
   {
-    "id": "59163",
-    "title": "Index of the Project Gutenberg Works of Francis Bacon",
-    "author": "Bacon, Francis",
-    "date": 1626,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59166",
     "title": "Common Sense for Housemaids",
     "author": "Tytler, Ann Fraser",
     "date": 1857,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59194",
-    "title": "Index of the Project Gutenberg Works of Alexander Pushkin",
-    "author": "Pushkin, Aleksandr Sergeevich",
-    "date": 1837,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59196",
-    "title": "Index of the Project Gutenberg Works of Fyodor Dostoevsky",
-    "author": "Dostoyevsky, Fyodor",
-    "date": 1881,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -113161,15 +112360,6 @@
     "title": "The Lyrical Dramas of Aeschylus Translated into English Verse",
     "author": "Aeschylus",
     "date": -457,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59226",
-    "title": "Index of the Project Gutenberg Works of Samuel Taylor Coleridge",
-    "author": "Coleridge, Samuel Taylor",
-    "date": 1834,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -113256,33 +112446,6 @@
     "on_disk": true
   },
   {
-    "id": "59279",
-    "title": "Index of the Project Gutenberg Works of Alfred Lord Tennyson",
-    "author": "Tennyson, Alfred Tennyson, Baron",
-    "date": 1892,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59280",
-    "title": "Index of the Project Gutenberg Works of Nathaniel Hawthorne",
-    "author": "Hawthorne, Nathaniel",
-    "date": 1864,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59281",
-    "title": "Index of the Project Gutenberg Works of Henry Wadsworth Longfellow",
-    "author": "Longfellow, Henry Wadsworth",
-    "date": 1882,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59291",
     "title": "The Sporting Dictionary and Rural Repository, Volume 2 (of 2) Of General Information upon Every Subject Appertaining to the Sports of the Field",
     "author": "Taplin, William",
@@ -113314,15 +112477,6 @@
     "title": "Jack's Two Sovereigns",
     "author": "Fenn, A. S. (Annie S.)",
     "date": 1893,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59325",
-    "title": "Index of the Project Gutenberg Works of Marguerite, Queen of Navarre",
-    "author": "Marguerite, Queen, consort of Henry II, King of Navarre",
-    "date": 1549,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -113409,15 +112563,6 @@
     "on_disk": true
   },
   {
-    "id": "59392",
-    "title": "Index of the Project Gutenberg Works of John Ruskin",
-    "author": "Ruskin, John",
-    "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59396",
     "title": "The Boy Travellers in South America Adventures of Two Youths in a Journey through Ecuador, Peru, Bolivia, Paraguay, Argentine Republic, and Chili",
     "author": "Knox, Thomas Wallace",
@@ -113431,15 +112576,6 @@
     "title": "The History of Christianity Consisting of the Life and Teachings of Jesus of Nazareth; the Adventures of Paul and the Apostles; and the Most Interesting Events in the Progress of Christianity, from the Earliest Period to the Present Time.",
     "author": "Abbott, John S. C. (John Stevens Cabot)",
     "date": 1877,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59407",
-    "title": "Index of the Project Gutenberg Works of James De Mille",
-    "author": "De Mille, James",
-    "date": 1880,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -113589,33 +112725,6 @@
     "on_disk": true
   },
   {
-    "id": "59507",
-    "title": "Index of the Project Gutenberg Works of Gustave Flaubert",
-    "author": "Flaubert, Gustave",
-    "date": 1880,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59508",
-    "title": "Index of the Project Gutenberg Works of the Brothers Grimm",
-    "author": "Grimm, Jacob; Grimm, Wilhelm",
-    "date": 1859,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59509",
-    "title": "Index of the Project Gutenberg Works of Edward Gibbon",
-    "author": "Gibbon, Edward",
-    "date": 1794,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59517",
     "title": "Sink or Swim; or, Harry Raymond's Resolve",
     "author": "Alger, Horatio, Jr.",
@@ -113647,24 +112756,6 @@
     "title": "An essay on the government of children, under three general heads, viz. health, manners, and education",
     "author": "Nelson, James",
     "date": 1794,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59570",
-    "title": "Index of the Project Gutenberg Works of Charles Bradlaugh",
-    "author": "Bradlaugh, Charles",
-    "date": 1891,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59571",
-    "title": "Index of the Project Gutenberg Works of Robert Burns",
-    "author": "Burns, Robert",
-    "date": 1796,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -113832,24 +112923,6 @@
     "on_disk": true
   },
   {
-    "id": "59706",
-    "title": "Index of the Project Gutenberg Works of Stephen Crane",
-    "author": "Crane, Stephen",
-    "date": 1900,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59708",
-    "title": "Index of the Project Gutenberg Works of Jonathan Swift",
-    "author": "Swift, Jonathan",
-    "date": 1745,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59710",
     "title": "Thirty Letters on Various Subjects, Vol. 1 (of 2)",
     "author": "Jackson, William",
@@ -113967,28 +113040,10 @@
     "on_disk": true
   },
   {
-    "id": "59766",
-    "title": "Index of the Project Gutenberg Works of Bayard Taylor",
-    "author": "Taylor, Bayard",
-    "date": 1878,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
     "id": "59770",
     "title": "The Plays of Roswitha",
     "author": "Hrotsvitha",
     "date": 975,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "59784",
-    "title": "Index of the Project Gutenberg Works of Marcus Aurelius Antoninus",
-    "author": "Marcus Aurelius, Emperor of Rome",
-    "date": 180,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true
@@ -114286,24 +113341,6 @@
     "title": "Grand moving diorama of Hindostan : $b displaying the scenery of the Hoogly, the Bhagirathi, and the Ganges, from Fort William, Bengal, to Gangoutri, in the Himalaya",
     "author": "Parlby, Fanny Parkes",
     "date": 1875,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "60011",
-    "title": "Index of the Project Gutenberg Works of Maturin Murray Ballou",
-    "author": "Ballou, Maturin M. (Maturin Murray)",
-    "date": 1895,
-    "date_source": "author_death_max",
-    "date_is_upper_bound": true,
-    "on_disk": true
-  },
-  {
-    "id": "60014",
-    "title": "Index of the Project Gutenberg Works of Michel De Montaigne",
-    "author": "Montaigne, Michel de",
-    "date": 1592,
     "date_source": "author_death_max",
     "date_is_upper_bound": true,
     "on_disk": true

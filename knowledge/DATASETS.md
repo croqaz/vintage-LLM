@@ -36,9 +36,8 @@ English only.
 - 11-47/high_priest_occult_50k
 - 11-47/leonardo_da_vinci_mindframe_instruction_dataset
 - 11-47/newton_mindset_training_dataset
-- ambrosfitz/american_yawp_v2
 - ambrosfitz/OR_training_full
-- ambrosfitz/yawp_thinking
+- ambrosfitz/philosophy
 - croqaz/commonsense-v1
 - croqaz/vintage-exam-qa
 - croqaz/vintage-ft-v1

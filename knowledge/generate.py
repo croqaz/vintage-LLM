@@ -1,3 +1,7 @@
+"""
+Generate knowledge in various formats (text, jsonl, or tokenizer chat template).
+"""
+
 import argparse
 import json
 import random

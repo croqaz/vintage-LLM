@@ -1,14 +1,19 @@
 """
 Bible Q&A knowledge.
 
-Generates both kinds of Bible material, so it can be imported:
+Reads pre-generated JSON files directly instead of calling the
+generate_summary / generate_verse pipelines at import time.
 
-  * book summaries — bible/generate_summary.py::generate_summary()
-  * single verses  — bible/generate_verse.py::generate_verse()
+  * book summaries — bible/bible1611_summary.json
+  * single verses  — bible/bible1611_verses.json
 """
 
-from .generate_summary import generate_summary
-from .generate_verse import generate_verse
+import json
+from pathlib import Path
+
+HERE = Path(__file__).parent
+
+BIBLE: list[dict[str, str]] = []
 
 
 def _from_messages(messages: list[dict[str, str]]) -> dict[str, str]:
@@ -22,17 +27,21 @@ def _from_messages(messages: list[dict[str, str]]) -> dict[str, str]:
     return {'question': question, 'answer': answer}
 
 
-BIBLE: list[dict[str, str]] = []
-
-# Book summaries: each item is {'messages': [user, assistant], 'source': ..., ...}
-for pair in generate_summary():
+# Book summaries — each item is {'messages': [user, assistant], 'source': ..., ...}
+summary_path = HERE / 'bible1611_summary.json'
+with open(summary_path, encoding='utf-8') as f:
+    summary_data = json.load(f)
+for pair in summary_data:
     BIBLE.append(_from_messages(pair['messages']))
 
-# Single verses: each item is a [user, assistant] message list
-for pair in generate_verse():
+# Single verses — each item is a [user, assistant] message list
+verses_path = HERE / 'bible1611_verses.json'
+with open(verses_path, encoding='utf-8') as f:
+    verses_data = json.load(f)
+for pair in verses_data:
     BIBLE.append(_from_messages(pair))
 
-print(f'{len(BIBLE)} bible Q&A pairs generated.')
+print(f'{len(BIBLE)} bible Q&A pairs loaded from pre-generated files.')
 
 if __name__ == '__main__':
     for qa in BIBLE:

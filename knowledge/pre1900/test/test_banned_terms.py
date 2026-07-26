@@ -21,6 +21,10 @@ POSITIVE = [
     'How can I use C# to calculate the total?',  # term ending in '#'
     'The program was written in C++ and compiled quickly.',  # term ending in '++'
     'i prefer c# over c++ for gui work',  # both, lowercase
+    # Post-1900 years in various sentence contexts
+    'They will occur: November 12, 1907, November 6, 1914, and May 7, 1924.',
+    'On September 5, 1914, Great Britain, France and Russia',
+    'Under date of "Paris, December 29, 1916,"',
 ]
 
 # Should NOT be flagged (clean pre-1900-safe text; pre-1900 years are fine)
@@ -33,6 +37,14 @@ NEGATIVE = [
     'The harvest was poor this year, and the villagers feared winter.',
     'The jetty by the harbor at dawn.',  # 'jet' must NOT match 'jetty' (suffix guard)
     'The letter c is the third in the alphabet.',  # bare 'c' must NOT match 'c#'/'c++'
+    # BC years / 1900 must NOT be flagged
+    'from 2700 B.C. to 2080 the old empire',  # BC range endpoint
+    '2080 B.C.',  # BC year
+    'in 1900 something happened',  # 1900 allowed
+    '2000 B. C. was ancient',  # BC year with spacing
+    'From remote antiquity to 2080 B. C.',  # BC year after 'to'
+    'from 2700 B. C, to 2080',  # BC range with comma after C
+    'The First (or period of the old empire), from 2700 B. C., to 2080;',  # BC range full context
 ]
 
 
