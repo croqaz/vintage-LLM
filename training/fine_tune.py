@@ -389,12 +389,12 @@ def main():
         adam_epsilon=train_cfg.get('adam_epsilon', 1e-8),
         max_grad_norm=train_cfg.get('max_grad_norm', 1.0),
         # ── LR schedule ──────────────────────────────────────────────────────
-        lr_scheduler_type=train_cfg.get('lr_scheduler_type', 'cosine_with_min_lr'),
-        lr_scheduler_kwargs=train_cfg.get('lr_scheduler_kwargs', {'min_lr_rate': 0.1}),
+        lr_scheduler_type=train_cfg.get('lr_scheduler_type', 'linear'),
+        # lr_scheduler_kwargs=train_cfg.get('lr_scheduler_kwargs', {'min_lr_rate': 0.1}),
         warmup_steps=cfg['training'].get('warmup_steps', 100),
         # ── Precision ────────────────────────────────────────────────────────
-        bf16=train_cfg.get('bf16', BF16_SUPPORTED),
-        fp16=train_cfg.get('fp16', False),
+        # bf16=train_cfg.get('bf16', BF16_SUPPORTED),
+        # fp16=train_cfg.get('fp16', False),
         # ── Performance ──────────────────────────────────────────────────────
         torch_compile=train_cfg.get('torch_compile', False),
         gradient_checkpointing=train_cfg.get('gradient_checkpointing', False),

@@ -45,7 +45,7 @@ function parseArgs(): { dbPath: string; port: number } {
     if ((a === '-d' || a === '--db') && i + 1 < args.length) dbPath = args[++i];
     else if ((a === '-p' || a === '--port') && i + 1 < args.length) {
       port = parseInt(args[++i], 10);
-    }  else if (a === '-h' || a === '--help') {
+    } else if (a === '-h' || a === '--help') {
       console.log(`Usage: bun explorer.ts [options]
 
 Options:

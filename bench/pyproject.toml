@@ -11,6 +11,10 @@ requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = ["requests>=2.25", "PyYAML>=5.4"]
 
+[project.optional-dependencies]
+# Needed only for running local checkpoints via --local-path / evaluate(local_path=...)
+local = ["torch>=2.0", "transformers>=4.45"]
+
 [project.scripts]
 vintage-core = "vintage_core.cli:main"
 

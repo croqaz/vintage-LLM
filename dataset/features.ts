@@ -49,6 +49,7 @@ export interface DocValue {
   ascii: number; // 1 - amplified share of noise chars
   score?: number; // derived global score (higher is better)
   text: string;
+  extra?: Record<string, unknown>; // optional extra fields from input JSONL
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -168,7 +169,12 @@ function charEntropy(text: string): number {
 // Compute the id + stored value for a document
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function computeRecord(text: string, source: string, vocab: Set<string>): { id: string; value: DocValue } {
+export function computeRecord(
+  text: string,
+  source: string,
+  vocab: Set<string>,
+  extra?: Record<string, unknown>
+): { id: string; value: DocValue } {
   const normalized = text.split(/\W+/).join(' ');
   const id = generateId(normalized);
   const len = normalized.length;
@@ -207,24 +213,28 @@ export function computeRecord(text: string, source: string, vocab: Set<string>):
   const ascii = +(Math.max(0, 1 - (noise / len) * 5) * 100).toFixed(2); // amplify; 20% noise ⇒ 0
   const dictHit = +((alphaTokens > 0 ? dictHits / alphaTokens : 0) * 100).toFixed(2);
 
-  return {
-    id,
-    value: {
-      source,
-      len,
-      uniqChar,
-      tokens,
-      sentences,
-      entropy,
-      quality,
-      compress,
-      dictHit,
-      alpha,
-      vowel,
-      ascii,
-      text,
-    },
+  const value: DocValue = {
+    source,
+    len,
+    uniqChar,
+    tokens,
+    sentences,
+    entropy,
+    quality,
+    compress,
+    dictHit,
+    alpha,
+    vowel,
+    ascii,
+    text,
   };
+
+  // Only attach extra if it has at least one key (keeps LevelDB small)
+  if (Object.keys(extra || {}).length > 0) {
+    value.extra = extra;
+  }
+
+  return { id, value };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -45,6 +45,7 @@ function parseArgs(): {
   textKey: string;
   maxLength: number;
   vocabPath: string;
+  extraFields: string[];
 } {
   const args = process.argv.slice(2);
   let inputs: string[] = [];
@@ -55,6 +56,7 @@ function parseArgs(): {
   // Vocabulary for the dictHit signal. Defaults to vocab.json next to this script
   // so the path is correct regardless of the current working directory.
   let vocabPath = './vocab.json';
+  let extraFields: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -74,6 +76,11 @@ function parseArgs(): {
       }
     } else if (arg === '--vocab' && i + 1 < args.length) {
       vocabPath = args[++i];
+    } else if ((arg === '-e' || arg === '--extra-fields') && i + 1 < args.length) {
+      extraFields = args[++i]
+        .split(',')
+        .map(f => f.trim())
+        .filter(Boolean);
     } else if (arg === '-h' || arg === '--help') {
       console.log(`Usage: bun run import.ts [options] [inputs...]
 
@@ -84,6 +91,7 @@ Options:
   -k, --text-key <key>      JSON field name for text (default: "text")
   -m, --max-length <n>      Max character length to import (default: ${DEFAULT_MAX_LENGTH})
   -v, --vocab <path>        Wordlist JSON for the dictHit signal (default: vocab.json next to import.ts)
+  -e, --extra-fields <list> Comma-separated extra field names to preserve from input JSONL (default: none)
   -h, --help                Show this help`);
       process.exit(0);
     } else if (!arg.startsWith('-')) {
@@ -96,7 +104,7 @@ Options:
     process.exit(1);
   }
 
-  return { inputs, source, dbPath, textKey, maxLength, vocabPath };
+  return { inputs, source, dbPath, textKey, maxLength, vocabPath, extraFields };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -300,7 +308,8 @@ async function processFile(
   db: ClassicLevel<string, DocValue>,
   textKey: string,
   maxLength: number,
-  vocab: Set<string>
+  vocab: Set<string>,
+  extraFields: string[]
 ): Promise<FileStats> {
   const stats: FileStats = {
     path: filePath,
@@ -419,8 +428,19 @@ async function processFile(
         docSource = record.source;
       }
 
+      // Extract optional extra fields (only those that exist on the record)
+      let extra: Record<string, unknown> | undefined;
+      if (extraFields.length > 0) {
+        for (const f of extraFields) {
+          if (f in record && record[f] != null) {
+            if (!extra) extra = {};
+            extra[f] = record[f];
+          }
+        }
+      }
+
       // Compute features (including id)
-      const { id, value } = computeRecord(text, docSource, vocab);
+      const { id, value } = computeRecord(text, docSource, vocab, extra);
 
       addToBatch(id, value);
 
@@ -442,7 +462,7 @@ async function processFile(
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { inputs, source, dbPath, textKey, maxLength, vocabPath } = parseArgs();
+  const { inputs, source, dbPath, textKey, maxLength, vocabPath, extraFields } = parseArgs();
 
   // Sort for deterministic processing order
   inputs.sort();
@@ -459,6 +479,7 @@ async function main(): Promise<void> {
   console.log(`Found ${inputs.length} input file(s)`);
   console.log(`Source: ${source}`);
   console.log(`Text key: ${textKey}`);
+  console.log(`Extra fields: ${extraFields.length > 0 ? extraFields.join(', ') : 'none'}`);
   console.log(`Min length: ${MIN_LENGTH}`);
   console.log(`Max length: ${maxLength}`);
   console.log(`LevelDB: ${dbPath}`);
@@ -489,7 +510,7 @@ async function main(): Promise<void> {
       const stats =
         fileType === 'text'
           ? await processTextFile(filePath, source, db, maxLength, vocab)
-          : await processFile(filePath, source, db, textKey, maxLength, vocab);
+          : await processFile(filePath, source, db, textKey, maxLength, vocab, extraFields);
 
       if (fileType === 'jsonl') {
         printSummary(stats, maxLength);
