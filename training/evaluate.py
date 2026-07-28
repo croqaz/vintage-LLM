@@ -163,13 +163,26 @@ def resolve_checkpoint(checkpoint: Path | None, checkpoints_dir: Path) -> Path:
     return Path(latest)
 
 
-def load_model_and_tokenizer(checkpoint_dir: Path, device: torch.device, dtype: torch.dtype):
+def resolve_tokenizer(checkpoint_dir: Path, checkpoints_dir: Path, cli_tokenizer: Path | None) -> Path:
+    """Find a tokenizer: --tokenizer flag, checkpoint dir, parent of checkpoints dir, checkpoints dir."""
+    if cli_tokenizer is not None:
+        return cli_tokenizer
+    for candidate in (checkpoint_dir, checkpoints_dir.parent, checkpoints_dir):
+        if (candidate / 'tokenizer.json').exists():
+            return candidate
+    raise FileNotFoundError(
+        f'No tokenizer.json found in checkpoint, {checkpoints_dir}, or its parent.\n'
+        'Pass --tokenizer PATH to point to a HuggingFace tokenizer directory.'
+    )
+
+
+def load_model_and_tokenizer(checkpoint_dir: Path, tokenizer_dir: Path, device: torch.device, dtype: torch.dtype):
     model = AutoModelForCausalLM.from_pretrained(checkpoint_dir, dtype=dtype)
     model.config.use_cache = True
     model.to(device)
     model.eval()
 
-    tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir, use_fast=True)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = 'left'  # enables correct batched generation
@@ -208,6 +221,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument('--seed', type=int, default=DEFAULT_SEED)
     p.add_argument('--device', default='auto', choices=('auto', 'cpu', 'cuda', 'mps'))
     p.add_argument('--dtype', default='auto', choices=('auto', 'float32', 'float16', 'bfloat16'))
+    p.add_argument(
+        '--tokenizer',
+        type=Path,
+        default=None,
+        help='Tokenizer directory (when checkpoint dirs lack tokenizer files). Auto-detected from --checkpoints-dir/parent when omitted.',
+    )
     p.add_argument('--chat', action='store_true', help='Apply the chat template to generation prompts.')
     p.add_argument('--show-special-tokens', action='store_true')
     return p.parse_args()
@@ -697,13 +716,14 @@ def list_checkpoints(checkpoints_dir: Path) -> list[Path]:
     return sorted(ckpts, key=step_of)
 
 
-def evaluate_checkpoint(checkpoint_dir: Path, device, dtype, args, selected) -> dict:
+def evaluate_checkpoint(checkpoint_dir: Path, tokenizer_dir: Path, device, dtype, args, selected) -> dict:
     """Run the selected suites on one checkpoint and free the model afterwards."""
     args._checkpoint_dir = checkpoint_dir
     banner('CHECKPOINT EVALUATION')
     print(f'  checkpoint : {checkpoint_dir}')
+    print(f'  tokenizer  : {tokenizer_dir}')
     print(f'  device     : {device}   dtype: {dtype}   seed: {args.seed}')
-    model, tokenizer = load_model_and_tokenizer(checkpoint_dir, device, dtype)
+    model, tokenizer = load_model_and_tokenizer(checkpoint_dir, tokenizer_dir, device, dtype)
     results = {'checkpoint': str(checkpoint_dir), 'suites': {}}
     for name in selected:
         results['suites'][name] = SUITES[name](model, tokenizer, device, args)
@@ -927,6 +947,9 @@ def main() -> None:
             print(f'No checkpoints found in {args.checkpoints_dir}', file=sys.stderr)
             sys.exit(1)
         print(f'Comparing {len(ckpts)} checkpoints from {args.checkpoints_dir} (cache: {outdir}, use --force to recompute)')
+        # Resolve tokenizer once from the first checkpoint (all share the same one)
+        tokenizer_dir = resolve_tokenizer(ckpts[0], args.checkpoints_dir, args.tokenizer)
+        print(f'  tokenizer  : {tokenizer_dir}')
         rows = []
         for ck in ckpts:
             cache = outdir / f'{ck.name}.json'
@@ -935,7 +958,7 @@ def main() -> None:
                 with open(cache) as f:
                     results = json.load(f)
             else:
-                results = evaluate_checkpoint(ck, device, dtype, args, selected)
+                results = evaluate_checkpoint(ck, tokenizer_dir, device, dtype, args, selected)
                 with open(cache, 'w') as f:
                     json.dump(results, f, indent=2)
                 print(f'  [saved] {cache}')
@@ -948,7 +971,8 @@ def main() -> None:
         return
 
     checkpoint_dir = resolve_checkpoint(args.checkpoint, args.checkpoints_dir)
-    results = evaluate_checkpoint(checkpoint_dir, device, dtype, args, selected)
+    tokenizer_dir = resolve_tokenizer(checkpoint_dir, args.checkpoints_dir, args.tokenizer)
+    results = evaluate_checkpoint(checkpoint_dir, tokenizer_dir, device, dtype, args, selected)
 
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

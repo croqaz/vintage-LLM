@@ -1,5 +1,10 @@
 """Vintage CORE — a portable, API-model evaluation of the pre-1900-restyled
-DCLM CORE benchmark suite."""
+DCLM CORE benchmark suite (21 tasks across 20 data files).
+
+Includes ``vintage_qa``: pre-1900 oral-examination questions scored via
+ROUGE-L instead of exact prefix match (gold answers are verbose 19th-century
+prose).
+"""
 
 from .api import evaluate, resolve_modes
 from .client import APIClient, Capabilities

@@ -44,7 +44,7 @@ def load_bundle(bundle_dir=DEFAULT_BUNDLE_DIR):
 
     Returns a list of :class:`Task`, in the order given by core.yaml. Note the
     bundle intentionally lists HellaSwag twice (zero-shot and ten-shot) and ships two
-    vintage-exam tasks, which is why there are 22 tasks over 21 data files.
+    HellaSwag is listed twice (zero-shot and ten-shot), which is why there are 21 tasks over 20 data files.
     """
     config_path = os.path.join(bundle_dir, 'core.yaml')
     meta_path = os.path.join(bundle_dir, 'eval_meta_data.csv')

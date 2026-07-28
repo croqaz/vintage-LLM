@@ -57,9 +57,16 @@ def eval_example_generation(client, task, idx, use_chat, capture_logprobs=False)
         rec.update(prompt=prompt, output=out, pred=pred, gold=item['gold'], correct=pred == item['gold'], answered=pred is not None)
     elif t == 'language_modeling':
         prompt = prompts.render_generation_lm(item, task.data, idx, task.num_fewshot, task.continuation_delimiter)
-        mt = scoring.estimate_max_tokens(item['continuation'])
-        out = gen(prompt, mt, prompts.LM_INSTRUCTION, stop=['\n\n'])
-        correct = scoring.lm_is_correct(out, item['continuation'])
+        if task.label == 'vintage_qa':
+            # Vintage QA uses ROUGE-L instead of exact prefix match because
+            # gold answers are verbose 19th-century prose (4-30 words).
+            mt = min(120, scoring.estimate_max_tokens(item['continuation']) + 40)
+            out = gen(prompt, mt, prompts.LM_INSTRUCTION, stop=['\n\n'])
+            correct = scoring.rouge_l_correct(out, item['continuation'])
+        else:
+            mt = scoring.estimate_max_tokens(item['continuation'])
+            out = gen(prompt, mt, prompts.LM_INSTRUCTION, stop=['\n\n'])
+            correct = scoring.lm_is_correct(out, item['continuation'])
         # For LM tasks a non-empty (post-normalization) output counts as answered.
         rec.update(prompt=prompt, output=out, gold=item['continuation'], correct=correct, answered=bool(scoring.normalize_answer(out)))
     else:

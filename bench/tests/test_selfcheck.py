@@ -15,8 +15,6 @@ from vintage_core.runner import centered, core_metric
 
 EXPECTED_COUNTS = {
     'basic_math': 400,
-    'vintage_exam': 15571,
-    'vintage_exam_recall': 24622,
     'bigbench_repeat_copy_logic': 32,
     'copa': 100,
     'bigbench_operators': 210,
@@ -36,12 +34,13 @@ EXPECTED_COUNTS = {
     'hellaswag': 6076,
     'squad': 4284,
     'bigbench_qa_wikidata': 9508,
+    'vintage_qa': 10000,
 }
 
 
 def test_bundle_integrity():
     tasks = load_bundle()
-    assert len(tasks) == 22, f'expected 22 tasks, got {len(tasks)}'
+    assert len(tasks) == 21, f'expected 21 tasks, got {len(tasks)}'
     by_label = {t.label: t for t in tasks}
     assert set(by_label) == set(EXPECTED_COUNTS)
     for label, n in EXPECTED_COUNTS.items():
@@ -168,6 +167,39 @@ def test_capture_logprobs_generation():
     rec = runner.eval_example_generation(LP(), task, 0, use_chat=True, capture_logprobs=True)
     assert rec['logprobs'] and rec['logprobs'][0]['token'] == 'B'
     assert 'answered' in rec
+
+
+def test_vintage_rouge_scoring():
+    """ROUGE-L scoring should accept semantically correct rewrites and reject
+    factually wrong or off-topic answers."""
+    from vintage_core.scoring import rouge_l_correct, rouge_l_f1
+
+    # Short answer with parenthetical extra detail → passes
+    assert rouge_l_correct('Edward II.', 'Edward II. (1307-1327 A. D.)')
+    assert rouge_l_f1('Edward II.', 'Edward II. (1307-1327 A. D.)') > 0.4
+
+    # Additional modern detail appended → passes (real Grok output)
+    assert rouge_l_correct('From her pine forests (turpentine, resin and tar).', 'From her pine forests.')
+
+    # Close numeric approximation → passes
+    assert rouge_l_correct('About 580,000,000 miles.', '577,000,000 miles.')
+    assert rouge_l_f1('About 580,000,000 miles.', '577,000,000 miles.') > 0.5
+
+    # Empty answer → no match
+    assert not rouge_l_correct('', 'Something')
+    assert not rouge_l_correct('Something', '')
+
+    # Completely different answer → low ROUGE-L → fails
+    assert not rouge_l_correct('New York City', 'The National Road. It began at Cumberland, Maryland.')
+
+    # Wrong historical fact → fails (Grok said Stand Watie, gold says Kirby Smith)
+    assert not rouge_l_correct('Stand Watie, on June 23, 1865.', 'Gen. Kirby Smith in Texas, May 26, 1865.')
+
+    # Note: ROUGE-L is lexical, not semantic. Completely different vocabulary
+    # for the same meaning (e.g. "funnel-shaped tube" vs "trumpet-like
+    # instrument") will score low even when both are correct.  The 0.30
+    # threshold is calibrated to catch most correct answers while keeping
+    # false positives manageable; it is not perfect.
 
 
 if __name__ == '__main__':

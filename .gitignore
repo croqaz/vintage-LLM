@@ -151,14 +151,20 @@ dmypy.json
 data/
 docs/
 dataset/*DB
-dataset/seeds*
+!bench/data/
 
 training/*checkpoint*
+training/*results*
+training/TimeCapsuleLLM*
 training/*-text/
 training/*-data/
 training/*.bin
 
-knowledge/cutoff
+knowledge/pre1900
+!knowledge/pre1900/*.py
+!knowledge/pre1900/data/*.txt
+
+knowledge/books/TODO
 knowledge/bible/*.txt
 knowledge/complete/seeds.*
 knowledge/dialog/*.json*
@@ -168,7 +174,5 @@ knowledge/genStruct/*.json*
 knowledge/genStruct/*.txt
 knowledge/oldify/*.jsonl
 knowledge/oldify/*.txt
-knowledge/pre1900/
 knowledge/synth-ft1/*.json*
-knowledge/synth-fine/seeds.*
 knowledge/synth-fine/out/*.json*
