@@ -20,6 +20,7 @@ Usage:
     accelerate launch fine_tune.py
 """
 
+import argparse
 import os
 import shutil
 import sys
@@ -183,6 +184,19 @@ def build_peft_config(cfg: Dict, accelerator: Accelerator):
         return None
 
     lora_cfg = cfg.get('lora', {})
+
+    # LoRA variants. All three are plain LoraConfig flags — no separate method needed:
+    #   use_dora=true            → DoRA  (weight-decomposed; slower, often better at low r)
+    #   use_rslora=true          → rsLoRA (rank-stabilised alpha scaling)
+    #   init_lora_weights="pissa"→ PiSSA (also "olora", "gaussian", "eva", True/False)
+    kwargs = {}
+    if lora_cfg.get('use_dora'):
+        kwargs['use_dora'] = True
+    if lora_cfg.get('use_rslora'):
+        kwargs['use_rslora'] = True
+    if (init := lora_cfg.get('init_lora_weights')) is not None:
+        kwargs['init_lora_weights'] = init
+
     peft_config = LoraConfig(
         r=lora_cfg.get('r', 32),
         lora_alpha=lora_cfg.get('lora_alpha', 64),
@@ -191,12 +205,17 @@ def build_peft_config(cfg: Dict, accelerator: Accelerator):
             'target_modules',
             ['q_proj', 'v_proj', 'k_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj'],
         ),
+        modules_to_save=lora_cfg.get('modules_to_save'),
         bias=lora_cfg.get('bias', 'none'),
         task_type='CAUSAL_LM',
+        **kwargs,
     )
-    accelerator.print('Method: LoRA fine-tuning')
-    accelerator.print(f'  r={peft_config.r}, lora_alpha={peft_config.lora_alpha}')
+    variant = 'DoRA' if kwargs.get('use_dora') else ('rsLoRA' if kwargs.get('use_rslora') else 'LoRA')
+    accelerator.print(f'Method: {variant} fine-tuning')
+    accelerator.print(f'  r={peft_config.r}, lora_alpha={peft_config.lora_alpha}, dropout={peft_config.lora_dropout}')
     accelerator.print(f'  target_modules={peft_config.target_modules}')
+    if kwargs:
+        accelerator.print(f'  variant flags: {kwargs}')
     return peft_config
 
 
@@ -281,10 +300,19 @@ def validate_sft_config(cfg: Dict, accelerator: Accelerator):
 def main():
     """Main fine-tuning entry point."""
 
-    config_path = 'training/fine_tune_config.toml'
+    parser = argparse.ArgumentParser(description='LLM Supervised Fine-Tuning Script')
+    parser.add_argument(
+        '--cfg',
+        type=str,
+        default='training/fine_tune_config.toml',
+        help='Path to TOML config file (default: training/fine_tune_config.toml)',
+    )
+    args = parser.parse_args()
+
+    config_path = args.cfg
     if not Path(config_path).exists():
         print(f'ERROR: Config file not found at {config_path}')
-        print('Please create training/fine_tune_config.toml')
+        print('Please create a config file or specify one with --cfg')
         sys.exit(1)
 
     print(f'Loading configuration from {config_path}...')
@@ -364,6 +392,18 @@ def main():
     neftune = train_cfg.get('neftune_noise_alpha', 5.0)
     neftune = float(neftune) if neftune else None
 
+    # lr_scheduler_kwargs: passed straight to the HF scheduler factory, so the keys
+    # must match the chosen lr_scheduler_type. In particular `min_lr_rate` is only
+    # accepted by "cosine_with_min_lr" — with "linear"/"cosine" it raises TypeError.
+    lr_sched_type = train_cfg.get('lr_scheduler_type', 'linear')
+    lr_sched_kwargs = dict(train_cfg.get('lr_scheduler_kwargs', {}) or {})
+    if 'min_lr_rate' in lr_sched_kwargs and lr_sched_type != 'cosine_with_min_lr':
+        accelerator.print(
+            f'  ⚠️  Dropping lr_scheduler_kwargs.min_lr_rate: only valid with '
+            f'lr_scheduler_type = "cosine_with_min_lr" (got "{lr_sched_type}")'
+        )
+        lr_sched_kwargs.pop('min_lr_rate')
+
     sft_args = SFTConfig(
         # ── Output ───────────────────────────────────────────────────────────
         output_dir=output_dir,
@@ -375,7 +415,8 @@ def main():
         neftune_noise_alpha=neftune,
         # ── Training duration ────────────────────────────────────────────────
         num_train_epochs=train_cfg['num_train_epochs'],
-        max_steps=-1,
+        # max_steps > 0 overrides num_train_epochs (useful for smoke tests).
+        max_steps=int(train_cfg.get('max_steps', -1)),
         # ── Batch sizes ──────────────────────────────────────────────────────
         per_device_train_batch_size=train_cfg.get('per_device_train_batch_size', 4),
         per_device_eval_batch_size=train_cfg.get('per_device_eval_batch_size', 8),
@@ -389,12 +430,13 @@ def main():
         adam_epsilon=train_cfg.get('adam_epsilon', 1e-8),
         max_grad_norm=train_cfg.get('max_grad_norm', 1.0),
         # ── LR schedule ──────────────────────────────────────────────────────
-        lr_scheduler_type=train_cfg.get('lr_scheduler_type', 'linear'),
-        # lr_scheduler_kwargs=train_cfg.get('lr_scheduler_kwargs', {'min_lr_rate': 0.1}),
+        lr_scheduler_type=lr_sched_type,
+        lr_scheduler_kwargs=lr_sched_kwargs,
         warmup_steps=cfg['training'].get('warmup_steps', 100),
+        warmup_ratio=train_cfg.get('warmup_ratio', 0.0),
         # ── Precision ────────────────────────────────────────────────────────
-        # bf16=train_cfg.get('bf16', BF16_SUPPORTED),
-        # fp16=train_cfg.get('fp16', False),
+        bf16=train_cfg.get('bf16', BF16_SUPPORTED),
+        fp16=train_cfg.get('fp16', False),
         # ── Performance ──────────────────────────────────────────────────────
         torch_compile=train_cfg.get('torch_compile', False),
         gradient_checkpointing=train_cfg.get('gradient_checkpointing', False),
@@ -496,11 +538,46 @@ def main():
 
     elapsed = time.time() - start_time
 
-    # ── Save final model ─────────────────────────────────────────────────────
+    # ── Did we actually finish, or did a callback halt us? ────────────────────
+    # DetailedLoggingCallback stops training on NaN/Inf loss or grad_norm by setting
+    # control.should_training_stop, which is indistinguishable from normal completion
+    # downstream. Without this check the script happily saves and merges a half-trained
+    # (or poisoned) model and prints "ALL DONE!" with exit code 0.
+    instability = [
+        rec
+        for rec in trainer.state.log_history
+        if any(
+            isinstance(rec.get(k), float) and (rec[k] != rec[k] or rec[k] in (float('inf'), float('-inf'))) for k in ('loss', 'grad_norm')
+        )
+    ]
+    expected = trainer.state.max_steps
+    halted_early = expected > 0 and trainer.state.global_step < expected
+
     accelerator.print('\n' + '=' * 80)
-    accelerator.print('FINE-TUNING COMPLETE')
+    if instability or halted_early:
+        accelerator.print('FINE-TUNING INCOMPLETE — SEE WARNING BELOW')
+    else:
+        accelerator.print('FINE-TUNING COMPLETE')
     accelerator.print('=' * 80)
     accelerator.print(f'Training time: {elapsed / 60:.2f} minutes')
+    accelerator.print(f'Steps done:    {trainer.state.global_step:,} / {expected:,}')
+    if instability or halted_early:
+        pct = 100 * trainer.state.global_step / expected if expected else 0.0
+        accelerator.print('')
+        accelerator.print('⚠️ ' * 26)
+        accelerator.print(f'  RUN DID NOT FINISH: stopped at {pct:.1f}% of the planned schedule.')
+        if instability:
+            bad = instability[0]
+            accelerator.print(
+                f'  Numerical instability logged at step {bad.get("step")}: loss={bad.get("loss")} grad_norm={bad.get("grad_norm")}'
+            )
+            accelerator.print('  Try: optim = "adamw_torch" (non-fused), a lower learning_rate,')
+            accelerator.print('       or a smaller max_grad_norm. Data was NOT the cause if a')
+            accelerator.print('       degenerate-row scan came back clean.')
+        accelerator.print('  The saved model is whatever load_best_model_at_end restored — it may')
+        accelerator.print('  be a mid-run checkpoint, NOT a fully trained model. Check for NaNs')
+        accelerator.print('  before benchmarking, and do not report this as a finished result.')
+        accelerator.print('⚠️ ' * 26)
     accelerator.print('=' * 80 + '\n')
 
     final_model_dir = train_cfg['final_model_dir']
@@ -526,6 +603,13 @@ def main():
                 raw_model = raw_model._orig_mod
             merged_model = raw_model.merge_and_unload()
             merged_dir = final_model_dir.rstrip('/') + '_merged'
+            # Never ship a NaN model silently: a merge of poisoned weights looks
+            # identical to a good one on disk.
+            nonfinite = [n for n, p in merged_model.named_parameters() if not torch.isfinite(p).all()]
+            if nonfinite:
+                accelerator.print(f'  🚨 {len(nonfinite)} merged tensors contain NaN/Inf, e.g. {nonfinite[:3]}')
+            else:
+                accelerator.print(f'  ✓ merged weights all finite ({sum(1 for _ in merged_model.parameters())} tensors checked)')
             if accelerator.is_main_process:
                 os.makedirs(merged_dir, exist_ok=True)
                 merged_model.save_pretrained(merged_dir)
@@ -544,13 +628,17 @@ def main():
     accelerator.wait_for_everyone()
 
     accelerator.print('\n' + '=' * 80)
-    accelerator.print('ALL DONE!')
+    accelerator.print('ALL DONE!' if not (instability or halted_early) else 'DONE — BUT THE RUN WAS INCOMPLETE (see warning above)')
     accelerator.print('=' * 80)
     accelerator.print(f'Checkpoints:   {output_dir}')
     accelerator.print(f'Final model:   {final_model_dir}')
     if peft_config is not None and cfg.get('lora', {}).get('merge_after_training', True):
         accelerator.print(f'Merged model:  {final_model_dir}_merged')
     accelerator.print('=' * 80 + '\n')
+
+    # Exit non-zero so a wrapper script / CI cannot mistake an aborted run for success.
+    if instability or halted_early:
+        sys.exit(3)
 
 
 if __name__ == '__main__':

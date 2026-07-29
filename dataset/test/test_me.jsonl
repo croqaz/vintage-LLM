@@ -2,10 +2,8 @@
 {"text": "Hello"}
 {"text": "Hello world!"}
 {"text": "Hello world!\n"}
-{"text": "Hello world!\n"}
-{"text": "Hello world!\n\n"}
-{"text": "Hello world!\n\n\n"}
-{"text": "Hello world!\n\n\n\n"}
+{"text": "Hello world!\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"}
+{"text": "Hello world!\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"}
 {"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
 {"text": "The quick brown fox\nJumps over the lazy dog.\nSome roll their eyes at the fox,\nSay he is greedy as an animal can be."}
 {"text": "To be, or not to be, that is the question:\nWhether 'tis nobler in the mind to suffer\nThe slings and arrows of outrageous fortune,\nOr to take arms against a sea of troubles\nAnd by opposing end them."}
@@ -14,3 +12,6 @@
 {"text": "The quick brown fox jumps over the lazy dog\n\n"}
 {"text": "The quick brown fox jumps over the lazy dog\n\n\n"}
 {"text": "The quick brown fox jumps over the lazy dog\n\n\n\n"}
+{"text": "This is a valid record with enough length to pass all the pre-filter checks and be considered a valid candidate for import processing"}
+{"text": "Another perfectly valid record that should pass the prefilter and be counted toward the offset before being skipped"}
+{"text": "Yet another valid record with sufficient unique characters and word count to pass the prefilter checks"}

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import type { DocValue } from './features.ts';
-import { globalScore } from './features.ts';
+import type { DocValue } from '../features.ts';
+import { globalScore } from '../features.ts';
 
 test('scores', () => {
   let doc1: DocValue = {

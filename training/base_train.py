@@ -4,6 +4,7 @@ LLM Pre-training Script.
 Trains a causal language model from scratch using HuggingFace Transformers Trainer.
 """
 
+import argparse
 import glob
 import math
 import os
@@ -481,10 +482,14 @@ def main():
     # Parse config and initialize Accelerator
     # ========================================================================
 
-    config_path = 'training/config.toml'
+    parser = argparse.ArgumentParser(description='LLM Pre-training Script')
+    parser.add_argument('--cfg', type=str, default='training/config.toml', help='Path to TOML config file (default: training/config.toml)')
+    args = parser.parse_args()
+
+    config_path = args.cfg
     if not Path(config_path).exists():
         print(f'ERROR: Config file not found at {config_path}')
-        print('Please create training/config.toml with your training configuration.')
+        print('Please create a config file or specify one with --cfg')
         sys.exit(1)
 
     print(f'Loading configuration from {config_path}...')

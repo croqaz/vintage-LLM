@@ -28,6 +28,9 @@ import {
 // Re-export the shared vocab builders so existing importers of import.ts keep working.
 export { buildVocabFromFiles, loadVocabFromFile } from './features.ts';
 
+// Re-export prefilter constants so tests can use them without replicating logic.
+export { DEFAULT_MAX_LENGTH, MAX_UNIQUE_CHARS, MIN_LENGTH, MIN_UNIQUE_CHARS } from './features.ts';
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────────────────────
@@ -46,6 +49,8 @@ function parseArgs(): {
   maxLength: number;
   vocabPath: string;
   extraFields: string[];
+  offset: number;
+  limit: number;
 } {
   const args = process.argv.slice(2);
   let inputs: string[] = [];
@@ -57,6 +62,8 @@ function parseArgs(): {
   // so the path is correct regardless of the current working directory.
   let vocabPath = './vocab.json';
   let extraFields: string[] = [];
+  let offset = 0;
+  let limit = 0;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -81,6 +88,18 @@ function parseArgs(): {
         .split(',')
         .map(f => f.trim())
         .filter(Boolean);
+    } else if ((arg === '-o' || arg === '--offset') && i + 1 < args.length) {
+      offset = parseInt(args[++i], 10);
+      if (isNaN(offset) || offset < 0) {
+        console.error('Error: --offset must be a non-negative integer.');
+        process.exit(1);
+      }
+    } else if ((arg === '-l' || arg === '--limit') && i + 1 < args.length) {
+      limit = parseInt(args[++i], 10);
+      if (isNaN(limit) || limit < 0) {
+        console.error('Error: --limit must be a non-negative integer (0 = no limit).');
+        process.exit(1);
+      }
     } else if (arg === '-h' || arg === '--help') {
       console.log(`Usage: bun run import.ts [options] [inputs...]
 
@@ -92,6 +111,8 @@ Options:
   -m, --max-length <n>      Max character length to import (default: ${DEFAULT_MAX_LENGTH})
   -v, --vocab <path>        Wordlist JSON for the dictHit signal (default: vocab.json next to import.ts)
   -e, --extra-fields <list> Comma-separated extra field names to preserve from input JSONL (default: none)
+  -o, --offset <n>          Fast-forward: skip the first N non-empty lines before processing (default: 0)
+  -l, --limit <n>           Stop after indexing N records (default: 0 = no limit)
   -h, --help                Show this help`);
       process.exit(0);
     } else if (!arg.startsWith('-')) {
@@ -104,7 +125,17 @@ Options:
     process.exit(1);
   }
 
-  return { inputs, source, dbPath, textKey, maxLength, vocabPath, extraFields };
+  return {
+    inputs,
+    source,
+    dbPath,
+    textKey,
+    offset,
+    limit,
+    maxLength,
+    vocabPath,
+    extraFields,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -142,28 +173,37 @@ function onConflict(oldValue: DocValue, newValue: DocValue): DocValue | null {
 // Per-file stats
 // ──────────────────────────────────────────────────────────────────────────────
 
-interface FileStats {
+export interface FileStats {
   path: string;
   rowsLoaded: number;
   rowsDropped: number;
+  rowsSkipped: number;
+  rowsLimited: number;
   rowsDuplicate: number;
   rowsIndexed: number;
 }
 
 function printSummary(stats: FileStats, maxLength: number): void {
-  console.log(
-    `  Loaded:     ${String(stats.rowsLoaded).padStart(12)}\n` +
-      `  Dropped:    ${String(stats.rowsDropped).padStart(12)}  (len ≤ ${MIN_LENGTH} or > ${maxLength} or uniqueChars out of range)\n` +
-      `  Duplicates: ${String(stats.rowsDuplicate).padStart(12)}  (id collision)\n` +
-      `  Indexed:    ${String(stats.rowsIndexed).padStart(12)}`
+  const lines: string[] = [
+    `  Loaded:     ${String(stats.rowsLoaded).padStart(12)}`,
+    `  Dropped:    ${String(stats.rowsDropped).padStart(12)}  (len ≤ ${MIN_LENGTH} or > ${maxLength} or uniqueChars out of range)`,
+    `  Skipped:    ${String(stats.rowsSkipped).padStart(12)}  (offset fast-forward)`,
+  ];
+  if (stats.rowsLimited > 0) {
+    lines.push(`  Limited:    ${String(stats.rowsLimited).padStart(12)}  (limit reached, records not indexed)`);
+  }
+  lines.push(
+    `  Duplicates: ${String(stats.rowsDuplicate).padStart(12)}  (id collision)`,
+    `  Indexed:    ${String(stats.rowsIndexed).padStart(12)}`
   );
+  console.log(lines.join('\n'));
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Pre-filter: length + unique chars
 // ──────────────────────────────────────────────────────────────────────────────
 
-function prefilter(text: string, maxLength: number): Record<string, any> {
+export function prefilter(text: string, maxLength: number): Record<string, any> {
   const length = text.length;
   if (length <= MIN_LENGTH || length > maxLength) return { ok: false, length };
   const uniqueChars = new Set(text).size;
@@ -258,12 +298,16 @@ async function processTextFile(
   source: string,
   db: ClassicLevel<string, DocValue>,
   maxLength: number,
-  vocab?: Set<string>
-): Promise<FileStats> {
+  vocab: Set<string> | undefined,
+  offset: number,
+  limit: number
+): Promise<{ stats: FileStats; remainingOffset: number; remainingLimit: number }> {
   const stats: FileStats = {
     path: filePath,
     rowsLoaded: 1,
     rowsDropped: 0,
+    rowsSkipped: 0,
+    rowsLimited: 0,
     rowsDuplicate: 0,
     rowsIndexed: 0,
   };
@@ -275,7 +319,13 @@ async function processTextFile(
     delete filtered.ok;
     console.log(`  Skipping ${basename(filePath)}: failed pre-filter (${JSON.stringify(filtered)})`);
     stats.rowsDropped = 1;
-    return stats;
+    return { stats, remainingOffset: offset, remainingLimit: limit };
+  }
+
+  // Offset skip for text files
+  if (offset > 0) {
+    stats.rowsSkipped = 1;
+    return { stats, remainingOffset: offset - 1, remainingLimit: limit };
   }
 
   const { id, value } = computeRecord(text, source, vocab);
@@ -295,29 +345,41 @@ async function processTextFile(
     stats.rowsIndexed = 1;
   }
 
-  return stats;
+  return {
+    stats,
+    remainingOffset: 0,
+    remainingLimit: limit > 0 ? limit - 1 : 0,
+  };
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Process a single JSONL file
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function processFile(
+export async function processFile(
   filePath: string,
   source: string,
   db: ClassicLevel<string, DocValue>,
   textKey: string,
   maxLength: number,
   vocab: Set<string>,
-  extraFields: string[]
-): Promise<FileStats> {
+  extraFields: string[],
+  offset: number,
+  limit: number
+): Promise<{ stats: FileStats; remainingOffset: number; remainingLimit: number }> {
   const stats: FileStats = {
     path: filePath,
     rowsLoaded: 0,
     rowsDropped: 0,
+    rowsSkipped: 0,
+    rowsLimited: 0,
     rowsDuplicate: 0,
     rowsIndexed: 0,
   };
+  let skipRemaining = offset;
+  let limitRemaining = limit;
 
   // Pending writes keyed by id. Using a Map dedups within-batch collisions and
   // lets us resolve them via onConflict before they ever hit the DB.
@@ -391,6 +453,15 @@ async function processFile(
         console.log(`  Processed ${stats.rowsLoaded} lines...`);
       }
 
+      // Offset skip: fast-forward N non-empty lines without any JSON parsing
+      // or pre-filtering. This is O(1) per line (just a counter decrement) vs.
+      // the full JSON parse + prefilter + computeRecord pipeline.
+      if (skipRemaining > 0) {
+        skipRemaining--;
+        stats.rowsSkipped++;
+        continue;
+      }
+
       // Parse JSON
       let obj: unknown;
       try {
@@ -421,6 +492,17 @@ async function processFile(
         stats.rowsDropped++;
         continue;
       }
+
+      // Limit check: cap the number of records that get fully indexed.
+      // Only enforced when limit was explicitly set (> 0). A limit of 0 means
+      // "no limit" so we never enter this branch.
+      if (limit > 0 && limitRemaining === 0) {
+        stats.rowsLimited++;
+        // Flush whatever is in the batch and bail out of both loops.
+        await flushBatch();
+        return { stats, remainingOffset: skipRemaining, remainingLimit: 0 };
+      }
+      if (limit > 0) limitRemaining--;
 
       // Reuse "source" field if present, otherwise use CLI arg
       let docSource = source;
@@ -454,7 +536,11 @@ async function processFile(
   // Flush remaining batch
   await flushBatch();
 
-  return stats;
+  return {
+    stats,
+    remainingOffset: skipRemaining,
+    remainingLimit: limitRemaining,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -462,7 +548,7 @@ async function processFile(
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { inputs, source, dbPath, textKey, maxLength, vocabPath, extraFields } = parseArgs();
+  const { inputs, source, dbPath, textKey, maxLength, vocabPath, extraFields, offset, limit } = parseArgs();
 
   // Sort for deterministic processing order
   inputs.sort();
@@ -482,6 +568,8 @@ async function main(): Promise<void> {
   console.log(`Extra fields: ${extraFields.length > 0 ? extraFields.join(', ') : 'none'}`);
   console.log(`Min length: ${MIN_LENGTH}`);
   console.log(`Max length: ${maxLength}`);
+  console.log(`Offset: ${offset}`);
+  console.log(`Limit: ${limit === 0 ? 'none' : limit}`);
   console.log(`LevelDB: ${dbPath}`);
   console.log(`Vocabulary: ${vocab ? `${vocab.size} words (${vocabPath})` : 'none'}`);
 
@@ -493,8 +581,12 @@ async function main(): Promise<void> {
 
   let grandLoaded = 0;
   let grandDropped = 0;
+  let grandSkipped = 0;
+  let grandLimited = 0;
   let grandDuplicate = 0;
   let grandIndexed = 0;
+  let remainingOffset = offset;
+  let remainingLimit = limit;
 
   try {
     for (let fi = 0; fi < inputs.length; fi++) {
@@ -507,10 +599,14 @@ async function main(): Promise<void> {
         console.log('='.repeat(60));
       }
 
-      const stats =
+      const result =
         fileType === 'text'
-          ? await processTextFile(filePath, source, db, maxLength, vocab)
-          : await processFile(filePath, source, db, textKey, maxLength, vocab, extraFields);
+          ? await processTextFile(filePath, source, db, maxLength, vocab, remainingOffset, remainingLimit)
+          : await processFile(filePath, source, db, textKey, maxLength, vocab, extraFields, remainingOffset, remainingLimit);
+
+      const { stats } = result;
+      remainingOffset = result.remainingOffset;
+      remainingLimit = result.remainingLimit;
 
       if (fileType === 'jsonl') {
         printSummary(stats, maxLength);
@@ -518,8 +614,16 @@ async function main(): Promise<void> {
 
       grandLoaded += stats.rowsLoaded;
       grandDropped += stats.rowsDropped;
+      grandSkipped += stats.rowsSkipped;
+      grandLimited += stats.rowsLimited;
       grandDuplicate += stats.rowsDuplicate;
       grandIndexed += stats.rowsIndexed;
+
+      // Stop early if limit reached
+      if (remainingLimit === 0 && limit > 0) {
+        console.log(`\n  Limit of ${limit} record(s) reached — stopping.`);
+        break;
+      }
 
       // Periodic progress for text files
       if (fileType === 'text' && (fi + 1) % 25 === 0) {
@@ -534,12 +638,19 @@ async function main(): Promise<void> {
   console.log(`\n${'='.repeat(60)}`);
   console.log('SUMMARY');
   console.log('='.repeat(60));
-  console.log(
-    `  Grand loaded:     ${String(grandLoaded).padStart(12)}\n` +
-      `  Grand dropped:    ${String(grandDropped).padStart(12)}  (quality filter)\n` +
-      `  Grand duplicates: ${String(grandDuplicate).padStart(12)}  (id collision)\n` +
-      `  Grand indexed:    ${String(grandIndexed).padStart(12)}`
+  const summaryLines = [
+    `  Grand loaded:     ${String(grandLoaded).padStart(12)}`,
+    `  Grand dropped:    ${String(grandDropped).padStart(12)}  (quality filter)`,
+    `  Grand skipped:    ${String(grandSkipped).padStart(12)}  (offset fast-forward)`,
+  ];
+  if (grandLimited > 0) {
+    summaryLines.push(`  Grand limited:    ${String(grandLimited).padStart(12)}  (limit reached, not indexed)`);
+  }
+  summaryLines.push(
+    `  Grand duplicates: ${String(grandDuplicate).padStart(12)}  (id collision)`,
+    `  Grand indexed:    ${String(grandIndexed).padStart(12)}`
   );
+  console.log(summaryLines.join('\n'));
 }
 
 if (import.meta.main) {
