@@ -19,8 +19,6 @@ Example
         --limit 100 --concurrency 8 --output out/synth.jsonl
 """
 
-from __future__ import annotations
-
 import argparse
 import asyncio
 import json

@@ -23,7 +23,6 @@
 #       synth-vllm prompts/continue.txt --system systems/vintage_1850.txt \
 #         --concurrency 64 --limit 500
 #
-# The GPU is pinned with --gpus '"device=0"' at run time.
 # ---------------------------------------------------------------------------
 ARG VLLM_TAG=latest
 FROM vllm/vllm-openai:${VLLM_TAG}

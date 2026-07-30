@@ -159,6 +159,7 @@ training/TimeCapsuleLLM*
 training/*-text/
 training/*-data/
 training/*.bin
+training/patina/
 
 knowledge/pre1900
 !knowledge/pre1900/*.py
@@ -170,8 +171,8 @@ knowledge/complete/seeds.*
 knowledge/dialog/*.json*
 knowledge/dialog/vintage*
 knowledge/dialog/gutenberg*
-knowledge/genStruct/*.json*
-knowledge/genStruct/*.txt
+knowledge/genStruct/books/*.json*
+knowledge/genStruct/books/*.txt
 knowledge/oldify/*.jsonl
 knowledge/oldify/*.txt
 knowledge/synth-ft1/*.json*

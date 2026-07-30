@@ -103,5 +103,14 @@ if [ "$#" -eq 0 ]; then
     set -- prompts/continue.txt --limit 20
 fi
 
-echo "[entrypoint] running: python3 generate.py $*"
-python3 generate.py "$@"
+# Point the client at this container's own server. generate.py defaults to
+# localhost:1234, which is wrong whenever PORT is overridden (e.g. a second
+# worker on another GPU). Only inject it if the caller didn't pass one.
+base_url_args=()
+case " $* " in
+    *" --base-url "*|*" --base-url="*) ;;
+    *) base_url_args=(--base-url "http://127.0.0.1:${PORT}/v1") ;;
+esac
+
+echo "[entrypoint] running: python3 generate.py ${base_url_args[*]} $*"
+python3 generate.py "${base_url_args[@]}" "$@"

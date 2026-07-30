@@ -26,8 +26,6 @@ Usage:
     python score_sample.py a.jsonl b.jsonl --examples 3   # show sample failures
 """
 
-from __future__ import annotations
-
 import argparse
 import glob
 import json

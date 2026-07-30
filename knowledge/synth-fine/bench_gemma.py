@@ -12,8 +12,6 @@ plus a human summary on stderr.
         --chunk-tokens 700 --max-tokens 256 --concurrency 128
 """
 
-from __future__ import annotations
-
 import argparse
 import asyncio
 import json

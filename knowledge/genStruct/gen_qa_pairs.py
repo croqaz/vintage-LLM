@@ -206,7 +206,7 @@ def main():
     parser.add_argument(
         '-k', '--api-key', default=os.environ.get('OPENROUTER_API_KEY', ''), help='API key (reads OPENROUTER_API_KEY env var if omitted)'
     )
-    parser.add_argument('--max-tokens', type=int, default=2048)
+    parser.add_argument('--max-tokens', type=int, default=4096, help='Max tokens in response (default: 4096)')
     parser.add_argument('--temperature', type=float, default=0.7)
     parser.add_argument('--timeout', type=int, default=120)
     parser.add_argument('--retries', type=int, default=3)
