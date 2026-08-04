@@ -20,3 +20,4 @@ hellaswag,language understanding,multiple choice,10,6076,25,,Few-shot selection 
 squad,reading comprehension,language modeling,10,4284,0,,Passage-based reading comprehension requiring an exact answer supported by the supplied context.
 bigbench_qa_wikidata,world knowledge,language modeling,10,9508,0,,Exact factual completions derived from structured Wikidata relations.
 vintage_qa,vintage examination,language modeling,0,10000,0,,Oral-examination questions from pre-1900 schoolbooks scored with ROUGE-L (filtered 4-30 word answers).
+hist_llm,history knowledge,multiple choice,4,7455,25,,"Expert-level global history: was a characteristic present, inferred present, inferred absent, or absent for a given polity and time frame (Seshat HiST-LLM, expert-reviewed, answer-class capped)."

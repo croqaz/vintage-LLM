@@ -2,6 +2,8 @@
 
 import re
 import string
+import sys
+import warnings
 
 from . import prompts
 
@@ -34,7 +36,12 @@ def match_choice_text(text, choices):
     """Fallback for MC when the model replies with the answer *text* instead of a
     letter. Returns the index of the choice whose normalized text is contained in
     (or contains) the normalized output; prefers the longest unambiguous match.
-    Returns None if nothing matches or the match is ambiguous."""
+    Returns None if nothing matches or the match is ambiguous.
+
+    A choice that matches the output *exactly* always wins. This matters when one
+    option's text nests inside another's ("Present" vs. "Inferred Present"): the
+    longest-match rule alone would read a bare "Present" as "Inferred Present".
+    """
     if not text:
         return None
     out = normalize_answer(text)
@@ -42,13 +49,20 @@ def match_choice_text(text, choices):
         return None
     out_join = ' '.join(out)
     hits = []
+    exact = []
     for i, c in enumerate(choices):
         ct = normalize_answer(str(c))
         if not ct:
             continue
         cj = ' '.join(ct)
-        if cj in out_join or out_join in cj:
+        if cj == out_join:
+            exact.append(i)
+        elif cj in out_join or out_join in cj:
             hits.append((len(ct), i))
+    if len(exact) == 1:
+        return exact[0]
+    if exact:
+        return None  # two choices with identical text — genuinely ambiguous
     if not hits:
         return None
     hits.sort(reverse=True)
@@ -159,6 +173,55 @@ except ImportError:
 
 _ROUGE_THRESHOLD = 0.30
 
+# Set once the fallback path has shouted, so the banner appears a single time
+# per process instead of on every one of the 10,000 vintage_qa items.
+_WARNED_ROUGE_FALLBACK = False
+
+# Scoring-mode label recorded in the summary JSON so a degraded run is
+# identifiable from its results file alone, long after the console output is gone.
+ROUGE_SCORING_MODE = 'rouge-l' if _HAS_ROUGE else 'prefix-fallback-DEGRADED'
+
+ROUGE_MISSING_WARNING = """\
+==========================  DEGRADED SCORING  ==========================
+ rouge_score is NOT installed, so the vintage_qa task CANNOT be scored
+ with ROUGE-L.  It is falling back to exact-prefix matching, which is a
+ DIFFERENT AND MUCH STRICTER metric: verbose but correct answers are
+ counted as wrong, so vintage_qa scores will be far too low (frontier
+ models drop from ~0.20-0.45 to ~0.00) and are NOT comparable to any
+ result produced with ROUGE-L available.
+
+ Fix before trusting any vintage_qa number:
+     pip install rouge_score
+
+ Already-collected runs do not need re-running: the model outputs are
+ stored in the --debug-file and can be re-scored offline.
+========================================================================"""
+
+
+def warn_if_rouge_missing(stream=None):
+    """Print the degraded-scoring banner to *stream* when rouge_score is absent.
+
+    Returns True if the warning was emitted.  Callers that touch vintage_qa
+    should invoke this so a missing dependency can never pass unnoticed.
+    """
+    if _HAS_ROUGE:
+        return False
+    (stream or sys.stderr).write(ROUGE_MISSING_WARNING + '\n')
+    (stream or sys.stderr).flush()
+    return True
+
+
+if not _HAS_ROUGE:
+    # Loud at import time as a backstop: even a caller that never routes through
+    # the CLI cannot silently produce prefix-matched vintage_qa numbers.
+    warnings.warn(
+        'rouge_score is not installed - vintage_qa will be scored by exact-prefix '
+        'match instead of ROUGE-L, producing scores that are far too low and not '
+        'comparable to ROUGE-L runs. Install it with: pip install rouge_score',
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
 
 def rouge_l_correct(generation, gold, threshold=_ROUGE_THRESHOLD):
     """Return True if the generation has ROUGE-L F1 ≥ *threshold* against gold.
@@ -168,7 +231,13 @@ def rouge_l_correct(generation, gold, threshold=_ROUGE_THRESHOLD):
     validated against manual inspection.
     """
     if not _HAS_ROUGE:
-        # Fall back to exact prefix if rouge_score isn't installed.
+        # Fall back to exact prefix if rouge_score isn't installed. This is a
+        # stricter, non-equivalent metric, so shout once per process rather than
+        # letting the substitution pass for a real ROUGE-L score.
+        global _WARNED_ROUGE_FALLBACK
+        if not _WARNED_ROUGE_FALLBACK:
+            _WARNED_ROUGE_FALLBACK = True
+            warn_if_rouge_missing()
         return lm_is_correct(generation, gold)
     if not generation or not gold:
         return False

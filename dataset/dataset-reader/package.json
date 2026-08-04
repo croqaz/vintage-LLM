@@ -1,0 +1,30 @@
+{
+  "name": "dataset-reader",
+  "description": "Fine-tuning dataset explorer — reads, edits and prunes chat JSONL rows",
+  "version": "0.1-dev",
+  "license": "MIT",
+  "type": "module",
+  "module": "src/server.ts",
+  "scripts": {
+    "start": "bun run src/server.ts",
+    "dev": "bun --watch run src/server.ts",
+    "test": "bun test",
+    "fmt": "bunx prettier --write \"./{src,tests}/**/*.ts\"",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.11.1",
+    "@types/bun": "1.x",
+    "happy-dom": "^20.11.1",
+    "prettier": "3.x",
+    "typescript": "5.x"
+  },
+  "prettier": {
+    "arrowParens": "avoid",
+    "printWidth": 140,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5"
+  }
+}

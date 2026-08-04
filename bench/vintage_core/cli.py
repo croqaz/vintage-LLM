@@ -43,7 +43,7 @@ def build_parser():
     p.add_argument(
         '--api', choices=['auto', 'chat', 'completions'], default='auto', help='Which generation endpoint to use (auto probes the backend)'
     )
-    p.add_argument('--tasks', default=None, help='Comma-separated task labels to run (default: all 21)')
+    p.add_argument('--tasks', default=None, help='Comma-separated task labels to run (default: all 22)')
     p.add_argument('--max-per-task', type=int, default=-1, help='Cap examples per task (-1 = all)')
     p.add_argument('--concurrency', type=int, default=8, help='Concurrent in-flight requests')
     p.add_argument('--bundle-dir', default=data.DEFAULT_BUNDLE_DIR, help='Path to the data bundle (default: bundled ./data)')

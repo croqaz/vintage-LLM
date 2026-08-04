@@ -165,15 +165,15 @@ knowledge/pre1900
 !knowledge/pre1900/*.py
 !knowledge/pre1900/data/*.txt
 
-knowledge/books/TODO
 knowledge/bible/*.txt
 knowledge/complete/seeds.*
 knowledge/dialog/*.json*
 knowledge/dialog/vintage*
 knowledge/dialog/gutenberg*
-knowledge/genStruct/books/*.json*
-knowledge/genStruct/books/*.txt
+knowledge/synth-dialog/cards/
+knowledge/genStruct/books/*.*
 knowledge/oldify/*.jsonl
 knowledge/oldify/*.txt
 knowledge/synth-ft1/*.json*
 knowledge/synth-fine/out/*.json*
+knowledge/genStruct/TODO/

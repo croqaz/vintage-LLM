@@ -35,12 +35,13 @@ EXPECTED_COUNTS = {
     'squad': 4284,
     'bigbench_qa_wikidata': 9508,
     'vintage_qa': 10000,
+    'hist_llm': 7455,
 }
 
 
 def test_bundle_integrity():
     tasks = load_bundle()
-    assert len(tasks) == 21, f'expected 21 tasks, got {len(tasks)}'
+    assert len(tasks) == 22, f'expected 22 tasks, got {len(tasks)}'
     by_label = {t.label: t for t in tasks}
     assert set(by_label) == set(EXPECTED_COUNTS)
     for label, n in EXPECTED_COUNTS.items():
@@ -200,6 +201,152 @@ def test_vintage_rouge_scoring():
     # instrument") will score low even when both are correct.  The 0.30
     # threshold is calibrated to catch most correct answers while keeping
     # false positives manageable; it is not perfect.
+
+
+def test_hist_llm_dataset():
+    """The history task must be answer-class capped, correctly keyed, order-shuffled,
+    and free of the upstream evidence field (which states the answer)."""
+    import collections
+
+    task = {t.label: t for t in load_bundle()}['hist_llm']
+    assert task.task_type == 'multiple_choice'
+    assert task.num_fewshot == 4
+    assert task.random_baseline == 25.0
+    assert task.category == 'history knowledge'
+
+    labels = ['Present', 'Inferred Present', 'Inferred Absent', 'Absent']
+    value_to_gold = {'present': 0, 'inferred present': 1, 'inferred absent': 2, 'absent': 3}
+    counts = collections.Counter()
+    for item in task.data:
+        assert item['choices'] == ['A', 'B', 'C', 'D']
+        assert item['choice_labels'] == labels
+        assert item['query'].startswith('Question:\n')
+        assert item['query'].endswith('\nAnswer:')
+        # the chain-of-thought cue must be gone, and the evidence must not leak
+        assert 'Reasoning and evidence:' not in item['query']
+        assert 'description' not in item
+        # gold index agrees with the upstream categorical value
+        assert item['gold'] == value_to_gold[item['value']], item
+        assert item['additional_review'] is True
+        counts[item['gold']] += 1
+
+    # capped at 2000/class; 'Inferred Absent' contributes all 1455 it has
+    assert counts == {0: 2000, 1: 2000, 2: 1455, 3: 2000}, counts
+    # majority class stays close to the 25% chance baseline the score is centered on
+    assert max(counts.values()) / len(task.data) < 0.27
+    # shuffled: a prefix (what --max-per-task takes) must span all four classes
+    assert len({item['gold'] for item in task.data[:40]}) == 4
+
+
+def test_hist_llm_rendering():
+    """The history task renders through the standard letter-choice MC path: options
+    stay inlined in the query and few-shot blocks end in 'Answer: <letter>'."""
+    task = {t.label: t for t in load_bundle()}['hist_llm']
+    item = task.data[0]
+    assert prompts.is_letter_choices(item['choices'])
+    assert prompts.mc_gold_letter(item) == 'ABCD'[item['gold']]
+
+    p = prompts.render_generation_mc(item, task.data, 0, task.num_fewshot)
+    blocks = p.split('\n\n')
+    assert len(blocks) == 5, f'expected 4 few-shot blocks + the query, got {len(blocks)}'
+    for block in blocks[:-1]:
+        assert block.startswith('Question:\n')
+        assert block.split('\n')[-1].startswith('Answer: ')
+        assert block.rstrip()[-1] in 'ABCD'
+    assert blocks[-1].rstrip().endswith('Answer:')
+
+    # faithful logprob mode enumerates one prompt per candidate letter
+    pl, ans, gold = prompts.render_logprob_mc(item, task.data, 0, task.num_fewshot)
+    assert len(pl) == 4 and ans == [' A', ' B', ' C', ' D'] and gold == item['gold']
+    assert all(prompt.endswith(answer) for prompt, answer in zip(pl, ans))
+
+
+def test_hist_llm_answer_parsing():
+    """Letters parse as usual; a model that replies with the option wording instead
+    of the letter is mapped via 'choice_labels' rather than scored unanswered."""
+    task = {t.label: t for t in load_bundle()}['hist_llm']
+    labels = task.data[0]['choice_labels']
+
+    assert scoring.parse_letter('C', 4) == 2
+    assert scoring.parse_letter('Answer: B', 4) == 1
+    # bare wording carries no standalone letter, so the fallback has to do the work
+    assert scoring.parse_letter('Inferred Present', 4) is None
+    assert scoring.match_choice_text('Present', labels) == 0
+    assert scoring.match_choice_text('Inferred Present', labels) == 1
+    assert scoring.match_choice_text('Inferred Absent', labels) == 2
+    assert scoring.match_choice_text('Absent', labels) == 3
+    # nesting: a bare "Present" must not be read as the longer "Inferred Present"
+    assert scoring.match_choice_text('present.', labels) == 0
+    assert scoring.match_choice_text('The answer is Present.', labels) == 0
+    assert scoring.match_choice_text('The answer is Inferred Present.', labels) == 1
+
+    # end-to-end through the runner, with a client that answers by wording
+    class Wordy:
+        def chat(self, prompt, max_tokens, temperature=0.0, stop=None, system=None, want_logprobs=False, top_logprobs=5):
+            return 'Inferred Absent'
+
+    rec = runner.eval_example_generation(Wordy(), task, 0, use_chat=True)
+    assert rec['answered'] is True and rec['pred'] == 2
+
+    # an off-format reply is still counted as unanswered (and wrong)
+    class Refuses:
+        def chat(self, prompt, max_tokens, temperature=0.0, stop=None, system=None, want_logprobs=False, top_logprobs=5):
+            return 'I cannot determine this.'
+
+    rec = runner.eval_example_generation(Refuses(), task, 0, use_chat=True)
+    assert rec['answered'] is False and rec['correct'] is False
+
+
+def test_letter_choice_fallback_does_not_affect_other_tasks():
+    """Tasks without 'choice_labels' keep their previous behaviour: an inlined-option
+    MC task must not text-match against the bare letters A/B/C/D."""
+    task = {t.label: t for t in load_bundle()}['commonsense_qa']
+    assert 'choice_labels' not in task.data[0]
+
+    class Wordy:
+        def chat(self, prompt, max_tokens, temperature=0.0, stop=None, system=None, want_logprobs=False, top_logprobs=5):
+            return 'a revolving door'
+
+    rec = runner.eval_example_generation(Wordy(), task, 0, use_chat=True)
+    assert rec['pred'] is None and rec['answered'] is False
+
+
+def test_hist_llm_end_to_end_with_stub():
+    """Full evaluate() path over hist_llm with a stub client: the task must appear in
+    the results, centering, and CORE aggregation, and a gold-answering stub must
+    score 1.0 while a fixed-'A' stub must land near the majority-class rate."""
+    from vintage_core import evaluate
+    from vintage_core.client import Capabilities
+
+    caps = Capabilities(has_completions=False, has_chat=True, has_prompt_logprobs=False, logprob_style=None)
+    task = {t.label: t for t in load_bundle()}['hist_llm']
+    n = 40
+
+    by_query = {item['query'].rstrip(): item['gold'] for item in task.data[:n]}
+
+    class Oracle:
+        """Reads the gold letter back out of the rendered prompt's final question."""
+
+        def chat(self, prompt, max_tokens, temperature=0.0, stop=None, system=None, want_logprobs=False, top_logprobs=5):
+            return 'ABCD'[by_query[prompt.split('\n\n')[-1].rstrip()]]
+
+    res = evaluate(model='stub', base_url='stub://', tasks=['hist_llm'], max_per_task=n, client=Oracle(), caps=caps)
+    assert res['num_tasks'] == 1
+    assert res['scoring_mode'] == 'generation' and res['endpoint'] == 'chat'
+    assert res['results']['hist_llm'] == 1.0
+    assert abs(res['centered_results']['hist_llm'] - 1.0) < 1e-9
+    assert abs(res['core_metric'] - 1.0) < 1e-9
+    assert res['unparsed_rate']['hist_llm'] == 0.0
+    assert res['error_rate']['hist_llm'] == 0.0
+
+    class AlwaysA:
+        def chat(self, prompt, max_tokens, temperature=0.0, stop=None, system=None, want_logprobs=False, top_logprobs=5):
+            return 'A'
+
+    biased = evaluate(model='stub', base_url='stub://', tasks=['hist_llm'], max_per_task=n, client=AlwaysA(), caps=caps)
+    # a pure position bias must stay near chance, not sail past it
+    assert 0.15 < biased['results']['hist_llm'] < 0.40
+    assert biased['unparsed_rate']['hist_llm'] == 0.0
 
 
 if __name__ == '__main__':

@@ -44,9 +44,15 @@ def eval_example_generation(client, task, idx, use_chat, capture_logprobs=False)
         prompt = prompts.render_generation_mc(item, task.data, idx, task.num_fewshot)
         out = gen(prompt, MC_MAX_TOKENS, prompts.MC_INSTRUCTION)
         pred = scoring.parse_letter(out, len(item['choices']))
-        if pred is None and not prompts.is_letter_choices(item['choices']):
-            # Model answered with the choice text rather than a letter.
-            pred = scoring.match_choice_text(out, item['choices'])
+        if pred is None:
+            # Model answered with the choice text rather than a letter. When the
+            # query inlines the options (choices are bare letters) the option
+            # texts live in 'choice_labels', if the dataset supplies them.
+            texts = item.get('choice_labels')
+            if texts is None and not prompts.is_letter_choices(item['choices']):
+                texts = item['choices']
+            if texts:
+                pred = scoring.match_choice_text(out, texts)
         # 'answered' = the model produced something we could map to a choice;
         # False means a refusal/ramble we couldn't parse (counts as wrong).
         rec.update(prompt=prompt, output=out, pred=pred, gold=item['gold'], correct=pred == item['gold'], answered=pred is not None)

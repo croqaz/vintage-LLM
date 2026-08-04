@@ -42,9 +42,9 @@ def _read_jsonl(path):
 def load_bundle(bundle_dir=DEFAULT_BUNDLE_DIR):
     """Load core.yaml + metadata + all referenced JSONL files.
 
-    Returns a list of :class:`Task`, in the order given by core.yaml. Note the
-    bundle intentionally lists HellaSwag twice (zero-shot and ten-shot) and ships two
-    HellaSwag is listed twice (zero-shot and ten-shot), which is why there are 21 tasks over 20 data files.
+    Returns a list of :class:`Task`, in the order given by core.yaml. HellaSwag is
+    intentionally listed twice (zero-shot and ten-shot), which is why there are 22
+    tasks over 21 data files.
     """
     config_path = os.path.join(bundle_dir, 'core.yaml')
     meta_path = os.path.join(bundle_dir, 'eval_meta_data.csv')

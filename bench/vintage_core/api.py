@@ -8,7 +8,7 @@ Import this from your own experiment scripts to score a model on Vintage CORE
     res = evaluate(
         base_url="http://localhost:8000/v1",
         model="my-experiment-v3",
-        tasks=["arc_easy", "boolq", "squad"],   # or None for all 22
+        tasks=["arc_easy", "boolq", "squad"],   # or None for all 22 tasks
         max_per_task=200,                        # or -1 for all
     )
     print(res["core_metric"], res["results"])
@@ -17,7 +17,9 @@ Import this from your own experiment scripts to score a model on Vintage CORE
 import json
 import os
 
+# Aliased: evaluate() takes a `scoring` parameter that would shadow the module.
 from . import data, runner
+from . import scoring as scoring_mod
 from .client import APIClient
 
 
@@ -119,6 +121,12 @@ def evaluate(
     else:
         selected = all_tasks
 
+    # Shout before spending any tokens if vintage_qa is about to be scored with
+    # the exact-prefix fallback instead of ROUGE-L.
+    scores_vintage_qa = any(t.label == 'vintage_qa' for t in selected)
+    if scores_vintage_qa:
+        scoring_mod.warn_if_rouge_missing()
+
     debug_fh = None
     if debug_file:
         os.makedirs(os.path.dirname(os.path.abspath(debug_file)), exist_ok=True)
@@ -174,6 +182,10 @@ def evaluate(
         'num_tasks': len(selected),
         'max_per_task': max_per_task,
     }
+    if scores_vintage_qa:
+        # 'prefix-fallback-DEGRADED' here means rouge_score was missing and the
+        # vintage_qa number is not comparable to a ROUGE-L run.
+        out['vintage_qa_scoring'] = scoring_mod.ROUGE_SCORING_MODE
     if return_records:
         out['records'] = all_records
     return out

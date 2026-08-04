@@ -4,7 +4,7 @@
   "scoring_mode": "generation",
   "logprob_style": null,
   "endpoint": "chat",
-  "core_metric": 0.5426871143889778,
+  "core_metric": 0.5272316394925091,
   "results": {
     "bigbench_repeat_copy_logic": 0.25,
     "copa": 0.94,
@@ -26,7 +26,8 @@
     "hellaswag": 0.63,
     "squad": 0.736,
     "bigbench_qa_wikidata": 0.58,
-    "vintage_qa": 0.074
+    "vintage_qa": 0.074,
+    "hist_llm": 0.402
   },
   "centered_results": {
     "bigbench_repeat_copy_logic": 0.25,
@@ -49,7 +50,8 @@
     "hellaswag": 0.5066666666666667,
     "squad": 0.736,
     "bigbench_qa_wikidata": 0.58,
-    "vintage_qa": 0.074
+    "vintage_qa": 0.074,
+    "hist_llm": 0.2026666666666667
   },
   "unparsed_rate": {
     "bigbench_repeat_copy_logic": 0.0,
@@ -72,7 +74,8 @@
     "hellaswag": 0.0,
     "squad": 0.004,
     "bigbench_qa_wikidata": 0.0,
-    "vintage_qa": 0.0
+    "vintage_qa": 0.0,
+    "hist_llm": 0.0
   },
   "error_rate": {
     "bigbench_repeat_copy_logic": 0.0,
@@ -95,12 +98,13 @@
     "hellaswag": 0.0,
     "squad": 0.004,
     "bigbench_qa_wikidata": 0.0,
-    "vintage_qa": 0.0
+    "vintage_qa": 0.0,
+    "hist_llm": 0.0
   },
   "error_samples": {
     "squad": "RuntimeError: Request to http://127.1:1234/chat/completions failed after 5 retries: HTTP 500: {\"error\":{\"code\":500,\"message\":\"The model produced output that does not match the expected peg-native format\",\"type\":\"server_error\"}}"
   },
-  "num_tasks": 21,
+  "num_tasks": 22,
   "max_per_task": 500,
-  "elapsed_seconds": 2889.2483558654785
+  "elapsed_seconds": 3013.7796351909637
 }

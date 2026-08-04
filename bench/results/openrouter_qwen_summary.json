@@ -4,7 +4,7 @@
   "scoring_mode": "generation",
   "logprob_style": null,
   "endpoint": "chat",
-  "core_metric": 0.662146805896806,
+  "core_metric": 0.671237714987715,
   "results": {
     "bigbench_repeat_copy_logic": 0.9,
     "copa": 0.9,
@@ -26,8 +26,8 @@
     "hellaswag": 0.8,
     "squad": 0.8,
     "bigbench_qa_wikidata": 0.95,
-    "vintage_exam": 0.0,
-    "vintage_exam_recall": 0.0
+    "vintage_qa": 0.0,
+    "hist_llm": 0.4
   },
   "centered_results": {
     "bigbench_repeat_copy_logic": 0.9,
@@ -50,8 +50,8 @@
     "hellaswag": 0.7333333333333334,
     "squad": 0.8,
     "bigbench_qa_wikidata": 0.95,
-    "vintage_exam": 0.0,
-    "vintage_exam_recall": 0.0
+    "vintage_qa": 0.0,
+    "hist_llm": 0.20000000000000004
   },
   "unparsed_rate": {
     "bigbench_repeat_copy_logic": 0.05,
@@ -74,8 +74,8 @@
     "hellaswag": 0.0,
     "squad": 0.05,
     "bigbench_qa_wikidata": 0.05,
-    "vintage_exam": 0.0,
-    "vintage_exam_recall": 0.0
+    "vintage_qa": 1.0,
+    "hist_llm": 0.1
   },
   "error_rate": {
     "bigbench_repeat_copy_logic": 0.0,
@@ -98,11 +98,11 @@
     "hellaswag": 0.0,
     "squad": 0.0,
     "bigbench_qa_wikidata": 0.0,
-    "vintage_exam": 0.0,
-    "vintage_exam_recall": 0.0
+    "vintage_qa": 0.0,
+    "hist_llm": 0.0
   },
   "error_samples": {},
   "num_tasks": 22,
   "max_per_task": 20,
-  "elapsed_seconds": 1000.5686633586884
+  "elapsed_seconds": 1103.5926475524902
 }

@@ -2,12 +2,12 @@
 
 A portable, self-contained benchmark that evaluates any language model served
 behind an OpenAI-compatible API — **or a local HuggingFace checkpoint** — on
-**Vintage CORE** — the 22-task
-[DCLM CORE](https://arxiv.org/abs/2406.11794) evaluation suite, with every item
-rewritten into pre-1900 English prose. (The suite ships 22 task configurations:
-19 from upstream CORE — `bigbench_language_identification` is omitted — plus
-`basic_math` (elementary arithmetic over operands 1–10) and two `vintage_exam`
-tasks built from pre-1900 schoolbook examination corpora.)
+**Vintage CORE**, the [DCLM CORE](https://arxiv.org/abs/2406.11794) evaluation
+suite with every item rewritten into pre-1900 English prose. The suite ships 22
+task configurations: 19 from upstream CORE — `bigbench_language_identification`
+is omitted — plus `basic_math` (elementary arithmetic over operands 1–10),
+`vintage_qa` (pre-1900 schoolbook examination questions), and `hist_llm`
+(expert-level global history from Seshat's HiST-LLM benchmark).
 
 The benchmark ships with all of its data. Clone or copy this folder anywhere,
 point it at an API endpoint (or a local checkpoint directory), and run — no
@@ -29,7 +29,7 @@ python run_benchmark.py --local-path checkpoints/checkpoint-xx
 ## What it measures
 
 The suite has 22 task configurations over 21 datasets (HellaSwag runs both
-zero-shot and ten-shot), grouped into six categories:
+zero-shot and ten-shot), grouped into seven categories:
 
 | Category | Tasks |
 | --- | --- |
@@ -38,7 +38,8 @@ zero-shot and ten-shot), grouped into six categories:
 | Language understanding | `hellaswag`, `hellaswag_zeroshot`, `winograd`, `winogrande`, `lambada_openai` |
 | Reading comprehension | `boolq`, `squad`, `coqa` |
 | Symbolic problem solving | `agi_eval_lsat_ar`, `bigbench_operators`, `bigbench_repeat_copy_logic`, `basic_math` |
-| Vintage examination | `vintage_exam` (short answers), `vintage_exam_recall` (full-answer verbatim recall) |
+| Vintage examination | `vintage_qa` (pre-1900 oral-examination questions, ROUGE-L scored) |
+| History knowledge | `hist_llm` (expert-level global history, four-way multiple choice) |
 
 Each task reports **accuracy** and a **centered** score that subtracts the
 task's random-chance baseline: `centered = (acc − b) / (1 − b)`. The headline
@@ -53,6 +54,55 @@ rather than its knowledge (small instruct models often choke on many-shot
 prompts crammed into one chat turn). It is reported per task in the summary JSON
 as `unparsed_rate`. For a format-agnostic read on such models, use faithful
 `--scoring logprob` on a backend that supports prompt log-probs.
+
+### The `hist_llm` history task
+
+`hist_llm` is derived from [HiST-LLM](https://github.com/seshat-db/HiST-LLM), the
+Seshat Global History Databank's expert-level history benchmark. Each item asks
+whether a characteristic was *present*, *inferred present*, *inferred absent*, or
+*absent* for a named polity over a stated time frame:
+
+```
+Question:
+The characteristic 'Earth ramparts' is categorized under 'Fortifications'. Was it
+present, inferred present, inferred absent, or absent for the polity called
+'Elam II', during the time frame from 743 BCE to 647 BCE?
+Options:
+A: Present, B: Inferred Present, C: Inferred Absent, D: Absent
+Answer:
+```
+
+It is scored **exactly like the suite's other multiple-choice tasks** — four-shot,
+accuracy plus a centered score against the 25% chance baseline — so no separate
+metric is involved. 98% of the polities end before 1900 (the span runs from 13600
+BCE to 1987 CE), which is what makes it a fit for the vintage framing; note,
+though, that unlike the rest of the suite the questions are in **modern academic
+prose** and have not been restyled.
+
+The bundled 7,455 items are a filtered, class-capped extract of the upstream
+36,577:
+
+- **Expert-reviewed only.** Just the rows the paper's §3.2 second review pass
+  covered. This trades coverage for label confidence: 5 of the 10 upstream
+  `root_cat` groups survive (Warfare, Social Complexity, Religion and Normative
+  Ideology, Institutional Variables, Social Mobility).
+- **Answer classes capped at 2,000.** Upstream is skewed — `Present` is 45.8% of
+  all rows — so a model that always answered "A" would clear the 25% baseline on
+  bias alone. Capping leaves a 26.8% majority class (`Inferred Absent` has only
+  1,455 reviewed rows and contributes all of them), close enough to chance that
+  the centered score reflects knowledge rather than position bias. The residual
+  1.8-point gap over the 25% baseline is a known, small over-credit.
+- **No answer leakage.** The upstream `description` column is the expert's
+  evidence for the coding and often states the answer; it is dropped.
+
+Each item keeps its upstream `id`, `ref_id`, polity, category, and region fields
+as unscored metadata, so results can be broken down by world region or topic and
+traced back to the source record. `tools/build_hist_llm.py` documents and
+reproduces the extraction from the upstream release.
+
+Because a model may answer with the option wording ("Inferred Present") rather
+than the letter, generation mode falls back to matching the option text via each
+item's `choice_labels` — otherwise such replies would inflate `NO-ANS%`.
 
 ## Scoring modes
 
@@ -277,9 +327,18 @@ python tests/test_selfcheck.py     # data integrity, parsing, rendering — no s
 The code in this repository is released under the **MIT License** (see
 `LICENSE`), used with the permission of the original authors.
 
-The evaluation data under `data/` is a derivative of the DCLM CORE evaluation
-bundle distributed with [nanochat](https://github.com/karpathy/nanochat), with
-every task rewritten into a pre-1900 register. It is provided for benchmark use;
-see `data/RESTYLE_REPORT.md` for per-task restyle coverage. The MIT license
+The evaluation data under `data/` is provided for benchmark use. The MIT license
 covers the code and does not relicense upstream dataset content, which remains
-under its original terms.
+under its original terms:
+
+- **CORE tasks** — a derivative of the DCLM CORE evaluation bundle distributed
+  with [nanochat](https://github.com/karpathy/nanochat), with every task
+  rewritten into a pre-1900 register.
+- **`vintage_qa`** — built from pre-1900 schoolbook examination corpora.
+- **`hist_llm`** — a filtered extract of
+  [HiST-LLM](https://github.com/seshat-db/HiST-LLM) (Seshat Global History
+  Databank), licensed **CC BY 4.0** and archived at
+  [doi:10.5281/zenodo.14671247](https://doi.org/10.5281/zenodo.14671247). The
+  extraction is specified in `tools/build_hist_llm.py`. The upstream
+  bibliography (`references.parquet`) is not vendored; each item retains its
+  `ref_id` Zotero key so citations can be resolved against the Zenodo record.
