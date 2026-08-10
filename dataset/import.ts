@@ -19,6 +19,7 @@ import {
   computeRecord,
   DEFAULT_MAX_LENGTH,
   type DocValue,
+  globalScore,
   loadVocabFromFile,
   MAX_UNIQUE_CHARS,
   MIN_LENGTH,
@@ -144,19 +145,7 @@ Options:
 // Called whenever two documents resolve to the same id (within a run or against
 // a value already stored in the DB). Returns the value that should be kept in
 // the database.
-//
-// TODO: implement a real strategy (e.g. keep the higher-quality or longer text).
-// For now this is a stub that keeps the existing/older value ("first wins").
 // ──────────────────────────────────────────────────────────────────────────────
-
-function calcScore(value: DocValue): number {
-  return (
-    value.quality -
-    100 +
-    (value.compress > 100 ? 100 - value.compress : value.compress - 100) +
-    (value.entropy > 100 ? 100 - value.entropy : value.entropy - 100)
-  );
-}
 
 function onConflict(oldValue: DocValue, newValue: DocValue): DocValue | null {
   if (oldValue.source !== 'cli' && oldValue.text === newValue.text) {
@@ -166,7 +155,7 @@ function onConflict(oldValue: DocValue, newValue: DocValue): DocValue | null {
     // Always prefer non-CLI sources over CLI
     oldValue.source = newValue.source;
   }
-  return calcScore(newValue) >= calcScore(oldValue) ? newValue : oldValue;
+  return globalScore(newValue) > globalScore(oldValue) ? newValue : null;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

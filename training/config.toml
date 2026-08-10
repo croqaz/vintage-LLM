@@ -1,23 +1,28 @@
 # Pre-training Configuration
-# All paths are relative to the project root
+# All relative paths are resolved against this file's directory,
+# so training works no matter where the script is launched from.
 
-model_config = "./configs/Llama-25m.toml"
+model_config = "./configs/Llama-100m.toml"
 
 [data]
 # Data files (supports glob patterns or lists of files)
-train_files = ["./train_*.bin"]
-valid_files = ["./valid_*.bin"]
+train_files = ["./data/train_*.bin"]
+valid_files = ["./data/valid_*.bin"]
 
 # Sequence length for each dataset sample
 # Must be <= model.max_position_embeddings
-max_seq_length = 2048
+max_seq_length = 1024
 
 # Tokenizer (must match the one used to create .bin files)
-tokenizer = "./tokenizers/t-v3/"
+tokenizer = "../tokenizers/t-v3/"
 
 [training]
 # Training duration
 num_train_epochs = 1
+
+# Optional: Stop training after this many minutes of wall-clock time.
+# Set to 0 or remove to train until num_train_epochs is reached.
+max_train_minutes = 15
 
 # Optional: load weights from an existing checkpoint or model directory to
 # continue training a base model rather than initialising from scratch.
@@ -32,11 +37,11 @@ final_model_dir = "./checkpoints/final"
 # Batch sizes
 # Effective batch size = num_devices × per_device_train_batch_size × gradient_accumulation_steps
 per_device_train_batch_size = 16   # batch size per GPU
-per_device_eval_batch_size  = 16   # larger for eval (no gradients)
-gradient_accumulation_steps = 4    # accumulate gradients over multiple mini-batches before updating the params
+per_device_eval_batch_size  = 16
+gradient_accumulation_steps = 16    # accumulate gradients over multiple mini-batches before updating the params
 
 # Optimizer
-optim = "adamw_torch_fused"        # fused CUDA AdamW (faster than default)
+optim = "adamw_torch"
 
 # Optimizer settings
 learning_rate = 0.0005
@@ -55,18 +60,22 @@ bf16 = true                        # bfloat16 for Ampere+ GPUs (RTX 3090, A100, 
 fp16 = false                       # float16 for older GPUs (V100, T4, etc.)
 
 # Performance
-torch_compile = true               # torch.compile for faster training
+torch_compile = false
 gradient_checkpointing = true      # trade compute for memory (enables larger models)
 neftune_noise_alpha = 0.0          # add noise during training to improve model performance (fine-tuning)
 
 # Checkpointing
-save_strategy = "steps"
-save_steps = 100                   # save checkpoint every X steps
-save_total_limit = 3               # keep only X most recent checkpoints
+# save_strategy can be "steps", "epoch", or "minutes" (wall-clock time).
+save_strategy = "minutes"
+save_steps = 5                    # checkpoint every X minutes
+save_total_limit = 3              # keep only X most recent checkpoints
 
 # Evaluation
-eval_strategy = "steps"
-eval_steps = 100                   # evaluate every X steps
+# eval_strategy can be "steps", "epoch", or "minutes" (wall-clock time).
+eval_strategy = "minutes"
+eval_steps = 5                   # evaluate every X minutes
+# Evaluate on a fixed random subset of the validation set (0 = use all)
+max_eval_samples = 5000
 
 # Logging
 logging_strategy = "steps"
@@ -86,5 +95,5 @@ seed = 42
 # Requires HF_TOKEN to be set in the environment
 # upload_steps must be a multiple of save_steps (uploads can only happen when a checkpoint exists)
 # HF bucket ID, or full handle like: hf://buckets/username/my-bucket
-bucket = "hf://buckets/croqaz/vintage-llm"
-upload_steps = 100  # upload checkpoint every X steps
+# bucket = "hf://buckets/croqaz/vintage-llm"
+# upload_steps = 100  # upload checkpoint every X steps

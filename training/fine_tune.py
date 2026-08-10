@@ -304,8 +304,8 @@ def main():
     parser.add_argument(
         '--cfg',
         type=str,
-        default='training/fine_tune_config.toml',
-        help='Path to TOML config file (default: training/fine_tune_config.toml)',
+        default=str(Path(__file__).with_name('fine_tune_config.toml')),
+        help='Path to TOML config file (default: fine_tune_config.toml next to this script)',
     )
     args = parser.parse_args()
 

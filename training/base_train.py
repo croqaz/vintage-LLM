@@ -9,6 +9,7 @@ import glob
 import math
 import os
 import shutil
+import signal
 import sys
 import time
 import tomllib
@@ -43,6 +44,63 @@ BF16_SUPPORTED = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 # ============================================================================
 # Binary Dataset Loader
 # ============================================================================
+
+
+class ShardedTokenArray:
+    """
+    Read-only virtual concatenation of per-file token shards.
+    Presents the shards as a single array (len + contiguous slicing) while
+    reads keep going through the OS page cache — unlike np.concatenate,
+    which would copy every shard into anonymous RAM (and OOM on large corpora).
+
+    Holds file paths rather than open memmaps: pickling a np.memmap
+    serializes the WHOLE underlying file, and since Python 3.14 the default
+    multiprocessing start method on Linux is 'forkserver', which pickles the
+    dataset to every DataLoader worker. Each process instead re-opens its own
+    memmaps lazily on first read.
+    """
+
+    def __init__(self, files: List[str], dtype=np.uint16):
+        self.files = [str(f) for f in files]
+        self.dtype = np.dtype(dtype)
+        lengths = [os.path.getsize(f) // self.dtype.itemsize for f in self.files]
+        self.offsets = np.cumsum([0] + lengths)
+        self._memmaps = None  # opened lazily, once per process
+
+    @property
+    def memmaps(self) -> List[np.ndarray]:
+        if self._memmaps is None:
+            self._memmaps = [np.memmap(f, dtype=self.dtype, mode='r') for f in self.files]
+        return self._memmaps
+
+    def __getstate__(self) -> Dict:
+        return {**self.__dict__, '_memmaps': None}
+
+    def __len__(self) -> int:
+        return int(self.offsets[-1])
+
+    def __getitem__(self, key: slice) -> np.ndarray:
+        if not isinstance(key, slice) or key.step not in (None, 1):
+            raise TypeError('ShardedTokenArray only supports contiguous slices')
+        start = key.start or 0
+        stop = len(self) if key.stop is None else min(key.stop, len(self))
+
+        shard = int(np.searchsorted(self.offsets, start, side='right')) - 1
+        shard_start = start - int(self.offsets[shard])
+        # Fast path: the slice lives inside one shard (zero-copy memmap view)
+        if stop <= self.offsets[shard + 1]:
+            return self.memmaps[shard][shard_start : stop - int(self.offsets[shard])]
+
+        # Slow path (rare): the slice spans a shard boundary
+        parts = []
+        pos = start
+        while pos < stop:
+            take = min(stop, int(self.offsets[shard + 1])) - pos
+            base = pos - int(self.offsets[shard])
+            parts.append(self.memmaps[shard][base : base + take])
+            pos += take
+            shard += 1
+        return np.concatenate(parts)
 
 
 class BinaryTokenDataset(Dataset):
@@ -149,30 +207,16 @@ def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int, base
     for f in files:
         print(f'  → {f}')
 
-    # Memory-map all files
-    memmaps = []
-    total_tokens = 0
-
     for f in files:
         if not Path(f).exists():
             raise FileNotFoundError(f'File not found: {f}')
 
-        arr = np.memmap(f, dtype=np.uint16, mode='r')
-        file_tokens = len(arr)
-        total_tokens += file_tokens
-        memmaps.append(arr)
-        print(f'  → Mapped {file_tokens:,} tokens from {Path(f).name}')
-
-    # For a single file, use the memmap directly (zero-copy)
-    # For multiple files, we must concatenate (copies into RAM)
-    if len(memmaps) == 1:
-        data = memmaps[0]
-    else:
-        # TODO: If we switch to multiple shards, replace np.concatenate
-        # with a virtual concatenation that reads from the correct memmap
-        data = np.concatenate(memmaps)
-
-    print(f'Total tokens: {total_tokens:,}')
+    # Virtual concatenation over lazily-opened memmaps: nothing is copied
+    # into RAM here, and DataLoader workers only receive the file paths.
+    data = ShardedTokenArray(files)
+    for f, tokens in zip(files, np.diff(data.offsets)):
+        print(f'  → Mapped {tokens:,} tokens from {Path(f).name}')
+    print(f'Total tokens: {len(data):,}')
 
     return BinaryTokenDataset(data, seq_length, base_seed)
 
@@ -189,6 +233,7 @@ class DetailedLoggingCallback(TrainerCallback):
         self.training_bar = None
         self.prediction_bar = None
         self.current_step = 0
+        self.instability_detected = False
 
     def on_train_begin(self, args, state, control, **kwargs):
         if state.is_world_process_zero:
@@ -287,7 +332,12 @@ class DetailedLoggingCallback(TrainerCallback):
                 print('  3. Bad data batch - check training data for corrupted sequences')
                 print('  4. Gradient explosion - lower max_grad_norm or learning_rate')
                 print('!' * 80 + '\n')
+                self.instability_detected = True
                 control.should_training_stop = True
+                # A time-based save scheduled for this same step would capture
+                # the diverged weights - and a later resume would silently
+                # continue from them. Cancel it; the previous checkpoint stays.
+                control.should_save = False
 
 
 class DetailedEvaluationCallback(TrainerCallback):
@@ -344,6 +394,97 @@ class DetailedEvaluationCallback(TrainerCallback):
                     print(f'  {key}: {value}')
 
             print('=' * 80 + '\n')
+
+
+class TimeIntervalCallback(TrainerCallback):
+    """
+    Wall-clock (minutes) based save/eval scheduling + clean time-limited stop.
+
+    This is the officially-supported transformers extension point (see the
+    TrainerCallback docs): instead of modifying or monkey-patching the
+    transformers package (whose built-in `IntervalStrategy` only understands
+    no/steps/epoch), we hook `on_step_end` and set `control.should_save` /
+    `control.should_evaluate` / `control.should_training_stop` based on the
+    elapsed wall-clock time in minutes. This mirrors exactly how the built-in
+    `DefaultFlowCallback` schedules by step/epoch — just by time.
+    """
+
+    def __init__(self, save_minutes=None, eval_minutes=None, max_train_minutes=None):
+        self.save_minutes = save_minutes
+        self.eval_minutes = eval_minutes
+        self.max_train_minutes = max_train_minutes
+        self._train_start = None
+        self._last_save = None
+        self._last_eval = None
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        now = time.time()
+        self._train_start = now
+        self._last_save = now
+        self._last_eval = now
+
+    def on_step_end(self, args, state, control, **kwargs):
+        now = time.time()
+        total_min = (now - self._train_start) / 60.0
+
+        # Cleanly stop after max_train_minutes, guaranteeing a final checkpoint.
+        if self.max_train_minutes is not None and total_min >= self.max_train_minutes:
+            control.should_training_stop = True
+            control.should_save = True
+            if state.is_world_process_zero:
+                print(
+                    f'[TIME] Reached max_train_minutes={self.max_train_minutes} after {total_min:.1f} min. '
+                    f'Stopping training cleanly and saving final checkpoint at step {state.global_step}.'
+                )
+            return control
+
+        # Wall-clock save interval (minutes).
+        if self.save_minutes and (now - self._last_save) / 60.0 >= self.save_minutes:
+            control.should_save = True
+            self._last_save = now
+
+        # Wall-clock eval interval (minutes).
+        if self.eval_minutes and (now - self._last_eval) / 60.0 >= self.eval_minutes:
+            control.should_evaluate = True
+            self._last_eval = now
+
+        return control
+
+
+class GracefulStopCallback(TrainerCallback):
+    """
+    Make Ctrl+C (and SIGTERM) a first-class way to pause training.
+
+    First signal: finish the current optimizer step, save a full resume
+    checkpoint (weights + optimizer + LR scheduler + RNG), then stop through
+    the normal shutdown path (final model save included). Running the script
+    again resumes from that exact step, losing nothing.
+    Second signal: abort immediately (KeyboardInterrupt).
+    """
+
+    def __init__(self):
+        self.stop_requested = False
+
+    def install(self):
+        def _handler(signum, frame):
+            if self.stop_requested:
+                raise KeyboardInterrupt
+            self.stop_requested = True
+            print(
+                f'\n[STOP] {signal.Signals(signum).name} received: finishing the current step, '
+                'saving a resume checkpoint, then stopping cleanly. Signal again to abort immediately.'
+            )
+
+        signal.signal(signal.SIGINT, _handler)
+        signal.signal(signal.SIGTERM, _handler)
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if self.stop_requested:
+            if state.is_world_process_zero:
+                print(f'[STOP] Saving checkpoint at step {state.global_step} and stopping.')
+            control.should_save = True
+            control.should_training_stop = True
+        return control
 
 
 class EpochOffsetCallback(TrainerCallback):
@@ -414,23 +555,63 @@ def make_model_id(model_type: str, num_params: int) -> str:
     return f'{model_type}-{size}'
 
 
+def _resolve_path(value: Union[str, List[str]], base: Path) -> Union[str, List[str]]:
+    """Resolve a (possibly relative) config path against a base directory."""
+    if isinstance(value, list):
+        return [_resolve_path(v, base) for v in value]
+    path = Path(value).expanduser()
+    return str(path) if path.is_absolute() else os.path.normpath(base / path)
+
+
+# All config keys that hold filesystem paths. They are resolved once, at config
+# load time, relative to the config file's directory - so training behaves the
+# same no matter which directory the script is launched from.
+# 'tokenizer' and 'from_pretrained' may instead hold HuggingFace hub ids;
+# values that don't point at an existing local path are left untouched.
+_PATH_KEYS = (
+    # base_train.py config
+    ('data', 'train_files', False),
+    ('data', 'valid_files', False),
+    ('data', 'tokenizer', True),
+    ('training', 'from_pretrained', True),
+    ('training', 'output_dir', False),
+    ('training', 'final_model_dir', False),
+    # fine_tune.py config (shares this loader)
+    ('model', 'base_model', True),
+    ('data', 'dataset_path', False),
+)
+
+
 def load_config(config_path: str) -> Dict:
     """Load configuration from TOML file.
 
     If a 'model_config' key is present, the [model] section is loaded
     from that external file instead of inline config.
+
+    All relative paths (data files, tokenizer, output dirs, model_config)
+    are resolved against the config file's directory, per _PATH_KEYS.
     """
     if not Path(config_path).exists():
         raise FileNotFoundError(f'Config file not found: {config_path}')
     with open(config_path, 'rb') as f:
         config = tomllib.load(f)
 
+    base = Path(config_path).resolve().parent
+
     if model_config_path := config.pop('model_config', None):
-        resolved = Path(config_path).parent / model_config_path
+        resolved = Path(_resolve_path(model_config_path, base))
         if not resolved.exists():
             raise FileNotFoundError(f'Model config not found: {resolved}')
         with open(resolved, 'rb') as f:
             config['model'] = tomllib.load(f)
+
+    for section, key, maybe_hub_id in _PATH_KEYS:
+        value = config.get(section, {}).get(key)
+        if not value:
+            continue
+        if maybe_hub_id and not (value.startswith(('.', '~', '/')) or (base / value).exists()):
+            continue  # HuggingFace hub id, not a local path
+        config[section][key] = _resolve_path(value, base)
 
     return config
 
@@ -483,7 +664,12 @@ def main():
     # ========================================================================
 
     parser = argparse.ArgumentParser(description='LLM Pre-training Script')
-    parser.add_argument('--cfg', type=str, default='training/config.toml', help='Path to TOML config file (default: training/config.toml)')
+    parser.add_argument(
+        '--cfg',
+        type=str,
+        default=str(Path(__file__).with_name('config.toml')),
+        help='Path to TOML config file (default: config.toml next to this script)',
+    )
     args = parser.parse_args()
 
     config_path = args.cfg
@@ -572,8 +758,11 @@ def main():
     if model_config.vocab_size != len(tokenizer):
         accelerator.print(f'⚠️ WARNING: Model vocab_size ({model_config.vocab_size}) != tokenizer vocab_size ({len(tokenizer)})')
 
-    # Use attn_implementation if specified (e.g. "flash_attention_2", "sdpa", "eager")
-    model_init_kwargs = {'dtype': torch.bfloat16} if BF16_SUPPORTED else {}
+    # Keep master weights in fp32: the Trainer's bf16 mode autocasts the
+    # compute, while optimizer updates stay in full precision. Pure-bf16
+    # weights make AdamW updates quantize away (8-bit mantissa, eps=1e-8
+    # unrepresentable) and training NaNs after a few dozen steps.
+    model_init_kwargs = {'dtype': torch.float32}
     if attn_implementation:
         model_init_kwargs['attn_implementation'] = attn_implementation
         accelerator.print(f'  Attention implementation: {attn_implementation}')
@@ -624,6 +813,16 @@ def main():
         seq_length,
         base_seed=seed,
     )
+
+    # Optionally evaluate on a fixed random subset: each evaluation is a full
+    # pass over eval_dataset, which for large validation sets takes far longer
+    # than a typical eval interval.
+    max_eval_samples = cfg['training'].get('max_eval_samples', 0)
+    if max_eval_samples and len(eval_dataset) > max_eval_samples:
+        rng = np.random.RandomState(seed)
+        subset_idx = rng.choice(len(eval_dataset), size=max_eval_samples, replace=False)
+        eval_dataset = torch.utils.data.Subset(eval_dataset, subset_idx.tolist())
+        accelerator.print(f'  → Evaluating on a random subset of {max_eval_samples:,} sequences')
     accelerator.print()
 
     # ========================================================================
@@ -633,53 +832,78 @@ def main():
     accelerator.print('Setting up training arguments...')
 
     output_dir = cfg['training']['output_dir']
+    train_cfg = cfg['training']
+
+    # ------------------------------------------------------------------------
+    # Strategy handling: the transformers IntervalStrategy only understands
+    # no/steps/epoch. We map the config's "minutes" strategies onto the official
+    # TrainerCallback mechanism (TimeIntervalCallback) and disable the built-in
+    # step-based scheduling so they don't double-trigger. max_train_minutes is a
+    # clean, graceful time limit that works regardless of save/eval strategy.
+    # ------------------------------------------------------------------------
+    save_strategy = train_cfg.get('save_strategy', 'steps')
+    eval_strategy = train_cfg.get('eval_strategy', 'steps')
+    max_train_minutes = train_cfg.get('max_train_minutes')
+
+    time_callback = None
+    if save_strategy == 'minutes' or eval_strategy == 'minutes' or max_train_minutes:
+        time_callback = TimeIntervalCallback(
+            save_minutes=train_cfg['save_steps'] if save_strategy == 'minutes' else None,
+            eval_minutes=train_cfg['eval_steps'] if eval_strategy == 'minutes' else None,
+            max_train_minutes=max_train_minutes or None,
+        )
+        # Delegate minutes-based saving/eval to the callback; the built-in
+        # DefaultFlowCallback only understands no/steps/epoch.
+        if save_strategy == 'minutes':
+            save_strategy = 'no'
+        if eval_strategy == 'minutes':
+            eval_strategy = 'no'
 
     training_args = TrainingArguments(
-        # Output
         output_dir=output_dir,
         # Training duration
-        num_train_epochs=cfg['training']['num_train_epochs'],
+        num_train_epochs=train_cfg['num_train_epochs'],
         max_steps=-1,  # Train for full epochs
         # Batch sizes
-        per_device_train_batch_size=cfg['training'].get('per_device_train_batch_size', 8),
-        per_device_eval_batch_size=cfg['training'].get('per_device_eval_batch_size', 8),
-        gradient_accumulation_steps=cfg['training'].get('gradient_accumulation_steps', 1),
+        per_device_train_batch_size=train_cfg.get('per_device_train_batch_size', 8),
+        per_device_eval_batch_size=train_cfg.get('per_device_eval_batch_size', 8),
+        gradient_accumulation_steps=train_cfg.get('gradient_accumulation_steps', 1),
         # Optimizer with tuned defaults
-        optim=cfg['training'].get('optim', 'adamw_torch_fused'),
-        learning_rate=cfg['training'].get('learning_rate', 5e-5),
-        weight_decay=cfg['training'].get('weight_decay', 0.1),
-        adam_beta1=cfg['training'].get('adam_beta1', 0.9),
-        adam_beta2=cfg['training'].get('adam_beta2', 0.95),
-        adam_epsilon=cfg['training'].get('adam_epsilon', 1e-8),
-        max_grad_norm=cfg['training'].get('max_grad_norm', 1.0),
+        optim=train_cfg.get('optim', 'adamw_torch_fused'),
+        learning_rate=train_cfg.get('learning_rate', 5e-5),
+        weight_decay=train_cfg.get('weight_decay', 0.1),
+        adam_beta1=train_cfg.get('adam_beta1', 0.9),
+        adam_beta2=train_cfg.get('adam_beta2', 0.95),
+        adam_epsilon=train_cfg.get('adam_epsilon', 1e-8),
+        max_grad_norm=train_cfg.get('max_grad_norm', 1.0),
         # Learning rate scheduler
-        lr_scheduler_type=cfg['training'].get('lr_scheduler_type', 'cosine_with_min_lr'),
-        lr_scheduler_kwargs=cfg['training'].get('lr_scheduler_kwargs', {'min_lr_rate': 0.05}),
-        warmup_steps=cfg['training'].get('warmup_steps', 200),
+        lr_scheduler_type=train_cfg.get('lr_scheduler_type', 'cosine_with_min_lr'),
+        lr_scheduler_kwargs=train_cfg.get('lr_scheduler_kwargs', {'min_lr_rate': 0.05}),
+        warmup_steps=train_cfg.get('warmup_steps', 200),
         # Precision
-        bf16=cfg['training'].get('bf16', BF16_SUPPORTED),
-        fp16=cfg['training'].get('fp16', False),
+        bf16=train_cfg.get('bf16', BF16_SUPPORTED),
+        fp16=train_cfg.get('fp16', False),
         # Performance
-        torch_compile=cfg['training'].get('torch_compile', True),
-        gradient_checkpointing=cfg['training'].get('gradient_checkpointing', False),
+        torch_compile=train_cfg.get('torch_compile', True),
+        gradient_checkpointing=train_cfg.get('gradient_checkpointing', False),
         gradient_checkpointing_kwargs={'use_reentrant': False},
-        neftune_noise_alpha=cfg['training'].get('neftune_noise_alpha', 0.0),
+        neftune_noise_alpha=train_cfg.get('neftune_noise_alpha', 0.0),
         # Checkpointing
-        save_strategy=cfg['training'].get('save_strategy', 'steps'),
-        save_steps=cfg['training'].get('save_steps', 500),
-        save_total_limit=cfg['training'].get('save_total_limit', 3),
+        save_strategy=save_strategy,
+        save_steps=train_cfg.get('save_steps', 500),
+        save_total_limit=train_cfg.get('save_total_limit', 3),
         # Evaluation
-        eval_strategy=cfg['training'].get('eval_strategy', 'steps'),
-        eval_steps=cfg['training'].get('eval_steps', 500),
+        eval_strategy=eval_strategy,
+        eval_steps=train_cfg.get('eval_steps', 500),
         # Logging
-        logging_strategy=cfg['training'].get('logging_strategy', 'steps'),
-        logging_steps=cfg['training'].get('logging_steps', 10),
-        logging_first_step=cfg['training'].get('logging_first_step', True),
-        report_to=cfg['training'].get('report_to', ['tensorboard']),
+        logging_strategy=train_cfg.get('logging_strategy', 'steps'),
+        logging_steps=train_cfg.get('logging_steps', 10),
+        logging_first_step=train_cfg.get('logging_first_step', True),
+        report_to=train_cfg.get('report_to', 'none'),  # e.g. ["tensorboard"] (requires the package)
         # Performance
-        dataloader_num_workers=cfg['training'].get('dataloader_num_workers', 4),
-        dataloader_prefetch_factor=cfg['training'].get('dataloader_prefetch_factor', 2),
-        dataloader_pin_memory=cfg['training'].get('dataloader_pin_memory', True),
+        dataloader_num_workers=train_cfg.get('dataloader_num_workers', 4),
+        dataloader_prefetch_factor=train_cfg.get('dataloader_prefetch_factor', 2),
+        dataloader_pin_memory=train_cfg.get('dataloader_pin_memory', True),
         # dataloader_persistent_workers intentionally disabled by default
         # Reproducibility
         seed=seed,
@@ -692,8 +916,13 @@ def main():
     accelerator.print(f'  Epochs: {training_args.num_train_epochs}')
     accelerator.print(f'  Learning rate: {training_args.learning_rate}')
     accelerator.print(f'  Warmup steps: {training_args.warmup_steps}')
-    accelerator.print(f'  Save steps: {training_args.save_steps}')
-    accelerator.print(f'  Eval steps: {training_args.eval_steps}')
+    accel_save_s = train_cfg.get('save_strategy', 'steps')
+    accel_eval_s = train_cfg.get('eval_strategy', 'steps')
+    accel_save_v = time_callback.save_minutes if time_callback and accel_save_s == 'minutes' else training_args.save_steps
+    accel_eval_v = time_callback.eval_minutes if time_callback and accel_eval_s == 'minutes' else training_args.eval_steps
+    accelerator.print(f'  Save strategy: {accel_save_s} ({accel_save_v} {"min" if accel_save_s == "minutes" else "steps"})')
+    accelerator.print(f'  Eval strategy: {accel_eval_s} ({accel_eval_v} {"min" if accel_eval_s == "minutes" else "steps"})')
+    accelerator.print(f'  Max train minutes: {max_train_minutes or "unlimited"}')
     accelerator.print()
 
     # ========================================================================
@@ -702,11 +931,19 @@ def main():
 
     accelerator.print('Creating Trainer...')
 
+    logging_callback = DetailedLoggingCallback()
+    graceful_stop = GracefulStopCallback()
+    graceful_stop.install()
     callbacks = [
-        DetailedLoggingCallback(),
+        logging_callback,
         DetailedEvaluationCallback(),
         EpochOffsetCallback(train_dataset),
+        graceful_stop,
     ]
+
+    # Optional: wall-clock (minutes) based scheduling + time-limited stop
+    if time_callback is not None:
+        callbacks.append(time_callback)
 
     # Optional: S3 checkpoint upload
     s3_cfg = cfg.get('s3')
@@ -753,6 +990,18 @@ def main():
     # Try to resume from last checkpoint if it exists, otherwise start fresh
     last_checkpoint = get_last_checkpoint(output_dir) if os.path.isdir(output_dir) else None
     if last_checkpoint:
+        # Refuse to resume from a checkpoint of a different architecture:
+        # resuming would crash on weight shapes, and save_total_limit rotation
+        # would start deleting the other experiment's checkpoints.
+        ckpt_config = AutoConfig.from_pretrained(last_checkpoint)
+        arch_keys = ('model_type', 'vocab_size', 'hidden_size', 'num_hidden_layers', 'num_attention_heads', 'intermediate_size')
+        mismatched = [k for k in arch_keys if getattr(ckpt_config, k, None) != getattr(model_config, k, None)]
+        if mismatched:
+            raise ValueError(
+                f'output_dir ({output_dir}) contains a checkpoint from a different model: {last_checkpoint} '
+                f'(mismatched: {", ".join(mismatched)}). '
+                f'Point output_dir at a fresh directory, or move the old checkpoints away.'
+            )
         accelerator.print(f'Resuming from checkpoint: {last_checkpoint}')
     else:
         accelerator.print('No checkpoint found, training from scratch.')
@@ -761,12 +1010,16 @@ def main():
         trainer.train(resume_from_checkpoint=last_checkpoint)
 
     except KeyboardInterrupt:
+        # Only reached on a *second* Ctrl+C (hard abort): no checkpoint was
+        # written for the aborted step. The latest periodic/graceful checkpoint
+        # in output_dir is still valid and will be auto-resumed next run.
         accelerator.print('\n' + '=' * 80)
-        accelerator.print('TRAINING INTERRUPTED BY USER')
+        accelerator.print('TRAINING ABORTED (hard interrupt)')
         accelerator.print('=' * 80)
-        accelerator.print('Checkpoint saved. Resume training by running the script again.')
+        accelerator.print(f'Progress since the last checkpoint in {output_dir} is lost.')
+        accelerator.print('Run the script again to resume from that checkpoint.')
         accelerator.print('=' * 80 + '\n')
-        sys.exit(0)
+        sys.exit(130)
 
     except Exception as e:
         accelerator.print('\n' + '=' * 80)
@@ -777,6 +1030,18 @@ def main():
         raise
 
     training_time = time.time() - start_time
+
+    # Numerical instability halts must not masquerade as a successful run:
+    # don't save the diverged weights as the final model, exit non-zero.
+    if logging_callback.instability_detected:
+        accelerator.print('\n' + '=' * 80)
+        accelerator.print('TRAINING HALTED BY INSTABILITY DETECTOR')
+        accelerator.print('=' * 80)
+        accelerator.print(f'Training time: {training_time / 60:.2f} minutes')
+        accelerator.print('The diverged weights were NOT saved as the final model.')
+        accelerator.print(f'Last good checkpoint (if any) is in: {output_dir}')
+        accelerator.print('=' * 80 + '\n')
+        sys.exit(2)
 
     # ========================================================================
     # Save final model

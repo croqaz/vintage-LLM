@@ -1,5 +1,6 @@
 # Fine-Tuning Configuration
-# All paths are relative to the project root (run scripts from there).
+# All relative paths are resolved against this file's directory,
+# so training works no matter where the script is launched from.
 
 [model]
 # Path to the base model produced by base_train.py
