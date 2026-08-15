@@ -159,6 +159,7 @@ training/TimeCapsuleLLM*
 training/*-text/
 training/*-data/
 training/*.bin
+training/autoresearch/
 training/patina/
 
 knowledge/pre1900

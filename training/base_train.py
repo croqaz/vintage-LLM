@@ -111,7 +111,7 @@ class BinaryTokenDataset(Dataset):
     Supports a per-epoch random offset so chunk boundaries vary across epochs.
     """
 
-    def __init__(self, data: np.ndarray, seq_length: int, base_seed: int = 42):
+    def __init__(self, data: np.ndarray, seq_length: int, base_seed: int = 0):
         """
         Args:
             data: numpy memmap (or array) of tokens (uint16)
@@ -167,7 +167,7 @@ class BinaryTokenDataset(Dataset):
         }
 
 
-def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int, base_seed: int = 42) -> BinaryTokenDataset:
+def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int, base_seed: int = 0) -> BinaryTokenDataset:
     """
     Load binary files from a list of paths or glob pattern.
 
@@ -603,7 +603,12 @@ def load_config(config_path: str) -> Dict:
         if not resolved.exists():
             raise FileNotFoundError(f'Model config not found: {resolved}')
         with open(resolved, 'rb') as f:
-            config['model'] = tomllib.load(f)
+            model_cfg = tomllib.load(f)
+        # An inline [model] section overrides individual keys from the external
+        # file, so experiments can share a model.toml and vary a single knob
+        # (e.g. attn_implementation) without duplicating the architecture.
+        model_cfg.update(config.get('model', {}))
+        config['model'] = model_cfg
 
     for section, key, maybe_hub_id in _PATH_KEYS:
         value = config.get(section, {}).get(key)
@@ -705,9 +710,10 @@ def main():
     # Set random seeds for reproducibility
     # ========================================================================
 
-    seed = cfg['training'].get('seed', 42)
-    set_seed(seed)
-    accelerator.print(f'Random seed set to: {seed}')
+    seed = cfg['training'].get('seed', 0)
+    if seed:
+        set_seed(seed)
+        accelerator.print(f'Random seed set to: {seed}')
 
     # ========================================================================
     # Enable TF32 matmul if supported (Ampere+ GPUs)
@@ -751,6 +757,7 @@ def main():
     model_kwargs = dict(cfg['model'])
     model_type = model_kwargs.pop('model_type')
     attn_implementation = model_kwargs.pop('attn_implementation', None)
+    weights_dtype = model_kwargs.pop('dtype', 'float32')
     model_kwargs['use_cache'] = False
     model_config = AutoConfig.for_model(model_type=model_type, **model_kwargs)
 
@@ -758,11 +765,14 @@ def main():
     if model_config.vocab_size != len(tokenizer):
         accelerator.print(f'⚠️ WARNING: Model vocab_size ({model_config.vocab_size}) != tokenizer vocab_size ({len(tokenizer)})')
 
-    # Keep master weights in fp32: the Trainer's bf16 mode autocasts the
-    # compute, while optimizer updates stay in full precision. Pure-bf16
+    # Default keeps master weights in fp32: the Trainer's bf16 mode autocasts
+    # the compute, while optimizer updates stay in full precision. Pure-16-bit
     # weights make AdamW updates quantize away (8-bit mantissa, eps=1e-8
-    # unrepresentable) and training NaNs after a few dozen steps.
-    model_init_kwargs = {'dtype': torch.float32}
+    # unrepresentable) and risk NaNs. Overridable per-experiment via
+    # `dtype = "bfloat16"` etc. in the config's [model] section.
+    model_init_kwargs = {'dtype': getattr(torch, weights_dtype)}
+    if weights_dtype != 'float32':
+        accelerator.print(f'  ⚠️ Model weights dtype: {weights_dtype} — no fp32 master copy, optimizer state in {weights_dtype}')
     if attn_implementation:
         model_init_kwargs['attn_implementation'] = attn_implementation
         accelerator.print(f'  Attention implementation: {attn_implementation}')
@@ -859,17 +869,71 @@ def main():
         if eval_strategy == 'minutes':
             eval_strategy = 'no'
 
+    # ------------------------------------------------------------------------
+    # Optimizers not in transformers' OptimizerNames (e.g. Gefen) are passed to
+    # the Trainer via optimizer_cls_and_kwargs; TrainingArguments.optim then
+    # holds an unused placeholder. Trainer still builds its usual decay/no-decay
+    # param groups, so weight_decay behaves the same as for built-in optimizers.
+    # ------------------------------------------------------------------------
+    optim_name = train_cfg.get('optim', 'adamw_torch_fused')
+    optimizer_cls_and_kwargs = None
+    if optim_name.startswith('gefen'):
+        from gefen import Gefen  # pip install gefen-x (imports as `gefen`)
+
+        optimizer_cls_and_kwargs = (
+            Gefen,
+            {
+                'lr': train_cfg.get('learning_rate', 5e-5),
+                'betas': (train_cfg.get('adam_beta1', 0.9), train_cfg.get('adam_beta2', 0.95)),
+                'eps': train_cfg.get('adam_epsilon', 1e-8),
+                'weight_decay': train_cfg.get('weight_decay', 0.1),
+                # fused kernels are CUDA-only (no ROCm); False skips the JIT attempt
+                'fused': train_cfg.get('gefen_fused', False),
+            },
+        )
+        optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
+    elif optim_name == 'muonq':
+        # MuonQ (4-bit quantized Muon) lives in ./MuonQ as a bare source tree,
+        # importable only as the package `src` rooted there.
+        sys.path.insert(0, str(Path(__file__).resolve().parent / 'MuonQ'))
+        from src.optim.muonq import MuonQ
+
+        optimizer_cls_and_kwargs = (
+            MuonQ,
+            {
+                # Trainer pops 'params' and passes it positionally; MuonQ needs
+                # (name, param) pairs to route 2D hidden weights to Muon and
+                # embeddings/head/norms to its internal AdamW backup.
+                'params': list(model.named_parameters()),
+                'lr': train_cfg.get('learning_rate', 1e-3),
+                'weight_decay': train_cfg.get('weight_decay', 0.1),
+                'momentum': train_cfg.get('muon_momentum', 0.95),
+                'nesterov': train_cfg.get('muon_nesterov', False),
+                'ns_steps': train_cfg.get('muon_ns_steps', 5),
+                'polar_method': train_cfg.get('muon_polar_method', 'Keller'),
+                # 4-bit state quantization knobs (defaults = the repo's muonq recipe)
+                'qbit': train_cfg.get('muonq_qbit', 4),
+                'gran': train_cfg.get('muonq_gran', 'tensor'),
+                'compand': train_cfg.get('muonq_compand', True),
+                'norm': train_cfg.get('muonq_norm', True),
+                'rank': train_cfg.get('muonq_rank', 16),
+            },
+        )
+        optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
+
     training_args = TrainingArguments(
         output_dir=output_dir,
         # Training duration
         num_train_epochs=train_cfg['num_train_epochs'],
-        max_steps=-1,  # Train for full epochs
+        # -1 = train for full epochs; setting this also fixes the LR-scheduler
+        # horizon (otherwise decay spans the full epoch and a 1h run never anneals)
+        max_steps=train_cfg.get('max_steps', -1),
         # Batch sizes
         per_device_train_batch_size=train_cfg.get('per_device_train_batch_size', 8),
         per_device_eval_batch_size=train_cfg.get('per_device_eval_batch_size', 8),
         gradient_accumulation_steps=train_cfg.get('gradient_accumulation_steps', 1),
         # Optimizer with tuned defaults
-        optim=train_cfg.get('optim', 'adamw_torch_fused'),
+        optim=optim_name,
         learning_rate=train_cfg.get('learning_rate', 5e-5),
         weight_decay=train_cfg.get('weight_decay', 0.1),
         adam_beta1=train_cfg.get('adam_beta1', 0.9),
@@ -879,6 +943,9 @@ def main():
         # Learning rate scheduler
         lr_scheduler_type=train_cfg.get('lr_scheduler_type', 'cosine_with_min_lr'),
         lr_scheduler_kwargs=train_cfg.get('lr_scheduler_kwargs', {'min_lr_rate': 0.05}),
+        # required by metric-driven schedulers (greedy / reduce_lr_on_plateau):
+        # they step on this eval metric instead of per optimizer step
+        metric_for_best_model=train_cfg.get('metric_for_best_model', None),
         warmup_steps=train_cfg.get('warmup_steps', 200),
         # Precision
         bf16=train_cfg.get('bf16', BF16_SUPPORTED),
@@ -907,11 +974,54 @@ def main():
         # dataloader_persistent_workers intentionally disabled by default
         # Reproducibility
         seed=seed,
-        data_seed=seed,
+        # data_seed controls the training sampler's shuffle order. Override it
+        # (e.g. data_seed = 43) when continuing pretraining via from_pretrained,
+        # otherwise the run replays the exact same data order the base model
+        # already saw, while seed keeps the eval subset comparable across runs.
+        data_seed=train_cfg.get('data_seed', seed),
     )
 
     accelerator.print('✓ Training arguments configured')
     effective_batch = training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * num_processes
+
+    # ------------------------------------------------------------------------
+    # WSD schedule coverage guard. When num_stable_steps is set explicitly,
+    # transformers' get_wsd_schedule IGNORES the Trainer's num_training_steps
+    # and silently pins the LR at min_lr_ratio for every step past
+    # warmup + stable + decay (documented in its docstring, never enforced).
+    # An 8h run once trained 75% of its steps at LR=0 this way. Fail fast.
+    # ------------------------------------------------------------------------
+    if train_cfg.get('lr_scheduler_type') == 'warmup_stable_decay':
+        skw = train_cfg.get('lr_scheduler_kwargs', {}) or {}
+        wsd_warmup = training_args.warmup_steps
+        wsd_stable = skw.get('num_stable_steps')
+        wsd_decay = skw.get('num_decay_steps', 0)
+        steps_per_epoch = math.ceil(len(train_dataset) / effective_batch)
+        if training_args.max_steps > 0:
+            horizon, horizon_src = training_args.max_steps, 'max_steps'
+        else:
+            horizon = math.ceil(steps_per_epoch * training_args.num_train_epochs)
+            horizon_src = f'{training_args.num_train_epochs} epoch(s) x {steps_per_epoch:,} steps'
+        if wsd_stable is not None:
+            covered = wsd_warmup + wsd_stable + wsd_decay
+            if covered != horizon:
+                sug_w = round(horizon * 0.263)
+                sug_d = round(horizon * 0.20)
+                raise ValueError(
+                    f'WSD schedule covers {covered} steps (warmup {wsd_warmup} + stable {wsd_stable} '
+                    f'+ decay {wsd_decay}) but the run horizon is {horizon} steps ({horizon_src}). '
+                    f'Steps beyond the schedule would train at LR = min_lr_ratio '
+                    f'({skw.get("min_lr_ratio", 0)}); a shorter horizon would cut the decay phase. '
+                    f'Fix: set max_steps = {covered}, or scale the schedule to the horizon, e.g. '
+                    f'warmup_steps = {sug_w}, num_stable_steps = {horizon - sug_w - sug_d}, '
+                    f'num_decay_steps = {sug_d}.'
+                )
+        elif wsd_warmup + wsd_decay > horizon:
+            raise ValueError(
+                f'WSD warmup ({wsd_warmup}) + decay ({wsd_decay}) exceed the run horizon '
+                f'({horizon} steps, {horizon_src}); the auto-fitted stable phase would be negative.'
+            )
+
     accelerator.print(f'  Effective batch size: {effective_batch}')
     accelerator.print(f'  Epochs: {training_args.num_train_epochs}')
     accelerator.print(f'  Learning rate: {training_args.learning_rate}')
@@ -967,6 +1077,7 @@ def main():
         processing_class=tokenizer,
         data_collator=default_data_collator,
         callbacks=callbacks,
+        optimizer_cls_and_kwargs=optimizer_cls_and_kwargs,
     )
     # Remove default print for clean logging
     trainer.remove_callback(ProgressCallback)

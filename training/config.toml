@@ -2,7 +2,7 @@
 # All relative paths are resolved against this file's directory,
 # so training works no matter where the script is launched from.
 
-model_config = "./configs/Llama-100m.toml"
+model_config = "./configs/Llama-77m.toml"
 
 [data]
 # Data files (supports glob patterns or lists of files)
@@ -14,7 +14,7 @@ valid_files = ["./data/valid_*.bin"]
 max_seq_length = 1024
 
 # Tokenizer (must match the one used to create .bin files)
-tokenizer = "../tokenizers/t-v3/"
+tokenizer = "./tokenizers/t-v3/"
 
 [training]
 # Training duration
@@ -61,7 +61,7 @@ fp16 = false                       # float16 for older GPUs (V100, T4, etc.)
 
 # Performance
 torch_compile = false
-gradient_checkpointing = true      # trade compute for memory (enables larger models)
+gradient_checkpointing = false     # trade compute for memory (enables larger models)
 neftune_noise_alpha = 0.0          # add noise during training to improve model performance (fine-tuning)
 
 # Checkpointing
