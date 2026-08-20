@@ -9,6 +9,12 @@ compatible with BinaryTokenDataset in base_train.py.
 Input files are expected to already contain EOS ending (from
 split_dataset.py), so the tokenizer is called with add_special_tokens=False.
 
+Tokenizes with gigatoken by default (~27x less CPU than HF, bit-identical
+output — see REPORT-gigatoken-feasibility.md); pass --engine hf to use the
+HF tokenizer instead. On first run the gigatoken engine writes a
+tokenizer.gigatoken.json next to tokenizer.json (byte-alphabet completion);
+only this script reads that file — training and inference are unaffected.
+
 Usage:
     python training/tokenize_dataset.py train-text/*.txt --output training/train.bin
     python training/tokenize_dataset.py valid-text/*.txt --output training/valid.bin
@@ -17,7 +23,6 @@ Usage:
 
 import argparse
 import glob
-import json
 import math
 import sys
 import time
@@ -28,7 +33,9 @@ from pathlib import Path
 from random import Random
 
 import numpy as np
+import orjson
 import pyarrow.parquet as pq
+from tokenizers.pre_tokenizers import ByteLevel
 from transformers import AutoTokenizer
 
 # 1 GiB shard cap
@@ -62,8 +69,8 @@ def read_jsonl(path: Path, eos: str) -> Iterator[str]:
             if not line:
                 continue
             try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
+                obj = orjson.loads(line)
+            except orjson.JSONDecodeError:
                 print(f'  Warning: {path.name}:{line_num} — invalid JSON, skipping', file=sys.stderr)
                 continue
             if not isinstance(obj, dict) or 'text' not in obj:
@@ -178,6 +185,39 @@ def batched(iterable: Iterator[str], n: int) -> Iterator[list[str]]:
         yield chunk
 
 
+def build_gigatoken_tokenizer(tokenizer_path: str):
+    """Return a gigatoken.Tokenizer equivalent to the HF tokenizer at
+    `tokenizer_path`.
+    gigatoken's byte-level BPE backend requires all 256 single-byte tokens in
+    the vocab; ours lacks 39 of them (HF maps those bytes to unk). Generate a
+    sibling tokenizer.gigatoken.json that assigns the missing byte chars fresh
+    ids above the base vocab — callers must remap ids >= base vocab back to
+    unk_id so the output is bit-identical to HF. Only this script reads the
+    generated file; training/inference keep loading tokenizer.json.
+    """
+    import gigatoken as gt
+
+    src = Path(tokenizer_path) / 'tokenizer.json'
+    if not src.is_file():
+        sys.exit(f'Error: {src} not found — gigatoken needs a local tokenizer.json (use --engine hf for hub ids)')
+
+    data = orjson.loads(src.read_text(encoding='utf-8'))
+    vocab = data['model']['vocab']
+    missing = sorted(c for c in ByteLevel.alphabet() if c not in vocab)
+    if not missing:
+        return gt.Tokenizer(src)
+
+    dst = src.with_name('tokenizer.gigatoken.json')
+    if not dst.is_file() or dst.stat().st_mtime < src.stat().st_mtime:
+        next_id = max(vocab.values()) + 1
+        for char in missing:
+            vocab[char] = next_id
+            next_id += 1
+        dst.write_text(orjson.dumps(data).decode('utf-8'), encoding='utf-8')
+        print(f'Wrote {dst.name} (+{len(missing)} byte-alphabet entries for gigatoken)')
+    return gt.Tokenizer(dst)
+
+
 def resolve_inputs(patterns: list[str]) -> list[Path]:
     """Expand globs, deduplicate, keep only existing files.
     If an input is a directory, recursively collect all known extensions.
@@ -284,6 +324,12 @@ def main() -> None:
         default=1000,
         help='Number of documents to tokenize per batch',
     )
+    parser.add_argument(
+        '--engine',
+        choices=('gigatoken', 'hf'),
+        default='gigatoken',
+        help='Tokenization engine (gigatoken is ~40x faster, bit-identical output)',
+    )
     args = parser.parse_args()
 
     # ------------------------------------------------------------------
@@ -309,6 +355,12 @@ def main() -> None:
         )
         sys.exit(1)
     print(f'Vocab size: {vocab_size}')
+
+    # gigatoken emits ids >= vocab_size for the byte-alphabet entries added in
+    # tokenizer.gigatoken.json; those are remapped to unk_id below, matching
+    # what HF does with the corresponding bytes.
+    gtok = build_gigatoken_tokenizer(tokenizer_path) if args.engine == 'gigatoken' else None
+    unk_id = tokenizer.unk_token_id
 
     eos = tokenizer.eos_token or ''
     if not eos:
@@ -354,19 +406,25 @@ def main() -> None:
             file_docs = 0
             try:
                 for batch in batched(reader(fpath, eos), args.batch_size):
-                    encoded = tokenizer(batch, add_special_tokens=False)['input_ids']
+                    if gtok is not None:
+                        encoded = gtok.encode_batch_list(batch)
+                    else:
+                        encoded = tokenizer(batch, add_special_tokens=False)['input_ids']
                     file_docs += len(batch)
 
                     for ids in encoded:
-                        arr = np.array(ids, dtype=np.uint16)
-                        # uint16 overflow guard
-                        if len(arr) > 0 and arr.max() >= 65536:
-                            print(
-                                f'Error: token ID >= 65536 in {fpath.name} — vocab too large for uint16 format',
-                                file=sys.stderr,
-                            )
-                            sys.exit(1)
-                        writer.write(arr)
+                        arr = np.asarray(ids, dtype=np.uint32)
+                        if len(arr) > 0 and arr.max() >= vocab_size:
+                            # gigatoken byte-alphabet ids -> unk, like HF does
+                            if arr.max() >= 65536 or unk_id is None:
+                                print(
+                                    f'Error: token ID {arr.max()} out of range in {fpath.name} — vocab too large for uint16 format',
+                                    file=sys.stderr,
+                                )
+                                sys.exit(1)
+                            arr = arr.copy()
+                            arr[arr >= vocab_size] = unk_id
+                        writer.write(arr.astype(np.uint16))
                         file_tokens += len(arr)
             except Exception as exc:
                 print(
