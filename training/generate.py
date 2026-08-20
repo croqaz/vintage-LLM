@@ -34,6 +34,7 @@ def select_dtype(name: str, device: torch.device) -> torch.dtype:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Generate text from the latest checkpoint.')
     parser.add_argument('prompt', nargs='?', help='Text prompt to continue.')
+    parser.add_argument('--repeat', type=int, default=1, help='Number of times to repeat the generation.')
     parser.add_argument('--chat', action='store_true', help='Use chat template for the prompt.')
     parser.add_argument('--checkpoint', type=Path, help='Specific checkpoint directory to load.')
     parser.add_argument(
@@ -57,6 +58,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.repeat < 1:
+        raise ValueError('--repeat must be at least 1')
     if args.prompt is None:
         raise ValueError('provide a prompt as a positional argument')
     if args.tokens < 5:
@@ -104,26 +107,28 @@ def main() -> None:
         inputs = tokenizer(args.prompt, return_tensors='pt').to(device)
     do_sample = args.temperature > 0
 
-    with torch.no_grad():
-        output_ids = model.generate(
-            **inputs,
-            max_new_tokens=args.tokens,
-            do_sample=do_sample,
-            temperature=args.temperature if do_sample else None,
-            top_p=args.top_p if do_sample else None,
-            top_k=args.top_k if do_sample else None,
-            min_p=args.min_p if do_sample else None,
-            repetition_penalty=args.repetition_penalty,
-            eos_token_id=tokenizer.eos_token_id,
+    for _ in range(args.repeat):
+        with torch.no_grad():
+            output_ids = model.generate(
+                **inputs,
+                max_new_tokens=args.tokens,
+                do_sample=do_sample,
+                temperature=args.temperature if do_sample else None,
+                top_p=args.top_p if do_sample else None,
+                top_k=args.top_k if do_sample else None,
+                min_p=args.min_p if do_sample else None,
+                repetition_penalty=args.repetition_penalty,
+                eos_token_id=tokenizer.eos_token_id,
+            )
+
+        text = tokenizer.decode(
+            output_ids[0],
+            skip_special_tokens=not args.show_special_tokens,
+            clean_up_tokenization_spaces=False,
         )
 
-    text = tokenizer.decode(
-        output_ids[0],
-        skip_special_tokens=not args.show_special_tokens,
-        clean_up_tokenization_spaces=False,
-    )
-    print('-' * 80)
-    print(text.strip())
+        print('-' * 80)
+        print(text.strip())
 
 
 if __name__ == '__main__':
