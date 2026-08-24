@@ -28,6 +28,7 @@ See README.md for every flag and recommended presets.
 """
 
 import argparse
+import importlib.util
 import json
 import math
 import os
@@ -90,6 +91,54 @@ def tokenize(text):
     """Lowercase word tokens; keep internal apostrophes ('tis, o'er, don't)."""
     text = text.lower().replace('’', "'").replace('‘', "'")
     return _TOKEN.findall(text)
+
+
+def load_normalizer(module_path=None):
+    """Return a text->text function applying the ftfy-based unicode recipe.
+
+    module_path: path to a `unicode.py` that defines fix_text / fixer /
+    BAD_CHARS_RE (like Synthetic-Archive/filtered/unicode.py). If None, tries
+    plain `import unicode` from the current directory.
+
+    Returns None if the module cannot be loaded (ftfy not installed, bad path).
+    detect.py stays stdlib-only unless this is explicitly requested.
+    """
+    try:
+        if module_path:
+            spec = importlib.util.spec_from_file_location('_norm_unicode', module_path)
+            m = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(m)
+        else:
+            import unicode as m
+        fix_text = m.fix_text
+        fixer = m.fixer
+        bad_re = m.BAD_CHARS_RE
+    except Exception:
+        return None
+
+    def _norm(text: str) -> str:
+        text = fix_text(text, config=fixer)
+        return bad_re.sub('', text)
+
+    return _norm
+
+
+def drop_reasons(r, threshold, min_english, min_tokens):
+    """Return a list of (reason_tag, details) for why a scored record fails.
+
+    Banned-term hits are reported first because the veto is the hardest rule.
+    Used by --drop-log in detect.py / filter_bulk.py.
+    """
+    reasons = []
+    if r['banned_hits']:
+        reasons.append(('banned_hits', f"contains banned terms/years: {r['banned_hits']}"))
+    if r['p_pre1900'] < threshold:
+        reasons.append(('p_pre1900_low', f"p_pre1900 = {r['p_pre1900']:.4f} < threshold {threshold}"))
+    if r['english_frac'] < min_english:
+        reasons.append(('english_frac_low', f"english_frac = {r['english_frac']:.3f} < min_english {min_english}"))
+    if r['n_tokens'] < min_tokens:
+        reasons.append(('too_short', f"n_tokens = {r['n_tokens']} < min_tokens {min_tokens}"))
+    return reasons
 
 
 def _load_freq(name):
@@ -192,17 +241,22 @@ class Scorer:
 
 
 def iter_texts(path, field):
-    """Yield (record_id, text). .jsonl -> one record/line; else whole file."""
+    """Yield (record_id, text, record_or_None).
+
+    .jsonl -> one record/line, record_or_None is the parsed dict.
+    else -> whole file as one record, record_or_None is None.
+    """
     if path.endswith('.jsonl'):
         for i, line in enumerate(open(path, encoding='utf-8', errors='ignore')):
             line = line.strip()
             if line:
                 try:
-                    yield i, json.loads(line).get(field, '')
+                    record = json.loads(line)
+                    yield i, record.get(field, ''), record
                 except json.JSONDecodeError:
-                    continue
+                    yield i, '', None
     else:
-        yield 0, open(path, encoding='utf-8', errors='ignore').read()
+        yield 0, open(path, encoding='utf-8', errors='ignore').read(), None
 
 
 def main():
@@ -216,41 +270,77 @@ def main():
     ap.add_argument('--min-tokens', type=int, default=0, help='drop docs with fewer than this many words')
     ap.add_argument('--field', default='text', help='JSON field to read from .jsonl (default "text")')
     ap.add_argument('--filter', action='store_true', help='output only KEPT records as jsonl')
+    ap.add_argument('--preserve-schema', action='store_true', help='with --filter, write the original record unchanged (no score fields added)')
+    ap.add_argument('--drop-log', metavar='FILE', help='with --filter, write every dropped record + reason to FILE (jsonl)')
+    ap.add_argument('--normalize-unicode', metavar='PATH', help='normalize text via a unicode.py module (ftfy + bad-char strip) before scoring')
     ap.add_argument('--century', action='store_true', help='annotate kept items with a century guess')
     ap.add_argument('--json', action='store_true', help='force jsonl output')
     ap.add_argument('--limit', type=int, default=0, help='stop after this many records (0=all)')
     args = ap.parse_args()
 
     s = Scorer(old_prior=args.old_prior, style_weight=args.style_weight, marker_weight=args.marker_weight)
+    norm = load_normalizer(args.normalize_unicode)
+    if args.normalize_unicode and norm is None:
+        print(f'warning: could not load unicode normalizer from {args.normalize_unicode} — continuing without normalization', file=sys.stderr)
+    drop_log = open(args.drop_log, 'w', encoding='utf-8') if args.drop_log else None
 
-    def emit(rec, text):
-        tokens = tokenize(text)
-        r = s.score(text, tokens)
+    def norm_value(v):
+        """Recursively unicode-normalize every string in a value."""
+        if isinstance(v, str):
+            return norm(v) if norm else v
+        if isinstance(v, dict):
+            return {k: norm_value(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [norm_value(x) for x in v]
+        return v
+
+    def emit(rec, text, record=None):
+        norm_text = norm(text) if norm else text
+        norm_record = {k: norm_value(v) for k, v in record.items()} if isinstance(record, dict) else None
+        tokens = tokenize(norm_text)
+        r = s.score(norm_text, tokens)
         r['keep'] = r['p_pre1900'] >= args.threshold and r['english_frac'] >= args.min_english and r['n_tokens'] >= args.min_tokens
         if args.century and r['keep']:
             r['century'] = s.century(tokens)
         if args.filter:
             if r['keep']:
-                sys.stdout.write(json.dumps({'text': text, **r}, ensure_ascii=False) + '\n')
+                out = norm_record if (args.preserve_schema and norm_record is not None) else {'text': norm_text, **r}
+                sys.stdout.write(json.dumps(out, ensure_ascii=False) + '\n')
+            elif drop_log is not None:
+                reasons = drop_reasons(r, args.threshold, args.min_english, args.min_tokens)
+                entry = {
+                    'record': norm_record if norm_record is not None else {'text': norm_text},
+                    'reason': reasons[0][0] if reasons else 'unknown',
+                    'details': reasons,
+                    'p_pre1900': r['p_pre1900'],
+                    'english_frac': r['english_frac'],
+                    'n_tokens': r['n_tokens'],
+                    'banned_hits': r['banned_hits'],
+                }
+                drop_log.write(json.dumps(entry, ensure_ascii=False) + '\n')
         elif args.json or (not args.files and not sys.stdin.isatty()):
             sys.stdout.write(json.dumps({'id': rec, **r}, ensure_ascii=False) + '\n')
         else:
             tag = 'KEEP' if r['keep'] else 'DROP'
             hits = f' hits={r["banned_hits"]}' if r['banned_hits'] else ''
             cent = f' [{r.get("century")}]' if r.get('century') else ''
-            print(f'{tag} {r["p_pre1900"]:.2f}{cent}{hits}  {text.strip()[:60]!r}')
+            print(f'{tag} {r["p_pre1900"]:.2f}{cent}{hits}  {norm_text.strip()[:60]!r}')
         return r['keep']
 
     if not args.files:  # STDIN
         emit(0, sys.stdin.read())
+        if drop_log:
+            drop_log.close()
         return
     kept = total = 0
     for path in args.files:
-        for rec, text in iter_texts(path, args.field):
+        for rec, text, record in iter_texts(path, args.field):
             total += 1
-            kept += emit(f'{path}:{rec}', text)
+            kept += emit(f'{path}:{rec}', text, record)
             if args.limit > 0 and total >= args.limit:
                 break
+    if drop_log:
+        drop_log.close()
     if not args.filter:
         sys.stderr.write(f'\n{kept}/{total} kept (threshold {args.threshold})\n')
 

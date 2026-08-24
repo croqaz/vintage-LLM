@@ -4,7 +4,7 @@ Everything needed to pre-train, fine-tune, and evaluate a small causal language 
 
 ```
 split_dataset.py → tokenize_dataset.py → doctor.py → base_train.py
-                → fine_tune.py → generate.py / vibe_check.py → evaluate.py / evaluate2.py
+                → fine_tune.py → generate.py / vibe_check.py → evaluate.py / evaluate2.py / evaluate3.py
 ```
 
 ## Data preparation
@@ -27,6 +27,7 @@ split_dataset.py → tokenize_dataset.py → doctor.py → base_train.py
 
 - **`evaluate.py`** — Checkpoint inspection: answers "*what* is this checkpoint, and is it still vintage?". Reports architecture/params/size, training lineage (base vs SFT, source model, LR, context surgery), period-fidelity probes, and text-degeneracy hygiene. Not a quality metric — use `evaluate2.py` for that.
 - **`evaluate2.py`** — Answers "*is it baked?*": scores checkpoints in bits-per-byte on 200 held-out period documents (`eval_data/`), places the result on a measured reference ladder from untrained noise to best-in-class, and produces a plain-language verdict. Point it at one checkpoint or a folder of them for a training curve + best pick.
+- **`evaluate3.py`** — Answers "*which experiment is best?*": recursively compares models with deterministic byte-normalised held-out loss, paired document-bootstrap confidence intervals, practical-equivalence ties, and wall-clock budget groups. It also runs the 28 offline `sample_autocomplete.sh` prompts, saves all prose for human review, reports only mechanical degeneration warnings, and caches raw per-document results for resumable runs. Example: `python evaluate3.py autoresearch autoresearch2 MODELS --out eval3_results/all.json`.
 
 ## Configs
 

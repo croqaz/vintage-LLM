@@ -22,9 +22,35 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 LOG2E = math.log2(math.e)
-PROJECT_DIR = Path(__file__).resolve().parent.parent
-EVAL_DATA = PROJECT_DIR / 'eval_data'
-DEFAULT_RESULTS_DIR = PROJECT_DIR / 'eval_results'
+
+# ---------------------------------------------------------------------------
+# Where things live.
+#
+# This package must keep working if it is MOVED (e.g. training/eval -> project
+# root) and if its data is moved INTO it (eval_data/ next to the code). So
+# nothing is hard-wired to one parent: each location is searched in order and
+# the first that exists wins.
+#
+# Order matters. Package-local comes FIRST so a self-contained copy of eval/
+# that carries its own eval_data/ is preferred over an unrelated directory that
+# happens to sit beside it.
+# ---------------------------------------------------------------------------
+PACKAGE_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = PACKAGE_DIR.parent
+
+
+def _first_existing(name: str, default_parent: Path) -> Path:
+    for parent in (PACKAGE_DIR, PROJECT_DIR, PROJECT_DIR.parent, Path.cwd()):
+        candidate = parent / name
+        if candidate.is_dir():
+            return candidate
+    return default_parent / name  # nothing found: fall back, callers report it
+
+
+EVAL_DATA = _first_existing('eval_data', PROJECT_DIR)
+# Results are WRITTEN, so an existing directory is preferred but a missing one
+# is created next to the package rather than in some unrelated parent.
+DEFAULT_RESULTS_DIR = _first_existing('eval_results', PROJECT_DIR)
 
 
 # ============================================================================
@@ -196,17 +222,87 @@ def model_fingerprint(checkpoint: Path, tok_path: Path) -> str:
 # ============================================================================
 
 
-def load_model_and_tokenizer(checkpoint: Path, tok_dir: Path, device: torch.device, dtype: torch.dtype):
-    tokenizer = AutoTokenizer.from_pretrained(tok_dir, use_fast=True)
+def needs_remote_code(checkpoint: Path) -> bool:
+    """True when config.json declares an `auto_map`, i.e. the architecture is
+    NOT one transformers ships and loading it EXECUTES python from the model
+    directory.
+
+    Deliberately narrow: remote code is enabled only for models that genuinely
+    cannot load without it (e.g. MODELS/Talkie-1930-13b -> modeling_talkie.py),
+    never as a blanket default.
+    """
+    try:
+        with open(checkpoint / 'config.json', 'rb') as fh:
+            return bool(json.load(fh).get('auto_map'))
+    except Exception:
+        return False
+
+
+def weight_bytes(checkpoint: Path) -> int:
+    """On-disk size of the weight shards - a good proxy for resident size when
+    loading at the checkpoint's own dtype."""
+    files = list(checkpoint.glob('*.safetensors')) + list(checkpoint.glob('pytorch_model*.bin'))
+    return sum(f.stat().st_size for f in files)
+
+
+def free_vram(device: torch.device) -> int:
+    if device.type != 'cuda':
+        return 0
+    free, _total = torch.cuda.mem_get_info(device.index or 0)
+    return int(free)
+
+
+def plan_placement(checkpoint: Path, device: torch.device, headroom: float = 0.90) -> dict | None:
+    """Return from_pretrained kwargs for CPU/disk offload, or None to load
+    wholly onto `device`.
+
+    A 7B in bf16 is ~14.5 GB and just fits a 16 GB card; a 13B is ~26.5 GB and
+    cannot. Rather than OOM, hand the oversized part to accelerate.
+    """
+    if device.type != 'cuda':
+        return None
+    need = weight_bytes(checkpoint)
+    budget = int(free_vram(device) * headroom)
+    if need == 0 or need <= budget:
+        return None
+    print(
+        f'  placement: weights ~{need / 2**30:.1f} GiB > {budget / 2**30:.1f} GiB usable VRAM '
+        f'-> device_map=auto with CPU offload (SLOW; offloaded layers run on CPU)'
+    )
+    return {
+        'device_map': 'auto',
+        'max_memory': {(device.index or 0): budget, 'cpu': '48GiB'},
+        'low_cpu_mem_usage': True,
+    }
+
+
+def load_model_and_tokenizer(checkpoint: Path, tok_dir: Path, device: torch.device, dtype: torch.dtype, load_8bit: bool = False):
+    remote = needs_remote_code(Path(checkpoint))
+    if remote:
+        print(f'  trust_remote_code=True — executing custom modeling code from {checkpoint}')
+    tokenizer = AutoTokenizer.from_pretrained(tok_dir, use_fast=True, trust_remote_code=remote)
     if tokenizer.pad_token_id is None:
         if tokenizer.eos_token_id is None:
             raise RuntimeError('tokenizer has neither pad nor EOS token; cannot batch or pad')
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = 'left'  # correct batched generation
 
-    model = AutoModelForCausalLM.from_pretrained(checkpoint, dtype=dtype)
+    kwargs = {'dtype': dtype, 'trust_remote_code': remote}
+    if load_8bit:
+        # Explicit, never automatic: int8 changes the measurement (~0.0025 bpb on
+        # our 75M control) and every number produced under it must be labelled.
+        from transformers import BitsAndBytesConfig
+
+        need = weight_bytes(Path(checkpoint))
+        print(f'  load_in_8bit=True — ~{need / 2**30:.1f} GiB bf16 -> ~{need / 2**31:.1f} GiB int8 (QUANTIZED, see report)')
+        kwargs['quantization_config'] = BitsAndBytesConfig(load_in_8bit=True)
+        placement = {'device_map': {'': (device.index or 0)}}
+    else:
+        placement = plan_placement(Path(checkpoint), device)
+    model = AutoModelForCausalLM.from_pretrained(checkpoint, **kwargs, **(placement or {}))
     model.config.use_cache = True
-    model.to(device)
+    if placement is None:
+        model.to(device)  # accelerate already placed the sharded/offloaded/quantized case
     model.eval()
     return model, tokenizer
 
@@ -218,7 +314,11 @@ def free_model(model, device: torch.device) -> None:
     Moving parameters to the 'meta' device frees the real storage regardless.
     """
     with contextlib.suppress(Exception):  # freeing must never break a run
-        model.to('meta')
+        # An accelerate-dispatched model (device_map/offload) must not be moved:
+        # .to() fights the hooks and warns. Dropping the reference is enough,
+        # since accelerate owns the offload buffers.
+        if not getattr(model, 'hf_device_map', None):
+            model.to('meta')
     del model
     import gc
 
@@ -560,9 +660,10 @@ def peek_model_identity(checkpoint: Path) -> tuple[str | None, int]:
     try:
         from transformers import AutoConfig, AutoModelForCausalLM
 
-        cfg = AutoConfig.from_pretrained(checkpoint)
+        remote = needs_remote_code(Path(checkpoint))
+        cfg = AutoConfig.from_pretrained(checkpoint, trust_remote_code=remote)
         with torch.device('meta'):
-            model = AutoModelForCausalLM.from_config(cfg)
+            model = AutoModelForCausalLM.from_config(cfg, trust_remote_code=remote)
         n = sum(p.numel() for p in model.parameters())
         del model
         return getattr(cfg, 'model_type', None), n

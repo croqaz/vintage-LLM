@@ -158,13 +158,57 @@ def find_word_token_positions(tokenizer, context: str, word: str, seq_len: int) 
     return positions or None
 
 
+def _trunk_module(model):
+    """The submodule whose output IS the final hidden state, for models that do
+    not implement `output_hidden_states`."""
+    for name in ('model', 'transformer', 'gpt_neox', 'backbone', 'decoder'):
+        candidate = getattr(model, name, None)
+        if isinstance(candidate, torch.nn.Module):
+            return candidate
+    return None
+
+
+@torch.no_grad()
+def last_hidden_state(model, inputs) -> torch.Tensor:
+    """Final-layer hidden states, even for architectures that ignore
+    `output_hidden_states`.
+
+    Custom modeling code is free to drop the flag: MODELS/Talkie-1930-13b's
+    forward() swallows it via **kwargs and returns
+    CausalLMOutputWithPast(loss, logits) with hidden_states=None. A forward hook
+    on the trunk captures the tensor regardless, in the SAME forward pass.
+    """
+    captured = {}
+
+    def hook(_module, _args, output):
+        tensor = output[0] if isinstance(output, tuple) else output
+        captured['h'] = getattr(tensor, 'last_hidden_state', tensor)
+
+    trunk = _trunk_module(model)
+    handle = trunk.register_forward_hook(hook) if trunk is not None else None
+    try:
+        out = model(**inputs, output_hidden_states=True)
+    finally:
+        if handle is not None:
+            handle.remove()
+
+    hidden_states = getattr(out, 'hidden_states', None)
+    if hidden_states:
+        return hidden_states[-1]
+    if 'h' in captured and torch.is_tensor(captured['h']):
+        return captured['h']
+    raise RuntimeError(
+        f'{type(model).__name__} returned no hidden_states and no trunk submodule could be hooked; sense separation cannot be computed'
+    )
+
+
 @torch.no_grad()
 def extract_word_embeddings(model, tokenizer, words: list[str], contexts: list[str]) -> dict:
     """Last-hidden-layer embedding of each word, averaged over its sub-tokens."""
     embeddings, missing = {}, []
     for word, context in zip(words, contexts, strict=True):
         inputs = tokenizer(context, return_tensors='pt').to(model.device)
-        hidden = model(**inputs, output_hidden_states=True).hidden_states[-1]
+        hidden = last_hidden_state(model, inputs)
         positions = find_word_token_positions(tokenizer, context, word, inputs['input_ids'].shape[1])
         if not positions:
             missing.append(word)
@@ -317,10 +361,29 @@ def score_chat_records(tokenizer, model, items: list[ChatItem], max_tokens: int,
 
 
 def records_bpb(records: list[dict], split: str | None = None, prefix: str = '') -> float:
+    """Byte-weighted bits/byte over per-document records.
+
+    NON-FINITE RECORDS ARE EXCLUDED. A single NaN document used to poison the
+    whole aggregate: `sum()` returns NaN and the headline prose_bpb silently
+    becomes NaN, which reads as "the eval broke" rather than "one of 200
+    documents produced a bad forward pass". Observed once on autoresearch2/arch/
+    kv_1 (num_key_value_heads=1) where the immediately preceding run of the same
+    checkpoint was clean, i.e. transient rather than a property of the model.
+
+    Callers should report `count_nonfinite_records()` alongside this so a dropped
+    document is never invisible.
+    """
     rows = [r for r in records if split is None or r['split'] == split]
-    bits = sum(float(r[f'{prefix}bits']) for r in rows)
-    nbytes = sum(int(r[f'{prefix}bytes']) for r in rows)
+    finite = [r for r in rows if math.isfinite(float(r[f'{prefix}bits']))]
+    bits = sum(float(r[f'{prefix}bits']) for r in finite)
+    nbytes = sum(int(r[f'{prefix}bytes']) for r in finite)
     return bits / nbytes if nbytes else float('nan')
+
+
+def count_nonfinite_records(records: list[dict], prefix: str = '') -> int:
+    """Documents whose scoring produced NaN/Inf. MUST be reported: a non-zero
+    value means the headline number was computed over fewer documents."""
+    return sum(1 for r in records if not math.isfinite(float(r[f'{prefix}bits'])))
 
 
 @torch.no_grad()
@@ -448,6 +511,102 @@ def punct_issues(text: str) -> int:
     return issues
 
 
+def back_matter_score(text: str) -> dict:
+    """Detect scanned-book BACK MATTER: indexes, catalogues, tables of contents,
+    bibliographies.
+
+    This is a failure mode that distinct-n and loop detection are structurally
+    blind to, because such text is lexically DIVERSE - every line is different.
+    It was the dominant low-scoring pattern in a real 49k-completion bulk run:
+
+        'Constituent and Legislative Assemblies, 1789-1875. By F. DE PRESSENSE.
+         French Revolution.-Mirabeau.- The Constitution of 1791.-Brissot.'
+
+    Signals, all cheap and text-only:
+      digit_frac       page numbers and dates
+      initial_frac     'F. DE PRESSENSE', 'G. R. PARSONS', 'F.R.S.'
+      caps_frac        RUNS OF CAPITALISED NAMES
+      short_line_frac  list-shaped rather than prose-shaped
+      punct_density    the '.-' / ';' / ',' chains that join index entries
+      mean_sentence_words  prose runs long; catalogue entries are stubs
+    """
+    words = WORD_RE.findall(text)
+    n = max(1, len(words))
+    chars = max(1, len(text))
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    sentences = [s for s in re.split(r'[.!?]+', text) if s.strip()]
+
+    digit_frac = sum(c.isdigit() for c in text) / chars
+    initial_frac = len(re.findall(r'\b[A-Z]\.', text)) / n
+    caps_frac = sum(1 for w in words if len(w) > 1 and w.isupper()) / n
+    short_line_frac = (sum(1 for ln in lines if len(ln.split()) <= 6) / len(lines)) if lines else 0.0
+    punct_density = len(re.findall(r'[.,;:\-]', text)) / chars
+    mean_sentence_words = float(np.mean([len(s.split()) for s in sentences])) if sentences else 0.0
+
+    # Vote rather than a hard rule: any SINGLE signal fires on ordinary period
+    # prose (dates in narrative, initials in citations), but two together do not.
+    #
+    # CALIBRATED against 49,413 real completions, using that pipeline's own
+    # independent quality score as ground truth:
+    #   source: https://huggingface.co/datasets/croqaz/tiny-vintage-completions
+    #
+    #   threshold   recall on score<50   false positives on score>95 (n=17,085)
+    #     >= 2            48.7%                     0.00%
+    #     >= 3            15.2%                     0.00%
+    #     >= 4             2.1%                     0.00%
+    #
+    # >= 2 is chosen: it triples recall at zero measured false-positive cost.
+    # The detector is PRECISE but not exhaustive -- a 0% back_matter_rate means
+    # "none detected", not "none present".
+    votes = (
+        (digit_frac > 0.04)
+        + (initial_frac > 0.06)
+        + (caps_frac > 0.08)
+        + (short_line_frac > 0.5)
+        + (punct_density > 0.09)
+        + (0 < mean_sentence_words < 8)
+    )
+    return {
+        'digit_frac': digit_frac,
+        'initial_frac': initial_frac,
+        'caps_frac': caps_frac,
+        'short_line_frac': short_line_frac,
+        'punct_density': punct_density,
+        'mean_sentence_words': mean_sentence_words,
+        'back_matter_votes': int(votes),
+        'is_back_matter': bool(votes >= 2),
+    }
+
+
+def self_bleu(texts: list[str], n: int = 4, max_texts: int = 120) -> float:
+    """Mean fraction of each text's n-grams that also appear in ANY other text.
+
+    Mode-collapse detector. distinct-n looks INSIDE one continuation, so 500
+    completions that are all subtly the same each score as perfectly diverse.
+    This looks ACROSS them: 0.0 = every completion is lexically unique,
+    1.0 = they are all reusing the same n-grams.
+
+    Cheap by construction - set operations over n-grams, no model, no GPU.
+    Capped at max_texts because the pairwise-union step is O(texts * ngrams).
+    """
+    grams = []
+    for text in texts[:max_texts]:
+        words = [w.lower() for w in WORD_RE.findall(text)]
+        grams.append(set(zip(*(words[i:] for i in range(n)), strict=False)))
+    grams = [g for g in grams if g]
+    if len(grams) < 2:
+        return float('nan')
+
+    # Count how many texts each n-gram appears in, so "appears elsewhere" is a
+    # single lookup instead of a pairwise union per text.
+    counts: dict = {}
+    for g in grams:
+        for gram in g:
+            counts[gram] = counts.get(gram, 0) + 1
+    shared = [sum(1 for gram in g if counts[gram] > 1) / len(g) for g in grams]
+    return float(np.mean(shared))
+
+
 def text_stats(prompt: str, text: str) -> dict:
     """ALL surface text-quality metrics for ONE continuation.
 
@@ -466,8 +625,12 @@ def text_stats(prompt: str, text: str) -> dict:
     prompt_copy = sum(w in prompt_words for w in content) / max(1, len(content))
 
     loop = longest_loop(words_lower)
+    back = back_matter_score(text)
     # A gate only for unmistakable surface collapse. Diverse nonsense passes by
     # design; held-out BPB and human reading must judge meaning.
+    # NOTE: back matter is reported separately, NOT folded into `degenerate` --
+    # it is a distinct failure mode (lexically diverse, so the distinct-2/echo/
+    # loop gates all pass it) and mixing them would hide which one is happening.
     degenerate = len(words_lower) < 8 or distinct2 < 0.55 or echo > ECHO_BAD or loop >= 12
     return {
         'words': len(words_lower),
@@ -479,6 +642,11 @@ def text_stats(prompt: str, text: str) -> dict:
         'punct_issues': punct_issues(text),
         'prompt_copy_rate': prompt_copy,
         'degenerate': degenerate,
+        'is_back_matter': back['is_back_matter'],
+        'back_matter_votes': back['back_matter_votes'],
+        'digit_frac': back['digit_frac'],
+        'caps_frac': back['caps_frac'],
+        'mean_sentence_words': back['mean_sentence_words'],
     }
 
 
@@ -501,6 +669,16 @@ def summarize_generations(samples: list[dict]) -> dict:
         'total_punct_issues': sum(s['punct_issues'] for s in samples),
         'mean_prompt_copy_rate': float(np.mean([s['prompt_copy_rate'] for s in samples])),
         'mean_words': float(np.mean([s['words'] for s in samples])),
+        # Back matter: lexically diverse, so invisible to every metric above.
+        'back_matter_rate': float(np.mean([s.get('is_back_matter', False) for s in samples])),
+        'mean_digit_frac': float(np.mean([s.get('digit_frac', 0.0) for s in samples])),
+        'mean_caps_frac': float(np.mean([s.get('caps_frac', 0.0) for s in samples])),
+        'mean_sentence_words': float(np.mean([s.get('mean_sentence_words', 0.0) for s in samples])),
+        # Mode collapse ACROSS completions (distinct-n only sees within one).
+        'self_bleu_4': self_bleu([s.get('continuation', '') for s in samples]),
+        # Any completion that is degenerate OR back matter would be dropped by a
+        # synth-data filter; this is the closest thing here to a production yield.
+        'unusable_rate': float(np.mean([bool(s['degenerate']) or bool(s.get('is_back_matter', False)) for s in samples])),
     }
 
 
@@ -673,19 +851,64 @@ REFERENCE_LADDER = [
     (3.50, 'untrained model (uniform noise)', 'synthetic'),
     (2.00, 'word-salad', 'synthetic'),
     (1.50, 'broken prose', 'synthetic'),
-    (1.36439, 'Violet-160m -- GPT-NeoX 152M, Victorian-trained (1800-1899), public', 'measured'),
-    (1.33, 'TimeCapsule 499M at ~0.7B tokens (earlier checkpoint, not on disk)', 'historical'),
+    (1.44380, 'TypeWriter-1913-7B-v1 -- 7.2B, chat-tuned; strong logic, WEAK prose', 'measured'),
+    (1.36439, 'Violet-160m -- GPT-NeoX 152M, Victorian-trained (1800-1899)', 'measured'),
+    (1.27043, 'TypeWriter-1913-7B-v2 -- 7.2B, chat-tuned; best chat BPB measured (0.707)', 'measured'),
     (1.19189, 'TimeCapsule -- Llama 499M, ~4.7B tokens (undertrained but solid)', 'measured'),
-    (1.16932, 'Llama-77M-v1 -- 77M, 16.7B tokens, 80h  [CONTAMINATED, see note]', 'measured'),
+    (1.16932, 'Llama-77M-v1 -- 77M, 16.7B tokens, 80h (saw held-out docs ~1x; NO recall detected)', 'measured'),
     (1.11899, 'vintage-LLM-340m -- Llama 341M, best CLEAN sub-1B on this data', 'measured'),
     (0.95, 'estimated sub-1B ceiling on this corpus', 'synthetic'),
+    (0.91380, 'Talkie-1930-13b -- 13.3B, best measured on this data  [int8, UNVERIFIED provenance]', 'measured'),
+    # ^ RETIRED and NOT re-evaluable: the model saturates this machine. Its source
+    #   JSON holds no results (see MODELS/Talkie-1930-13b/eval-talkie13.3B.json for
+    #   why); the numbers behind this rung are recorded in
+    #   research/REPORT-reference-models.md.
 ]
 
-# Llama-77M-v1 trained 0.85 of an epoch over a corpus that contains all 200
-# held-out documents, so its 1.16932 is partly memorisation, not generalisation.
-# It is on the ladder because it is OUR model and the comparison is the point --
-# but a new run beating it has not necessarily beaten a clean 77M model.
-CONTAMINATED_REFERENCES = {'Llama-77M-v1'}
+# Llama-77M-v1 trained ~0.64 epochs over a corpus that CONTAINS all 200 held-out
+# documents. That is a provenance fact and stays on record. It is NOT, however,
+# evidence of memorisation, and the earlier '[CONTAMINATED]' label overstated it.
+#
+# MEASURED, not argued (research/REPORT-memorization-probe.md): a verbatim
+# continuation probe -- feed 256 tokens of each document, greedy-decode 128,
+# score exact token overlap -- against a control that saw only 2.4% of the corpus:
+#
+#            max exact span   docs with span >=16   paired delta vs control
+#   llama-77       11 tokens              0 / 200          +0.125 tokens
+#   control         7 tokens              0 / 200                  --
+#
+# llama-77 produced a LONGER span in only 26.5% of documents. Memorisation shows
+# up as a heavy right tail; there is none. At 77M parameters (~19 MB of storage at
+# a generous 2 bits/param) against a 110 GB corpus seen once, there is no capacity
+# to memorise. Its early-vs-late context gap (0.167) is also indistinguishable
+# from the control's (0.168).
+#
+# Treat its 1.16932 as a normal measurement. Keep the provenance note so nobody
+# has to re-derive this.
+#
+# The 1913/1930 models are THIRD-PARTY: we did not build their training sets, and
+# our held-out documents are Gutenberg/British-Library derived, so we cannot rule
+# out that they saw them. Treat their numbers as aspiration targets, not as clean
+# generalisation measurements.
+# Provenance flag only: these models trained on a corpus containing the held-out
+# documents. See the note above -- for Llama-77M-v1 this was probed and NO recall
+# was found. The flag records what we know about the data, not a defect.
+TRAINED_ON_HELDOUT_CORPUS = {'Llama-77M-v1'}
+CONTAMINATED_REFERENCES = TRAINED_ON_HELDOUT_CORPUS  # legacy alias
+UNVERIFIED_PROVENANCE = {'TypeWriter-1913-7B-v1', 'TypeWriter-1913-7B-v2', 'Talkie-1930-13b'}
+
+# Talkie-1930-13b is the ONLY ladder row measured under quantization: 24.7 GiB in
+# bf16 does not fit a 15.9 GiB card, so it was scored with `--load-8bit`. On the
+# 75M control int8 moved mean NLL by -0.0075 (~0.0025 bpb), i.e. well under the
+# 0.0092 gap between adjacent ladder rungs -- but its 0.91380 is not strictly
+# comparable to the bf16 rows.
+QUANTIZED_REFERENCES = {'Talkie-1930-13b'}
+
+# The two TypeWriter arms show why prose BPB alone is not a model ranking: they
+# are the WORST and third-worst rows here on prose, yet post the best chat BPB
+# (0.707/0.713 vs 0.981 for vintage-LLM-340m) and the best logic (0.875/0.925 vs
+# 0.750). They are chat/instruction-tuned, which trades raw prose likelihood for
+# dialogue. Do not read their prose rung as "a 7B is worse than our 341M".
 
 # NOT on the ladder: MODELS/Mr-Chatterbox is a raw nanochat `model.pt` with no
 # HF config.json, so `python -m eval` cannot load it. It needs a conversion

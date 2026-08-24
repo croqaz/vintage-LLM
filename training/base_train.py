@@ -920,6 +920,53 @@ def main():
             },
         )
         optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
+    elif optim_name == 'normuon':
+        # NorMuon (Muon + a per-row second-moment normalizer on the orthogonalized
+        # update, arXiv:2510.05491) lives in ./NorMuon as a bare source tree;
+        # normuon.py has no dependency beyond torch.
+        sys.path.insert(0, str(Path(__file__).resolve().parent / 'NorMuon'))
+        from normuon import SingleDeviceNorMuonWithAuxAdam
+
+        # Route parameters with MuonQ's EXACT rule so that a NorMuon-vs-MuonQ
+        # comparison differs only in the update rule, not in which tensors each
+        # rule touches: >=2D and not an embedding/head -> Muon; the rest -> AdamW.
+        _EXCLUDE = ('embeddings', 'embed_tokens', 'wte', 'lm_head', 'wpe')
+        hidden, aux = [], []
+        for _n, _p in model.named_parameters():
+            is_hidden = _p.ndim >= 2 and not any(e in _n for e in _EXCLUDE)
+            (hidden if is_hidden else aux).append(_p)
+
+        _lr = train_cfg.get('learning_rate', 8e-3)
+        _wd = train_cfg.get('weight_decay', 0.1)
+        # ONE lr drives both groups, matching MuonQ, whose AdamW backup reads
+        # group['lr'] rather than a separate adamw_lr. The aux betas/eps below are
+        # MuonQ's defaults (0.95, 0.95)/1e-8, NOT NorMuon's own (0.9, 0.95)/1e-10,
+        # for the same reason -- keep the comparison to the update rule alone.
+        # The optimizer asserts these key sets EXACTLY; do not add keys.
+        _groups = [
+            dict(
+                params=hidden,
+                use_muon=True,
+                lr=_lr,
+                weight_decay=_wd,
+                momentum=train_cfg.get('muon_momentum', 0.95),
+                beta2=train_cfg.get('normuon_beta2', 0.95),
+            ),
+            dict(
+                params=aux,
+                use_muon=False,
+                lr=_lr,
+                weight_decay=_wd,
+                betas=(
+                    train_cfg.get('normuon_adamw_beta1', 0.95),
+                    train_cfg.get('normuon_adamw_beta2', 0.95),
+                ),
+                eps=train_cfg.get('normuon_adamw_eps', 1e-8),
+            ),
+        ]
+        print(f'NorMuon: {len(hidden)} hidden tensors on the Muon path, {len(aux)} on the aux AdamW path')
+        optimizer_cls_and_kwargs = (SingleDeviceNorMuonWithAuxAdam, {'params': _groups})
+        optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
 
     training_args = TrainingArguments(
         output_dir=output_dir,

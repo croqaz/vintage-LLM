@@ -67,6 +67,7 @@ from .helpers import (
     select_dtype,
     training_curve,
 )
+from .metric_guide import HOW_TO_READ, PRIMARY_METRIC, describe, undocumented
 from .prompts import (
     HISTORICAL_CONTEXTS,
     HISTORICAL_WORDS,
@@ -74,7 +75,7 @@ from .prompts import (
     MODERN_CONTEXTS,
     PROBE_LABELS,
     PROBE_SENTENCES,
-    PROMPTS,
+    SEED_SETS,
     TRAP_PAIRS,
 )
 
@@ -99,14 +100,19 @@ def settings_fingerprint(args, heldout_hash: str, chat_hash: str | None) -> dict
         'generation_modes': args.generation_modes,
         'generation_tokens': args.gen_tokens,
         'generation_batch_size': args.generation_batch_size,
+        'seed_set': args.seed_set,
+        'temp_sweep': args.temp_sweep,
         'temperature': args.temperature,
         'top_p': args.top_p,
         'top_k': args.top_k,
         'seed': args.seed,
         'dtype': args.dtype,
+        # int8 changes the numbers, so a quantized result must never be served
+        # from (or written into) the same cache slot as a bf16 one.
+        'load_8bit': args.load_8bit,
         'logic_items': len(LOGIC_ITEMS),
         'trap_pairs': len(TRAP_PAIRS),
-        'n_prompts': len(PROMPTS),
+        'n_prompts': len(SEED_SETS[args.seed_set]()),
     }
 
 
@@ -115,10 +121,37 @@ def settings_fingerprint(args, heldout_hash: str, chat_hash: str | None) -> dict
 # ============================================================================
 
 
-def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, prompts, data) -> dict:
+def _temp_label(temp: float) -> str:
+    """Stable key fragment for a temperature.
+
+    f'{1.0:g}' renders '1', so `sweep_t1_*` would break anyone grepping
+    `sweep_t1.0_*` while 0.8 and 1.2 keep their decimal. Always keep one.
+    """
+    label = f'{temp:g}'
+    return label if '.' in label else f'{label}.0'
+
+
+def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, prompts, data, snapshot=None) -> dict:
     started = time.time()
+
+    def save(stage: str) -> None:
+        """Persist everything computed SO FAR for this checkpoint.
+
+        A model evaluation is many expensive suites in one load. Talkie-1930-13b
+        completed prose, chat, logic and traps over 44 minutes and then OOMed in
+        the generation suite, and all of it was lost because results are only
+        recorded once a checkpoint finishes. Snapshotting after each EXPENSIVE
+        suite (not the cheap ones - this must not hammer the disk) makes that
+        work recoverable.
+        """
+        if snapshot is not None:
+            try:
+                snapshot(stage, result)
+            except Exception as exc:  # a safety net must never break the run
+                print(f'  (snapshot after {stage} failed: {exc})')
+
     print(f'  loading model ({tok_dir}) ...', flush=True)
-    model, tokenizer = load_model_and_tokenizer(checkpoint, tok_dir, device, dtype)
+    model, tokenizer = load_model_and_tokenizer(checkpoint, tok_dir, device, dtype, load_8bit=args.load_8bit)
     n_params = sum(p.numel() for p in model.parameters())
     # HF measures total_flos against non-embedding params, so the tokens-seen estimate
     # must divide by the SAME count (see checkpoint_lineage). num_parameters() is the
@@ -189,18 +222,31 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
         # ---- word-sense separation -------------------------------------------
         if not args.skip_embeddings:
             banner('SUITE: DIACHRONIC WORD-SENSE SEPARATION')
-            result['embeddings'] = M.sense_separation(
-                model, tokenizer, prompts['historical_words'], prompts['historical_contexts'], prompts['modern_contexts']
-            )
-            if result['embeddings'].get('missing_words'):
-                print(f'  (skipped words not locatable in context: {", ".join(result["embeddings"]["missing_words"])})')
-            print(f'  mean shift similarity: {fmt(result["embeddings"].get("mean_shift_similarity"), 3)}')
+            # This suite needs internals (hidden states) that some custom
+            # architectures simply do not expose. It is a descriptive diagnostic,
+            # not a ranking input, so a failure here must NOT lose the prose BPB
+            # that the same expensive model load just produced.
+            try:
+                result['embeddings'] = M.sense_separation(
+                    model,
+                    tokenizer,
+                    prompts['historical_words'],
+                    prompts['historical_contexts'],
+                    prompts['modern_contexts'],
+                )
+                if result['embeddings'].get('missing_words'):
+                    print(f'  (skipped words not locatable in context: {", ".join(result["embeddings"]["missing_words"])})')
+                print(f'  mean shift similarity: {fmt(result["embeddings"].get("mean_shift_similarity"), 3)}')
+            except Exception as exc:
+                result['embeddings'] = {'unavailable': f'{type(exc).__name__}: {exc}'}
+                print(f'  UNAVAILABLE for this architecture: {type(exc).__name__}: {exc}')
 
         # ---- held-out prose --------------------------------------------------
         if data['heldout']:
             banner('SUITE: HELD-OUT PROSE (per-document records)')
             result['prose_records'] = M.score_prose_records(tokenizer, model, data['heldout'], args.max_tokens)
             print()
+            save('prose')
 
         # ---- chat targets ----------------------------------------------------
         if data['chat']:
@@ -210,6 +256,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                 banner('SUITE: CONDITIONAL CHAT-TARGET LOSS')
                 result['chat_records'] = M.score_chat_records(tokenizer, model, data['chat'], args.chat_max_tokens)
                 print()
+                save('chat')
 
         # ---- tokenizer efficiency + optimisation health ----------------------
         # Neither needs the GPU. Both were previously only obtainable by hand-writing
@@ -226,6 +273,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
             f'  logic acc {result["logic"]["acc"]:.3f} (margin {result["logic"]["margin"]:+.3f}) | '
             f'trap shock {result["traps"]["mean_shock"]:+.3f} bits/byte'
         )
+        save('logic_traps')
 
         # ---- THE one generation pass over the MERGED prompt list --------------
         if args.generation_modes:
@@ -250,13 +298,53 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                 gen_block[f'{prefix}_samples'] = rows
                 gen_block[f'{prefix}_summary'] = M.summarize_generations(rows)
             result['generation'] = gen_block
+            save('generation')
+
+            # ---- optional temperature sweep ---------------------------------
+            # Degeneracy at high temperature is a TAIL property of the
+            # distribution; BPB measures the head and is nearly blind to it. A
+            # model can compress beautifully and still fall apart at t=1.2,
+            # which is the regime a bulk synth-data run actually uses.
+            # Off by default: each extra temperature costs one more full
+            # sampled pass.
+            if args.temp_sweep and 'sample' in args.generation_modes:
+                sweep = {}
+                for temp in args.temp_sweep:
+                    label = _temp_label(temp)
+                    if abs(temp - args.temperature) < 1e-9 and gen_block.get('sampled_summary'):
+                        sweep[label] = gen_block['sampled_summary']
+                        continue
+                    print(f'  temperature sweep: t={temp:g}', flush=True)
+                    swept = M.generate_continuations(
+                        tokenizer,
+                        model,
+                        prompts['generation'],
+                        modes=['sample'],
+                        max_new_tokens=args.gen_tokens,
+                        temperature=temp,
+                        top_p=args.top_p,
+                        top_k=args.top_k,
+                        seed=args.seed,
+                        batch_size=args.generation_batch_size,
+                        chat=args.chat,
+                    )
+                    sweep[label] = M.summarize_generations(swept.get('sample', []))
+                    gen_block['temperature_sweep'] = sweep
+                    result['generation'] = gen_block
+                    save(f'sweep_t{label}')
+                gen_block['temperature_sweep'] = sweep
+            result['generation'] = gen_block
     finally:
         free_model(model, device)
         print(f'  model freed ({time.time() - started:.0f}s elapsed)', flush=True)
 
     # ---- derived numbers (pure math over what we just collected) ------------
     finalize_result(result, args)
-    return result
+    # Put the headline numbers at the TOP of the object. A human or an agent
+    # opening a 200 KB result should hit `summary` on line 3, not after 4,000
+    # lines of per-document records.
+    lead = ('label', 'checkpoint', 'summary', 'verdict', 'bake_score', 'points')
+    return {**{k: result[k] for k in lead if k in result}, **result}
 
 
 def finalize_result(result: dict, args) -> None:
@@ -266,6 +354,14 @@ def finalize_result(result: dict, args) -> None:
     prose = result.get('prose_records') or []
     if prose:
         s['prose_bpb'] = M.records_bpb(prose)
+        # Never let a dropped document be invisible: a non-zero count means the
+        # headline bpb was computed over fewer than n_prose_docs documents.
+        s['prose_nonfinite_docs'] = M.count_nonfinite_records(prose)
+        if s['prose_nonfinite_docs']:
+            print(
+                f'  WARNING: {s["prose_nonfinite_docs"]} document(s) scored NaN/Inf and were '
+                f'EXCLUDED from prose_bpb (of {len(prose)} total)'
+            )
         s['prose_bpb_split_a'] = M.records_bpb(prose, 'A')
         s['prose_bpb_split_b'] = M.records_bpb(prose, 'B')
         s['prose_bpb_early'] = M.records_bpb(prose, prefix='early_')
@@ -337,10 +433,30 @@ def finalize_result(result: dict, args) -> None:
         s['sampled_mean_distinct_1'] = sampled_sum.get('mean_distinct_1')
         s['sampled_mean_distinct_2'] = sampled_sum.get('mean_distinct_2')
         s['sampled_mean_echo_rate'] = sampled_sum.get('mean_echo_rate')
+        s['sampled_temperature'] = (result.get('generation') or {}).get('temperature')
+        s['sampled_mean_loop_words'] = sampled_sum.get('mean_loop_words')
         s['sampled_degenerate_rate'] = sampled_sum.get('degenerate_rate')
         s['sampled_prompt_copy_rate'] = sampled_sum.get('mean_prompt_copy_rate')
         s['sampled_punct_issues_p100'] = sampled_sum.get('mean_punct_issues_p100')
+        # Back matter (indexes/catalogues/TOC): lexically diverse, so distinct-n,
+        # echo and loop detection are ALL blind to it. It was the dominant
+        # low-scoring pattern in a real bulk run.
+        s['sampled_back_matter_rate'] = sampled_sum.get('back_matter_rate')
+        s['sampled_mean_sentence_words'] = sampled_sum.get('mean_sentence_words')
+        # Mode collapse ACROSS completions; distinct-n only sees within one.
+        s['sampled_self_bleu_4'] = sampled_sum.get('self_bleu_4')
+        # degenerate OR back matter = what a synth-data filter would drop.
+        s['sampled_unusable_rate'] = sampled_sum.get('unusable_rate')
+        s['greedy_self_bleu_4'] = greedy_sum.get('self_bleu_4') if greedy_sum else None
+        s['greedy_back_matter_rate'] = greedy_sum.get('back_matter_rate') if greedy_sum else None
 
+    sweep = (result.get('generation') or {}).get('temperature_sweep') or {}
+    for temp, row in sweep.items():
+        s[f'sweep_t{temp}_unusable_rate'] = row.get('unusable_rate')
+        s[f'sweep_t{temp}_degenerate_rate'] = row.get('degenerate_rate')
+        s[f'sweep_t{temp}_back_matter_rate'] = row.get('back_matter_rate')
+        s[f'sweep_t{temp}_self_bleu_4'] = row.get('self_bleu_4')
+        s[f'sweep_t{temp}_mean_loop_words'] = row.get('mean_loop_words')
     result['summary'] = s
 
     # ---- BAKE score: computed exactly ONCE from these same numbers ----------
@@ -357,6 +473,23 @@ def finalize_result(result: dict, args) -> None:
         if loop is not None and punct is not None:
             points['hygiene'] = M.hygiene_points(loop, punct)
     result['points'] = points
+    # HONESTY GUARD: bake_score() renormalises over whichever components are
+    # present, so a model evaluated with --gen-mode none silently scores as if
+    # hygiene did not exist. That is exactly how Talkie-1930-13b posted 97.6
+    # from {bpb, logic, chat} while missing the one axis it fails. Record what
+    # was missing so no ranking can quietly compare a partial score to a full
+    # one.
+    missing = [k for k in M.WEIGHTS if k not in points]
+    result['bake_components_missing'] = missing
+    result['bake_is_partial'] = bool(missing)
+    s['bake_components_missing'] = ','.join(missing) if missing else None
+    s['bake_is_partial'] = bool(missing)
+    s['bake_weight_covered'] = round(sum(w for k, w in M.WEIGHTS.items() if k in points), 3)
+    if missing:
+        print(
+            f'  WARNING: bake score is PARTIAL — missing {", ".join(missing)} '
+            f'({100 * (1 - s["bake_weight_covered"]):.0f}% of the weight); not comparable to a full score'
+        )
     score = M.bake_score(points)
     result['bake_score'] = score
     tier, text = M.verdict_text(score, lineage)
@@ -526,8 +659,30 @@ def parse_args(argv=None) -> argparse.Namespace:
         default='both',
         help="Decoding modes over the merged prompt battery ('both' = greedy for loop detection + sampled for quality).",
     )
-    p.add_argument('--gen-tokens', type=int, default=120)
+    p.add_argument(
+        '--gen-tokens',
+        type=int,
+        default=256,
+        help='New tokens per continuation. Default raised from 120 to 256: a real 49k-completion '
+        'bulk run had median 240 tokens (p90 727), and loops often only develop past 120.',
+    )
     p.add_argument('--generation-batch-size', type=int, default=4)
+    p.add_argument(
+        '--seed-set',
+        choices=('curated', 'cold', 'both'),
+        default='both',
+        help="Prompt battery. 'curated' = 46 topical stems; 'cold' = 26 bare function-word openers "
+        'sampled from a real 49k bulk run (much harder, no subject handed to the model); '
+        "'both' = the default 72.",
+    )
+    p.add_argument(
+        '--temp-sweep',
+        type=str,
+        default=None,
+        metavar='T1,T2,...',
+        help='Also summarise sampled generation at these temperatures, e.g. 0.8,1.0,1.2. '
+        'Each extra temperature costs one more full sampled pass. Off by default.',
+    )
     p.add_argument('--temperature', type=float, default=0.8)
     p.add_argument('--top-p', type=float, default=0.9)
     p.add_argument('--top-k', type=int, default=25)
@@ -541,6 +696,12 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument('--seed', type=int, default=1337)
     p.add_argument('--device', choices=('auto', 'cpu', 'cuda', 'mps'), default='auto')
     p.add_argument('--dtype', choices=('auto', 'float32', 'float16', 'bfloat16'), default='auto')
+    p.add_argument(
+        '--load-8bit',
+        action='store_true',
+        help='Load weights with bitsandbytes int8. Halves resident size so a 13B fits a 16GB card, '
+        'at a small measurement cost (-0.0075 nll on the 75M control). Recorded in the results JSON.',
+    )
     p.add_argument('--threads', type=int, default=None, help='Set PyTorch CPU worker threads.')
     p.add_argument('--include-checkpoints', action='store_true', help='Include checkpoint-N dirs during recursive discovery.')
     p.add_argument(
@@ -553,6 +714,19 @@ def parse_args(argv=None) -> argparse.Namespace:
         help='JSON output path (Markdown written beside it). Default: eval-<arch><size>.json in the folder that was pointed at.',
     )
     p.add_argument('--results-dir', type=Path, default=DEFAULT_RESULTS_DIR)
+    p.add_argument(
+        '--slim',
+        action='store_true',
+        help='Drop per-document records and generated texts from the main JSON (~85%% smaller). '
+        'The -summary.json sidecar is written either way. NOTE: a slim file cannot be used for '
+        'paired-bootstrap --collect or a full --render-report.',
+    )
+    p.add_argument(
+        '--audit-guide',
+        action='store_true',
+        help='Check that every summary key in an existing results JSON has a metric_guide entry, '
+        'then exit. Takes the JSON path as the positional argument.',
+    )
     p.add_argument('--force', action='store_true', help='Ignore matching cached checkpoint results.')
     p.add_argument('--render-report', type=Path, default=None, help='Only re-render Markdown from an existing results JSON.')
     p.add_argument(
@@ -566,15 +740,60 @@ def parse_args(argv=None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
+def audit_guide(path: Path) -> int:
+    """Fail loudly if any summary key in `path` lacks a metric_guide entry."""
+    payload = json.loads(path.read_text())
+    keys: set[str] = set()
+    for r in payload.get('results', []):
+        keys.update((r.get('summary') or {}).keys())
+    missing = undocumented(keys)
+    print(f'{path}: {len(keys)} summary keys, {len(keys) - len(missing)} documented')
+    if missing:
+        print('UNDOCUMENTED (add these to eval/metric_guide.py):')
+        for k in missing:
+            print(f'  {k}')
+        return 1
+    print('OK - every summary key is documented.')
+    return 0
+
+
 def main(argv=None) -> None:
     args = parse_args(argv)
 
     # ---- report-only mode ----------------------------------------------------
     if args.render_report:
-        payload = json.loads(Path(args.render_report).read_text())
-        out_md = args.out or Path(args.render_report).with_suffix('.md')
+        src = Path(args.render_report)
+        payload = json.loads(src.read_text())
+        # Refresh the self-description in place. This costs NOTHING (no model
+        # load, no GPU) and is the only way to bring a result forward onto the
+        # current schema when re-running the model is impractical -- e.g.
+        # MODELS/Talkie-1930-13b, whose 13B int8 weights cannot be re-evaluated
+        # on this machine safely.
+        keys: set[str] = set()
+        for r in payload.get('results', []):
+            keys.update((r.get('summary') or {}).keys())
+        payload['primary_metric'] = PRIMARY_METRIC
+        payload['how_to_read'] = HOW_TO_READ
+        payload['metric_guide'] = describe(sorted(keys))
+        missing = undocumented(keys)
+        if missing:
+            payload['metric_guide_undocumented'] = missing
+            print(f'  WARNING: {len(missing)} summary keys have no metric_guide entry: {", ".join(missing)}')
+        atomic_json(src, payload)
+        slim = {
+            'primary_metric': payload['primary_metric'],
+            'how_to_read': payload['how_to_read'],
+            'models': [
+                {'label': r.get('label'), 'params_millions': r.get('params_millions'), **(r.get('summary') or {})}
+                for r in payload.get('results', [])
+            ],
+            'metric_guide': payload['metric_guide'],
+        }
+        atomic_json(src.with_name(src.stem + '-summary.json'), slim)
+        out_md = args.out or src.with_suffix('.md')
         out_md.write_text(R.render_report(payload), encoding='utf-8')
         print(f'report: {out_md}')
+        print(f'summary: {src.with_name(src.stem + "-summary.json")}')
         return
 
     # ---- collect-only mode: compare models evaluated in separate runs ---------
@@ -595,6 +814,12 @@ def main(argv=None) -> None:
                 'Paired bootstrap uses the retained per-document records, so it is exact even though the models were evaluated separately.',
             ],
             'bootstrap_confidence': args.confidence,
+            # SELF-DESCRIPTION. This collected file is the one a cold agent opens
+            # FIRST - it is the cross-model ranking - so it must carry the same
+            # guide as a single-model result, not less.
+            'primary_metric': PRIMARY_METRIC,
+            'how_to_read': HOW_TO_READ,
+            'metric_guide': {},
             'results': results,
             'skipped': [],
             'failures': [],
@@ -613,9 +838,30 @@ def main(argv=None) -> None:
         }
         for i, row in enumerate(payload['rankings']['bake'], 1):
             row['rank'] = i
+
+        seen_keys: set[str] = set()
+        for r in results:
+            seen_keys.update((r.get('summary') or {}).keys())
+        payload['metric_guide'] = describe(sorted(seen_keys))
+        missing = undocumented(seen_keys)
+        if missing:
+            payload['metric_guide_undocumented'] = missing
+            print(f'  WARNING: {len(missing)} summary keys have no metric_guide entry: {", ".join(missing)}')
+
         out_json = (args.out or args.results_dir / 'eval-collected.json').resolve()
         out_json.parent.mkdir(parents=True, exist_ok=True)
         atomic_json(out_json, payload)
+        atomic_json(
+            out_json.with_name(out_json.stem + '-summary.json'),
+            {
+                'primary_metric': payload['primary_metric'],
+                'how_to_read': payload['how_to_read'],
+                'models': [
+                    {'label': r.get('label'), 'params_millions': r.get('params_millions'), **(r.get('summary') or {})} for r in results
+                ],
+                'metric_guide': payload['metric_guide'],
+            },
+        )
         out_md = out_json.with_suffix('.md')
         out_md.write_text(R.render_report(payload), encoding='utf-8')
         print(f'JSON (for agents): {out_json}')
@@ -634,16 +880,21 @@ def main(argv=None) -> None:
         torch.cuda.manual_seed_all(args.seed)
 
     args.generation_modes = {'both': ['greedy', 'sample'], 'greedy': ['greedy'], 'sample': ['sample'], 'none': []}[args.gen_mode]
+    args.temp_sweep = [float(t) for t in args.temp_sweep.split(',') if t.strip()] if args.temp_sweep else []
+    if args.audit_guide:
+        if not args.targets:
+            die('--audit-guide needs a results JSON path as the positional argument')
+        raise SystemExit(audit_guide(Path(args.targets[0])))
 
     # ---- data (loaded once for the whole run) ---------------------------------
     from .prompts import (
         LOGIC_ITEMS,
-        PROMPTS,
+        SEED_SETS,
         TRAP_PAIRS,
     )
 
     prompts = {
-        'generation': PROMPTS,
+        'generation': SEED_SETS[args.seed_set](),
         'logic_items': LOGIC_ITEMS,
         'trap_pairs': TRAP_PAIRS,
         'probe_sentences': PROBE_SENTENCES,
@@ -721,10 +972,30 @@ def main(argv=None) -> None:
         },
         'notes': extra_notes,
         'bootstrap_confidence': args.confidence,
+        # ---- SELF-DESCRIPTION -------------------------------------------
+        # This file must be readable by an agent on another machine with no
+        # access to this repo's history. `how_to_read` states the three rules
+        # that prevent wrong conclusions; `metric_guide` gives every summary
+        # key a unit, a direction and its comparability caveats.
+        'primary_metric': PRIMARY_METRIC,
+        'how_to_read': HOW_TO_READ,
+        'metric_guide': {},
         'results': [],
         'skipped': resolved.skipped,
         'failures': [],
     }
+    # SNAPSHOT BEFORE OVERWRITING. `payload['results']` starts EMPTY and is
+    # written incrementally, so a --force run that dies partway (e.g. an OOM in
+    # the generation suite) leaves an empty file where good results used to be.
+    # That destroyed a 13B evaluation that could not be re-run. Never again:
+    # keep the previous file beside the new one until the run succeeds.
+    if out_json.exists():
+        try:
+            prev = out_json.with_name(out_json.stem + '.prev.json')
+            prev.write_bytes(out_json.read_bytes())
+        except Exception as exc:  # insurance must never block the run
+            print(f'  (could not snapshot previous results: {exc})')
+
     cached: dict[str, dict] = {}
     if out_json.exists() and not args.force:
         try:
@@ -757,7 +1028,25 @@ def main(argv=None) -> None:
                 result['lineage']['line'] = provenance_line(result['lineage'])
                 print('  [cached]')
             else:
-                result = evaluate_checkpoint(checkpoint, tok_dir, device, dtype, args, prompts, data)
+                partial_path = out_json.with_name(out_json.stem + '.partial.json')
+
+            def _snapshot(stage: str, partial: dict, _p=partial_path, _c=checkpoint) -> None:
+                # ONE small file per model, overwritten in place - not a growing
+                # pile. If a later suite dies, everything up to `stage` survives.
+                atomic_json(
+                    _p,
+                    {
+                        'incomplete': True,
+                        'stage_completed': stage,
+                        'checkpoint': str(_c),
+                        'note': 'Partial snapshot written mid-evaluation. Superseded by the '
+                        'main eval-*.json once the checkpoint finishes; kept so an '
+                        'expensive run that dies late is not lost.',
+                        'result': partial,
+                    },
+                )
+
+            result = evaluate_checkpoint(checkpoint, tok_dir, device, dtype, args, prompts, data, snapshot=_snapshot)
             result['fingerprint'] = fingerprint
             result['n_prose_docs'] = len(heldout)
             result['n_chat_docs'] = len(chats)
@@ -794,7 +1083,54 @@ def main(argv=None) -> None:
         {'rank': i, 'label': r['label'], 'bake_score': r['bake_score'], 'tier': r['verdict']['tier']}
         for i, r in enumerate(sorted(scored, key=lambda r: -r['bake_score']), 1)
     ]
+    if not payload['results']:
+        # Every checkpoint failed. Writing this would replace a good previous
+        # result with an empty one - exactly the failure that lost Talkie's 13B
+        # evaluation. Leave whatever is on disk alone.
+        prev = out_json.with_name(out_json.stem + '.prev.json')
+        if prev.exists():
+            out_json.write_bytes(prev.read_bytes())
+            print(f'  RESTORED previous results from {prev} (this run produced none)')
+        die('every checkpoint failed - previous results left intact')
+
     atomic_json(out_json, payload)
+
+    # ---- describe exactly the keys this run produced -------------------------
+    seen_keys: set[str] = set()
+    for r in payload['results']:
+        seen_keys.update((r.get('summary') or {}).keys())
+    payload['metric_guide'] = describe(sorted(seen_keys))
+    missing = undocumented(seen_keys)
+    if missing:
+        # A metric nobody can interpret is worse than no metric. Loud, not fatal.
+        payload['metric_guide_undocumented'] = missing
+        print(f'  WARNING: {len(missing)} summary keys have no metric_guide entry: {", ".join(missing)}')
+    atomic_json(out_json, payload)
+
+    # ---- small sidecars for humans and greps ---------------------------------
+    # The full JSON is ~85% per-document records and generated texts, which exist
+    # so --collect can run paired bootstrap and --render-report can re-render
+    # without reloading models. Nobody should have to read that to get a number.
+    # NUMBERS FIRST, dictionary after: metric_guide is ~600 lines and the data is
+    # ~60, so putting the guide first would bury exactly what you opened this for.
+    slim = {
+        'primary_metric': payload['primary_metric'],
+        'how_to_read': payload['how_to_read'],
+        'models': [
+            {'label': r.get('label'), 'params_millions': r.get('params_millions'), **(r.get('summary') or {})} for r in payload['results']
+        ],
+        'metric_guide': payload['metric_guide'],
+    }
+    atomic_json(out_json.with_name(out_json.stem + '-summary.json'), slim)
+
+    # One line per model, append-only: greppable and diffable across runs.
+    try:
+        DEFAULT_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(DEFAULT_RESULTS_DIR / 'summaries.jsonl', 'a', encoding='utf-8') as fh:
+            for row in slim['models']:
+                fh.write(json.dumps({'generated': payload.get('created'), **row}) + '\n')
+    except Exception as exc:  # a convenience index must never fail a run
+        print(f'  (could not append to summaries.jsonl: {exc})')
 
     # ---- Markdown report ------------------------------------------------------------
     report_text = R.render_report(payload)
@@ -804,7 +1140,26 @@ def main(argv=None) -> None:
         with open(out_md, 'a', encoding='utf-8') as f:
             f.write('\n' + notes + '\n')
 
+    if args.slim:
+        # Destroys paired-bootstrap and re-render ability for this file; the
+        # numbers are all still in the -summary.json sidecar.
+        for r in payload['results']:
+            for key in ('prose_records', 'chat_records', 'period_probes', 'training_curve'):
+                r.pop(key, None)
+            gen = r.get('generation') or {}
+            for key in ('greedy_samples', 'sampled_samples'):
+                gen.pop(key, None)
+        payload['slim'] = True
+        payload['notes'] = [
+            *payload.get('notes', []),
+            'SLIM: per-document records and generated texts were dropped. '
+            '--collect cannot paired-bootstrap this file and --render-report '
+            'cannot fully re-render it. Re-run without --slim to restore.',
+        ]
+        atomic_json(out_json, payload)
+
     print(f'\nJSON (for agents): {out_json}')
+    print(f'Summary (small):   {out_json.with_name(out_json.stem + "-summary.json")}')
     print(f'Markdown (humans): {out_md}')
 
 

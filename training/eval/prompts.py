@@ -391,3 +391,58 @@ PROMPTS = [
     'Let the farmers be warned that this poisonous plant is not to be confused with the edible fruit,',
     'Many the gay straw-rides to the Lake; frequent and long the walks through',
 ]
+
+
+# ============================================================================
+# COLD SEEDS - the generation regime a synth-data pipeline actually runs in
+# ============================================================================
+#
+# PROMPTS above are curated TOPICAL stems ('The steam engine', 'What is God?
+# God is'). They hand the model a subject, which is a much easier test than
+# production use.
+#
+# These are harvested from the opener distribution of a real 49,413-completion
+# bulk run: 36,753 DISTINCT two-word openers, of which the most frequent are
+# bare function words carrying almost no topical signal.
+# A model that only looks healthy when handed a subject will show its degeneracy
+# here first.
+#
+#   source: https://huggingface.co/datasets/croqaz/tiny-vintage-completions
+#
+# Deliberately NOT loaded from that dataset: the evaluator must not depend on a
+# data artefact that may move or disappear. This is a fixed, checked-in sample
+# of that distribution.
+COLD_SEEDS = [
+    'In the',
+    'Of the',
+    'It is',
+    'But the',
+    'On the',
+    'From the',
+    'To the',
+    'The following',
+    'When the',
+    'We have',
+    'That the',
+    'It was',
+    'If the',
+    'And the',
+    'As the',
+    'By the',
+    'At the',
+    'The most',
+    'He was',
+    'There is',
+    'The first',
+    'For the',
+    'The whole',
+    'I have',
+    'An instance',
+    'Foreign affairs',
+]
+
+SEED_SETS = {
+    'curated': lambda: list(PROMPTS),
+    'cold': lambda: list(COLD_SEEDS),
+    'both': lambda: list(PROMPTS) + list(COLD_SEEDS),
+}

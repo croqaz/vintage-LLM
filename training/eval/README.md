@@ -1,12 +1,10 @@
-# eval/ - merged evaluation harness
+# eval/ - Evaluation harness
 
-One entry point that loads each model **once** and computes every metric the
-three legacy scripts (`evaluate.py`, `evaluate2.py`, `evaluate3.py`) used to
-compute separately:
+One entry point that loads each model **once** and computes every metric:
 
 ```bash
 python -m eval                                   # latest checkpoint in ./checkpoints
-python -m eval path/to/checkpoint-22944          # one checkpoint
+python -m eval path/to/checkpoint-12345          # one checkpoint
 python -m eval autoresearch autoresearch2        # every final/ export in those trees
 python -m eval Vintage1 --gen-mode sample        # cheaper generation pass
 python -m eval --render-report results.json      # re-render Markdown only
@@ -16,13 +14,13 @@ python -m eval --render-report results.json      # re-render Markdown only
 
 | file | role |
 |---|---|
-| `prompts.py` | THE single merged prompt list (eval1 + eval2 + eval3 prompts) and all probe/logic/trap constants |
+| `prompts.py` | Big prompt list and all probe/logic/trap constants |
 | `helpers.py` | device/dtype, checkpoint & tokenizer discovery, model load/free, training-lineage sniffing, data loading |
 | `metrics.py` | ALL metric math. New metrics go here. |
-| `report.py` | JSON -> Markdown rendering. Tweak independently of metric code. |
+| `report.py`  | JSON -> Markdown rendering. Tweak independently of metric code. |
 | `__main__.py` | CLI orchestration, caching, rankings |
 
-## What runs per checkpoint (one model load)
+## What runs per checkpoint
 
 1. **Model info + training lineage** - architecture, params, disk size,
    base-vs-SFT recipe, LR, context length, tokens-seen estimate (from
@@ -35,7 +33,7 @@ python -m eval --render-report results.json      # re-render Markdown only
    context diagnostics (the eval3 code path; also feeds ranking).
 5. **Conditional chat-target BPB** (offset-aligned; replaces both old chat
    implementations).
-6. **Logic forced choice + anachronism traps** (from evaluate2).
+6. **Logic forced choice + anachronism traps**.
 7. **Generation over the merged prompt battery** - generated once per
    decoding mode (`--gen-mode both|greedy|sample|none`, default `both`);
    distinct-1/2/3, echo rate, longest loop, punctuation issues per 100 words,
@@ -134,6 +132,77 @@ ladder silently mixes two different held-out sets.
 `REFERENCE_LADDER` (display) is separate from `BPB_LADDER` (bake-score anchors) on
 purpose: editing the display ladder must never silently move everyone's bake score.
 
+## Generation-regime metrics (added 2026-08-23)
+
+BPB measures the HEAD of the distribution. Bulk generation lives in the TAIL, and
+a model can compress beautifully while producing unusable text at t=1.2. These
+close that gap:
+
+| in `summary` | what it catches |
+|---|---|
+| `sampled_back_matter_rate` | index / catalogue / table-of-contents output. Lexically DIVERSE, so `distinct_2`, `echo_rate` and loop detection are ALL blind to it. Calibrated on 49,413 real completions ([tiny-vintage-completions](https://huggingface.co/datasets/croqaz/tiny-vintage-completions)): 48.7% recall on the worst tail, **0.00% false positives** on 17,085 clean ones. Precise, not exhaustive -- 0% means "none detected". |
+| `sampled_self_bleu_4` | mode collapse ACROSS completions. `distinct_n` looks inside ONE completion, so 500 near-identical completions each score as perfectly diverse. This looks between them. |
+| `sampled_unusable_rate` | degenerate OR back matter -- the closest thing here to the keep-rate of a synth-data filter. |
+| `sweep_t<T>_*` | the same numbers per temperature (`--temp-sweep 0.8,1.0,1.2`). |
+| `bake_is_partial`, `bake_components_missing`, `bake_weight_covered` | `bake_score()` renormalises over PRESENT components, so `--gen-mode none` silently produces a score that ignores hygiene. These make that visible. |
+
+### Flags
+
+```bash
+python -m eval MODEL --temp-sweep 0.8,1.0,1.2   # tail behaviour; +1 sampled pass per temp
+python -m eval MODEL --seed-set cold            # 26 bare function-word openers
+python -m eval MODEL --seed-set curated         # the original 46 topical stems
+python -m eval MODEL --gen-tokens 512           # longer than the 256 default
+python -m eval MODEL --load-8bit                # int8: fits a 13B on a 16GB card
+```
+
+Defaults changed: `--gen-tokens` 120 -> **256** and `--seed-set` -> **both** (72
+prompts). Both were chosen from a real 49,413-completion bulk run
+([tiny-vintage-completions](https://huggingface.co/datasets/croqaz/tiny-vintage-completions)) whose generations had median 240 tokens
+(p90 727) and 36,753 distinct two-word openers, mostly bare function words. The old 46 curated topical stems handed the model a
+subject, which is an easier test than production use.
+
+Cost on a 75M model: full battery with a 3-point temperature sweep = **79s**.
+Without the sweep it is well under a minute.
+
+## Reading the JSON cold (self-description)
+
+Every results JSON describes itself, so an agent on another machine with no
+access to this repo's history can answer "which number do I quote, and which way
+is good?" without reading the source:
+
+| top-level key | what it gives you |
+|---|---|
+| `primary_metric` | `"prose_bpb"` -- the one number to rank on |
+| `how_to_read` | the three rules that prevent WRONG conclusions |
+| `metric_guide` | per summary key: `desc`, `unit`, `direction` (`lower_is_better` / `higher_is_better` / `neutral`), `comparable_across`, and a `caveat` where a naive reading misleads |
+
+The three rules, because they matter more than anything else here:
+
+1. **Rank on `prose_bpb`** (lower is better). Byte-normalised, fixed 1024-token
+   window -- the only headline valid across tokenizers, context lengths and sizes.
+2. **Never rank on `final_eval_loss`** across models trained on different data.
+   It uses each run's OWN validation split. Its guide entry says so.
+3. **Check `bake_is_partial` before comparing `bake_score`.** A partial score was
+   renormalised over only the measured components and is inflated.
+
+`python -m eval --audit-guide results.json` fails if any summary key lacks a
+guide entry. A metric nobody can interpret is worse than no metric, so adding one
+without documenting it is a bug, not a warning.
+
+## File sizes
+
+A full result JSON is ~230 KB / ~6,600 lines, of which about 85% is
+`generation.*_samples` and `*_records`. That bulk is not decoration: `--collect`
+needs the per-document records for PAIRED bootstrap, and `--render-report` needs
+the generated texts. Two sidecars exist so you never have to open it:
+
+* `eval-<slug>-summary.json` -- flat summary per model, ~2 KB. Written always.
+* `eval_results/summaries.jsonl` -- one line per model per run, append-only;
+  greppable and diffable over time.
+* `--slim` drops the bulk from the main JSON (~85% smaller) when you know you
+  will not need paired bootstrap or a full re-render.
+
 ## Adding a new metric (vowel counts, Latin-letter counts, entropy, ...)
 
 1. Compute it in `metrics.py` (a pure function; text stats belong inside or
@@ -141,6 +210,3 @@ purpose: editing the display ladder must never silently move everyone's bake sco
 2. Surface the headline number in `finalize_result()` in `__main__.py`
    (one stable snake_case key in `summary`).
 3. Print it in `report.py`.
-
-Legacy scripts are kept at the repo root for reference but are superseded by
-this package.

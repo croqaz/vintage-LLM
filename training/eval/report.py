@@ -192,6 +192,17 @@ def render_heldout_section(r: dict) -> list[str]:
 
 def render_bake_section(r: dict) -> list[str]:
     points = r.get('points') or {}
+    partial_note = []
+    if r.get('bake_is_partial'):
+        missing = ', '.join(r.get('bake_components_missing') or [])
+        covered = (r.get('summary') or {}).get('bake_weight_covered')
+        partial_note = [
+            '',
+            f'> **PARTIAL SCORE — NOT COMPARABLE.** This bake score is missing: **{missing}**. '
+            f'It was renormalised over the {fmt(100 * (covered or 0), 0)}% of the weight that WAS measured, '
+            'so it is inflated relative to any model scored on all four components. '
+            'Re-run without `--gen-mode none` for a comparable number.',
+        ]
     score = r.get('bake_score')
     verdict = r.get('verdict', {})
     logic, traps = r.get('logic') or {}, r.get('traps') or {}
@@ -199,7 +210,10 @@ def render_bake_section(r: dict) -> list[str]:
     sampled_summary = (r.get('generation') or {}).get('sampled_summary') or {}
     tier = verdict.get('tier')
 
-    L = [f'## Bake score: {fmt(score, 0)}/100' + (f' — **{tier}**' if tier else ''), '']
+    header = f'## Bake score: {fmt(score, 0)}/100'
+    if r.get('bake_is_partial'):
+        header += ' (PARTIAL)'
+    L = [header + (f' — **{tier}**' if tier else ''), *partial_note, '']
     if verdict.get('text'):
         L += [verdict['text'], '']
 
@@ -284,8 +298,36 @@ def render_generation_section(r: dict, max_examples: int = 6) -> list[str]:
             f'{fmt(100 * (sampled_sum.get("degenerate_rate") or 0), 1)}%, '
             f'prompt-copy rate {fmt(sampled_sum.get("mean_prompt_copy_rate"), 3)}',
             f'- Punctuation issues per 100 words (sampled): {fmt(sampled_sum.get("mean_punct_issues_p100"), 2)}',
+            f'- **Back matter** (index/catalogue/TOC text): {fmt(100 * (sampled_sum.get("back_matter_rate") or 0), 1)}% '
+            f'of completions, mean sentence {fmt(sampled_sum.get("mean_sentence_words"), 1)} words. '
+            'Lexically DIVERSE, so distinct-n, echo and loop detection are all blind to it.',
+            f'- **Self-BLEU-4** (mode collapse across completions): {fmt(sampled_sum.get("self_bleu_4"), 3)} '
+            "— fraction of each completion's 4-grams that also appear in another completion. "
+            '0 = every completion lexically unique; high = the model keeps writing the same thing.',
+            f'- **Unusable rate** (degenerate OR back matter — what a synth-data filter would drop): '
+            f'**{fmt(100 * (sampled_sum.get("unusable_rate") or 0), 1)}%**',
         ]
     L.append('')
+
+    sweep = gen.get('temperature_sweep') or {}
+    if sweep:
+        L += [
+            '### Degeneracy vs sampling temperature',
+            '',
+            'Bulk generation runs hot. BPB measures the HEAD of the distribution; these measure the TAIL.',
+            '',
+            '| temperature | unusable | degenerate | back matter | self-BLEU-4 | mean loop (w) |',
+            '|---|---:|---:|---:|---:|---:|',
+        ]
+        for temp in sorted(sweep, key=float):
+            row = sweep[temp] or {}
+            L.append(
+                f'| t={temp} | {fmt(100 * (row.get("unusable_rate") or 0), 1)}% '
+                f'| {fmt(100 * (row.get("degenerate_rate") or 0), 1)}% '
+                f'| {fmt(100 * (row.get("back_matter_rate") or 0), 1)}% '
+                f'| {fmt(row.get("self_bleu_4"), 3)} | {fmt(row.get("mean_loop_words"), 1)} |'
+            )
+        L.append('')
     if sampled_sum.get('degenerate_rate', 0) > 0.34 or sampled_sum.get('mean_echo_rate', 0) > 0.30:
         L += ['> High repetition/degeneracy across probes - typical of an undertrained checkpoint.', '']
     elif sampled_sum.get('worst_echo_rate', 0) > 0.45:

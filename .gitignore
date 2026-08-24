@@ -153,14 +153,17 @@ docs/
 dataset/*DB
 !bench/data/
 
+training/*-data/
+training/*-text/
+training/*.bin
 training/*checkpoint*
 training/*results*
-training/TimeCapsuleLLM*
-training/*-text/
-training/*-data/
-training/*.bin
-training/autoresearch/
+training/autore777/
+training/autoresearc*
+training/llama-77/
+training/MODELS/
 training/patina/
+training/TimeCapsuleLLM*
 
 knowledge/pre1900
 !knowledge/pre1900/*.py

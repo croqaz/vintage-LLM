@@ -26,6 +26,7 @@ Command-line use:
         exit code 0 = clean (no anachronism), 1 = anachronism found
 """
 
+import functools
 import os
 import re
 import sys
@@ -89,11 +90,13 @@ def _regex():
 _ALPHA = re.compile(r'[a-z]+')
 _ALPHA_PHRASE = re.compile(r'[a-z]+( [a-z]+)+')
 _FAST = None
+_PREFIXES = {}
 
 
 def _build_fast():
     """single: pure-word terms (token lookup); by_n: {n: set of n-word phrases}
     (token n-gram lookup); other_re: regex for the rest (c++, <html>, ```py, ...)."""
+    global _PREFIXES
     banned = _load_list('banned.txt')
     allowed = _load_list('allowed.txt')
     single, by_n, other = set(), {}, []
@@ -104,6 +107,12 @@ def _build_fast():
             by_n.setdefault(t.count(' ') + 1, set()).add(t)
         else:
             other.append(t)
+    # For every n, the set of (n-1)-word prefixes that can begin a phrase.
+    # find_anachronisms_fast uses it to skip n-grams that can never match.
+    _PREFIXES = {
+        n: None if n == 2 else {tuple(p.split()) for p in phrases for p in [p.rsplit(' ', 1)[0]]}
+        for n, phrases in by_n.items()
+    }
     pats = sorted((re.escape(t) for t in other), key=len, reverse=True)
     other_re = re.compile(r'(?<!\w)(?:' + '|'.join(pats) + r")(?:'s|es|s|ed)?(?!\w)", re.I) if pats else None
     return single, by_n, other_re
@@ -129,6 +138,18 @@ def _forms(w):
             yield w[:-1]
 
 
+@functools.lru_cache(maxsize=1_000_000)
+def _forms_tuple(w):
+    """Cached version of _forms(): returns a tuple of the same forms.
+
+    find_anachronisms_fast() calls _forms() for every unique token of every
+    document, and the same common words ("the", "his", ...) repeat across
+    documents. Memoizing turns ~6M generator calls on a large run into ~300k
+    cache hits.
+    """
+    return tuple(_forms(w))
+
+
 def find_anachronisms_fast(text, tokens, check_years=True) -> list[str]:
     """Fast equivalent of find_anachronisms() when the tokens are already known.
 
@@ -147,17 +168,23 @@ def find_anachronisms_fast(text, tokens, check_years=True) -> list[str]:
         hits.update(m.group(0).lower() for m in other_re.finditer(text))
     # single words
     for tok in set(tokens):
-        for f in _forms(tok):
+        for f in _forms_tuple(tok):
             if f in single:
                 hits.add(f)
                 break
     # multi-word phrases via token n-grams (plural allowed on the last word)
     ntok = len(tokens)
     for n, phrases in by_n.items():
+        # Skip any n-gram whose first n-1 words cannot begin one of our phrases
+        # (avoids building joins that can never match).
+        firsts = _PREFIXES[n]
         for i in range(ntok - n + 1):
-            head = ' '.join(tokens[i : i + n - 1])
-            prefix = head + ' ' if head else ''
-            for last in _forms(tokens[i + n - 1]):
+            head = tokens[i : i + n - 1]
+            if firsts is not None and tuple(head) not in firsts:
+                continue
+            head_s = ' '.join(head)
+            prefix = head_s + ' ' if head_s else ''
+            for last in _forms_tuple(tokens[i + n - 1]):
                 p = prefix + last
                 if p in phrases:
                     hits.add(p)
