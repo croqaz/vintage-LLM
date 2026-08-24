@@ -14,7 +14,7 @@ import sys
 import time
 import tomllib
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 import torch
@@ -111,15 +111,29 @@ class BinaryTokenDataset(Dataset):
     Supports a per-epoch random offset so chunk boundaries vary across epochs.
     """
 
-    def __init__(self, data: np.ndarray, seq_length: int, base_seed: int = 0):
+    def __init__(self, data: np.ndarray, seq_length: int, base_seed: int = 0, doc_masking: bool = False, eos_id: Optional[int] = None):
         """
         Args:
             data: numpy memmap (or array) of tokens (uint16)
             seq_length: sequence length for each sample
+            doc_masking: emit `position_ids` that restart at 0 after every EOS.
+                Transformers reads them, detects the document boundaries via
+                `find_packed_sequence_indices`, and ANDs an intra-document mask
+                into the causal mask -- so a token never attends into the
+                previous document. RoPE positions restart too, since the same
+                `position_ids` feed the rotary embedding. Supported on sdpa,
+                flex_attention and flash_attention_2 (FA2 takes the varlen
+                path instead of a mask tensor). Costs <0.5% step time.
+            eos_id: token id that terminates a document. Required when
+                doc_masking is on.
         """
         self.data = data
         self.seq_length = seq_length
         self.base_seed = base_seed
+        self.doc_masking = doc_masking
+        self.eos_id = eos_id
+        if doc_masking and eos_id is None:
+            raise ValueError('doc_masking requires eos_id')
         self.offset = 0  # random offset applied per epoch
 
         # Compute a stable sequence count that won't shrink when any per-epoch
@@ -161,13 +175,41 @@ class BinaryTokenDataset(Dataset):
         # Read from memmap and convert to int64 for PyTorch
         tokens = torch.from_numpy(self.data[start:end].astype(np.int64))
 
-        return {
+        sample = {
             'input_ids': tokens,
             'labels': tokens,
         }
+        if self.doc_masking:
+            sample['position_ids'] = self._position_ids(tokens)
+        return sample
+
+    def _position_ids(self, tokens: torch.Tensor) -> torch.Tensor:
+        """Positions counted from the start of each document, not the window.
+
+        EOS terminates the document it belongs to, so the token AFTER an EOS is
+        position 0 of the next one.
+
+        Windows are cut at arbitrary offsets, so the leading fragment of a
+        window usually starts mid-document. It is given positions from 0 as if
+        it were a document start -- the true offset would require scanning back
+        past the window edge. That mislabels the RoPE positions of ~1 fragment
+        per window; see autoresearch/attention/_probe/README.md.
+        """
+        pos = torch.arange(self.seq_length, dtype=torch.long)
+        starts = torch.nonzero(tokens == self.eos_id, as_tuple=False).flatten() + 1
+        starts = starts[starts < self.seq_length]
+        if starts.numel() == 0:
+            return pos
+        # last_start[i] = index of the most recent document start at or before i
+        last_start = torch.zeros(self.seq_length, dtype=torch.long)
+        last_start[starts] = starts
+        last_start = torch.cummax(last_start, 0).values
+        return pos - last_start
 
 
-def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int, base_seed: int = 0) -> BinaryTokenDataset:
+def load_binary_files(
+    file_pattern: Union[str, List[str]], seq_length: int, base_seed: int = 0, doc_masking: bool = False, eos_id: Optional[int] = None
+) -> BinaryTokenDataset:
     """
     Load binary files from a list of paths or glob pattern.
 
@@ -218,7 +260,7 @@ def load_binary_files(file_pattern: Union[str, List[str]], seq_length: int, base
         print(f'  → Mapped {tokens:,} tokens from {Path(f).name}')
     print(f'Total tokens: {len(data):,}')
 
-    return BinaryTokenDataset(data, seq_length, base_seed)
+    return BinaryTokenDataset(data, seq_length, base_seed, doc_masking=doc_masking, eos_id=eos_id)
 
 
 # ============================================================================
@@ -234,6 +276,10 @@ class DetailedLoggingCallback(TrainerCallback):
         self.prediction_bar = None
         self.current_step = 0
         self.instability_detected = False
+        # Rolling window for the finite-blow-up detector (see on_log).
+        self.loss_history = []
+        self.best_loss_median = None
+        self.sustained_strikes = 0
 
     def on_train_begin(self, args, state, control, **kwargs):
         if state.is_world_process_zero:
@@ -317,7 +363,42 @@ class DetailedLoggingCallback(TrainerCallback):
             grad_bad = grad_norm is not None and (math.isnan(grad_norm) or math.isinf(grad_norm))
             loss_zero = loss == 0.0 and step > 1  # loss=0 after first step is suspicious
 
-            if loss_bad or grad_bad or loss_zero:
+            # --- finite blow-up / sustained-degradation detection ---
+            # The NaN/Inf tests above cannot see a run destroying itself with
+            # large but FINITE numbers. long/kv1_1epoch went from loss 3.21 to a
+            # SUSTAINED 6.8 and then to 3232, with grad_norm reaching 2.5e7, over
+            # ~800 steps -- and this callback let every one of them through
+            # because nothing was ever NaN. 26 GPU-hours were then spent on an
+            # already-destroyed model. Two rules close that gap:
+            #
+            #   blow-up   : one logged loss >5x the rolling median (and >10)
+            #   sustained : the rolling median itself rises >1.75x above the best
+            #               median ever seen, twice in a row
+            #
+            # Both are deliberately loose enough to ignore recoverable spikes --
+            # the same run survived an isolated loss of 11.96 and carried on, and
+            # that would not have tripped either rule.
+            self.loss_history.append(loss)
+            if len(self.loss_history) > 20:
+                self.loss_history.pop(0)
+            blowup = sustained = False
+            if len(self.loss_history) == 20 and not (loss_bad or loss_zero):
+                med = sorted(self.loss_history)[10]
+                warm = getattr(args, 'warmup_steps', 0) or 0
+                if step > warm + 500:
+                    if self.best_loss_median is None or med < self.best_loss_median:
+                        self.best_loss_median = med
+                    blowup = loss > max(10.0, 5.0 * med)
+                    if med > 1.75 * self.best_loss_median:
+                        self.sustained_strikes += 1
+                        sustained = self.sustained_strikes >= 2
+                    else:
+                        self.sustained_strikes = 0
+                    if blowup or sustained:
+                        kind = 'BLOW-UP' if blowup else 'SUSTAINED DEGRADATION'
+                        print(f'\n[INSTABILITY] {kind}: loss {loss:.4f}, rolling median {med:.4f}, best median {self.best_loss_median:.4f}')
+
+            if loss_bad or grad_bad or loss_zero or blowup or sustained:
                 print('\n' + '!' * 80)
                 print('TRAINING HALTED - NUMERICAL INSTABILITY DETECTED !!')
                 print('!' * 80)
@@ -544,6 +625,30 @@ class S3UploadCallback(TrainerCallback):
 # ============================================================================
 # Configuration Loading
 # ============================================================================
+
+
+def _format_optim_args(value: Union[str, Dict, None]) -> Optional[str]:
+    """Render `optim_args` as the "k=v,k=v" string transformers expects.
+
+    A TOML table is the friendly form; a plain string is passed through so an
+    already-formatted value still works. Ints are kept integral because
+    transformers casts t_alpha / t_beta3 with int(), which rejects "4000.0".
+    """
+    if value is None or value == '':
+        return None
+    if isinstance(value, str):
+        return value
+    if not isinstance(value, dict):
+        raise ValueError(f'optim_args must be a table or a string, got {type(value).__name__}')
+
+    def fmt(v):
+        if isinstance(v, bool):
+            return str(v)
+        if isinstance(v, float) and v.is_integer():
+            return str(int(v))
+        return str(v)
+
+    return ','.join(f'{k}={fmt(v)}' for k, v in value.items())
 
 
 def make_model_id(model_type: str, num_params: int) -> str:
@@ -785,6 +890,45 @@ def main():
     else:
         model = AutoModelForCausalLM.from_config(model_config, **model_init_kwargs)
 
+    # Optional fp8 training (torchao). Replaces the Linear layers with
+    # Float8Linear: master weights stay fp32 and autocast still runs bf16, but
+    # the matmul inputs are cast to float8_e4m3 and run on the fp8 tensor cores.
+    # This is a THROUGHPUT change, not a precision-of-record change -- unlike
+    # `dtype = "bfloat16"`, the fp32 master copy is kept.
+    #
+    # Verified on this box (RTX 4090, sm_89): torch._scaled_mm works and
+    # torchao converts cleanly, even though torchao's fast paths target sm_90.
+    # lm_head is excluded: with tie_word_embeddings the output matrix IS the
+    # input embedding, and swapping it for a Float8Linear breaks the tie.
+    # NB: `train_cfg` is not bound until later in this function -- read the
+    # section straight off `cfg` here.
+    if cfg['training'].get('fp8', False):
+        from torchao.float8 import Float8LinearConfig, convert_to_float8_training
+
+        def _fp8_filter(mod, fqn: str) -> bool:
+            if 'lm_head' in fqn:
+                return False
+            # fp8 matmuls need both dims divisible by 16
+            return all(d % 16 == 0 for d in (mod.in_features, mod.out_features))
+
+        # round_scales_to_power_of_2 is REQUIRED here, not a tuning knob.
+        # Without it, fp8 + torch.compile produces grad_norm=NaN on the very
+        # first step: the loss is finite (10.56, a normal init value) but 48
+        # weight grads are NaN -- exactly q_proj, o_proj and down_proj in all
+        # 16 layers, i.e. every Linear whose out_features equals hidden_size.
+        # Eager fp8 is fine (40 clean steps, loss 7.09 -> 6.95), and both sdpa
+        # and flash-attn2 fail identically, so it is the compiled backward, not
+        # the attention backend. A power-of-2 scale makes scale/unscale exactly
+        # invertible in floating point, so the reciprocal carries no rounding
+        # error into the e5m2 grad_output cast. Measured on this box: 48 NaN
+        # grads -> 0, grad_norm nan -> 2.47.
+        # (torch._inductor.config.emulate_precision_casts only got 48 -> 16.)
+        # See autoresearch/precision/_probe/README.md.
+        fp8_cfg = Float8LinearConfig(round_scales_to_power_of_2=True)
+        convert_to_float8_training(model, module_filter_fn=_fp8_filter, config=fp8_cfg)
+        n_fp8 = sum(1 for m in model.modules() if 'Float8' in type(m).__name__)
+        accelerator.print(f'  fp8 training: ON via torchao ({n_fp8} Float8 modules, lm_head excluded, pow2 scales)')
+
     # Print model info
     num_params = sum(p.numel() for p in model.parameters())
     num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -810,11 +954,26 @@ def main():
     accelerator.print('Loading datasets...')
     seq_length = cfg['data']['max_seq_length']
 
+    # Intra-document masking. Documents are packed back-to-back into the token
+    # stream and windows are cut at arbitrary offsets, so a window normally
+    # straddles a document boundary and a token can attend into the previous,
+    # unrelated document. Turning this on emits `position_ids` that restart at
+    # each EOS; Transformers turns those into an intra-document attention mask
+    # (and per-document RoPE positions) with no model changes.
+    doc_masking = cfg['data'].get('doc_masking', False)
+    eos_id = tokenizer.eos_token_id if doc_masking else None
+    if doc_masking:
+        if eos_id is None:
+            raise ValueError('doc_masking is enabled but the tokenizer has no eos_token_id')
+        accelerator.print(f'  Intra-document masking: ON (eos_token_id={eos_id})')
+
     accelerator.print('\n[TRAINING DATA]')
     train_dataset = load_binary_files(
         cfg['data']['train_files'],
         seq_length,
         base_seed=seed,
+        doc_masking=doc_masking,
+        eos_id=eos_id,
     )
 
     accelerator.print('\n[VALIDATION DATA]')
@@ -822,6 +981,8 @@ def main():
         cfg['data']['valid_files'],
         seq_length,
         base_seed=seed,
+        doc_masking=doc_masking,
+        eos_id=eos_id,
     )
 
     # Optionally evaluate on a fixed random subset: each evaluation is a full
@@ -891,6 +1052,63 @@ def main():
                 'fused': train_cfg.get('gefen_fused', False),
             },
         )
+        optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
+    elif optim_name == 'normuon':
+        # NorMuon lives in ./NorMuon as a bare source tree (a single module).
+        # Only the SingleDevice* classes are usable here -- the others call into
+        # torch.distributed, and this box trains on one GPU.
+        sys.path.insert(0, str(Path(__file__).resolve().parent / 'NorMuon'))
+        from normuon import SingleDeviceNorMuonWithAuxAdam
+
+        # Muon orthogonalises a 2D update via Newton-Schulz, which is only
+        # meaningful for weight MATRICES. Embeddings, norms and biases go to the
+        # auxiliary Adam instead. `tie_word_embeddings = true` means lm_head IS
+        # embed_tokens, so it appears once here and lands in the Adam group --
+        # which is what we want either way.
+        muon_p, adam_p = [], []
+        for n, prm in model.named_parameters():
+            if not prm.requires_grad:
+                continue
+            if prm.ndim >= 2 and 'embed' not in n and 'lm_head' not in n:
+                muon_p.append(prm)
+            else:
+                adam_p.append(prm)
+
+        muon_lr = train_cfg.get('normuon_muon_lr', 0.02)
+        aux_lr = train_cfg.get('normuon_aux_lr', train_cfg.get('learning_rate', 1.2e-3))
+        # Decoupled decay applies lr * wd per step, so per-group wd is set to hold
+        # lr * wd = normuon_lrwd -- the same applied-decay invariant every run in
+        # this study has used (1.2e-4). Without this, sweeping the Muon LR would
+        # silently sweep the regularisation with it.
+        lrwd = train_cfg.get('normuon_lrwd', 1.2e-4)
+
+        # SingleDeviceNorMuonWithAuxAdam asserts an EXACT key set per group, so
+        # these dicts must carry precisely these keys and nothing else.
+        param_groups = [
+            dict(
+                params=muon_p,
+                lr=muon_lr,
+                momentum=train_cfg.get('normuon_momentum', 0.95),
+                beta2=train_cfg.get('normuon_beta2', 0.95),
+                weight_decay=lrwd / muon_lr,
+                use_muon=True,
+            ),
+            dict(
+                params=adam_p,
+                lr=aux_lr,
+                betas=(train_cfg.get('adam_beta1', 0.9), train_cfg.get('adam_beta2', 0.95)),
+                eps=train_cfg.get('adam_epsilon', 1e-10),
+                weight_decay=lrwd / aux_lr,
+                use_muon=False,
+            ),
+        ]
+        accelerator.print(
+            f'  NorMuon: {len(muon_p)} matrices via Muon (lr {muon_lr:g}, '
+            f'wd {lrwd / muon_lr:.4g}), {len(adam_p)} tensors via aux Adam '
+            f'(lr {aux_lr:g}, wd {lrwd / aux_lr:.4g})'
+        )
+
+        optimizer_cls_and_kwargs = (SingleDeviceNorMuonWithAuxAdam, {'params': param_groups})
         optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
     elif optim_name == 'muonq':
         # MuonQ (4-bit quantized Muon) lives in ./MuonQ as a bare source tree,
@@ -981,6 +1199,15 @@ def main():
         gradient_accumulation_steps=train_cfg.get('gradient_accumulation_steps', 1),
         # Optimizer with tuned defaults
         optim=optim_name,
+        # Extra optimizer hyperparameters that have no dedicated TrainingArguments
+        # field. transformers parses this as "k=v,k=v" and each optimizer factory
+        # reads the keys it knows. Required for anything richer than Adam's two
+        # betas - e.g. AdEMAMix needs beta3 / alpha / t_alpha / t_beta3, and
+        # without them it silently runs on defaults (beta3=0.9999, alpha=5, no
+        # warmup), which is wrong for short runs. Accepts a TOML table or a
+        # ready-made string:
+        #   optim_args = { beta3 = 0.999, alpha = 5.0, t_beta3 = 4000 }
+        optim_args=_format_optim_args(train_cfg.get('optim_args')),
         learning_rate=train_cfg.get('learning_rate', 5e-5),
         weight_decay=train_cfg.get('weight_decay', 0.1),
         adam_beta1=train_cfg.get('adam_beta1', 0.9),
@@ -999,6 +1226,12 @@ def main():
         fp16=train_cfg.get('fp16', False),
         # Performance
         torch_compile=train_cfg.get('torch_compile', True),
+        # Inductor compile mode. Default (None) is a balanced compile. "max-autotune"
+        # benchmarks kernel variants at compile time -- it can raise steady-state
+        # throughput but the one-off compile cost grows a lot, which matters here
+        # because the budget is wall-clock. calibrate_steps.py measures the first
+        # step separately, so a refit absorbs it correctly.
+        torch_compile_mode=train_cfg.get('torch_compile_mode', None),
         gradient_checkpointing=train_cfg.get('gradient_checkpointing', False),
         gradient_checkpointing_kwargs={'use_reentrant': False},
         neftune_noise_alpha=train_cfg.get('neftune_noise_alpha', 0.0),
