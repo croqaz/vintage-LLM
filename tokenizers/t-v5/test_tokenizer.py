@@ -1,15 +1,14 @@
-"""v7.1 tokenizer tests — ship these with the folder.
+"""v7 tokenizer tests — ship these with the folder.
 
 Self-contained: every path is relative to this file, so the suite runs
-wherever the folder is published (`pytest t-v7.1/`). The tokenizer-contract
+wherever the folder is published (`pytest t-v7/`). The tokenizer-contract
 tests skip until tokenizer.json is built; the prepare.py tests run always.
 
-v7.1 = v7 plus one deliberate change: eight common OCR-era symbols
+One deliberate charset choice: eight common OCR-era symbols
 (§ © « » ½ • ™ ■ — the intersection of the out-of-domain character sets of
 two published period tokenizers) are KEPT by the cleaning pipeline instead
 of deleted, so the tokenizer may learn them.
 """
-
 import importlib.util
 import json
 import sys
@@ -31,14 +30,16 @@ def _load(name, filename):
     return module
 
 
-prep = _load('v71_prepare', 'prepare.py')
-v7 = _load('v71_gen_tok', 'gen_tok.py')
+prep = _load('v7_prepare', 'prepare.py')
+v7 = _load('v7_gen_tok', 'gen_tok.py')
 
-needs_tokenizer = pytest.mark.skipif(not TOK.is_file(), reason='tokenizer.json not built yet')
-needs_words = pytest.mark.skipif(not v7.WORDS.is_file(), reason='word dictionary not present')
+needs_tokenizer = pytest.mark.skipif(not TOK.is_file(),
+                                     reason='tokenizer.json not built yet')
+needs_words = pytest.mark.skipif(not v7.WORDS.is_file(),
+                                 reason='word dictionary not present')
 
 
-# --- prepare.py: the v7.1 charset change --------------------------------------
+# --- prepare.py: the deliberate charset choice --------------------------------------
 OCR_KEEP = '§©«»½•™■'
 
 
@@ -58,7 +59,8 @@ def test_ocr_keep_chars_survive_every_pass():
 
 def test_other_junk_is_still_removed():
     probe = 'ok▼►█ĥ₤ text'
-    for fn in (prep.clean_dataset_chunk, lambda t: prep.final_pass(prep.record_clean(t))):
+    for fn in (prep.clean_dataset_chunk,
+               lambda t: prep.final_pass(prep.record_clean(t))):
         out = fn(probe)
         assert not any(c in out for c in '▼►█₤')
 
@@ -80,10 +82,10 @@ def test_prepare_end_to_end(tmp_path):
     """Mixed input directory -> run() -> cleaned shards, resumable."""
     import json as _json
     import lzma as _lzma
-
     raw = tmp_path / 'raw'
     raw.mkdir()
-    (raw / 'book.txt').write_text('Chapter I.\r\nSee page 1884 \u00a7 12 \u2588junk.\n', encoding='utf-8')
+    (raw / 'book.txt').write_text(
+        'Chapter I.\r\nSee page 1884 \u00a7 12 \u2588junk.\n', encoding='utf-8')
     with open(raw / 'news.jsonl', 'w', encoding='utf-8') as f:
         f.write(_json.dumps({'text': 'Price \u00bd\u2122 in 1066!'}) + '\n')
     with _lzma.open(raw / 'extra.jsonl.xz', 'wt', encoding='utf-8') as f:
@@ -92,7 +94,8 @@ def test_prepare_end_to_end(tmp_path):
 
     out = tmp_path / 'clean'
     prep.run(raw, out)
-    assert sorted(f.name for f in out.iterdir()) == ['book.txt', 'extra.jsonl.txt', 'news.jsonl.txt']
+    assert sorted(f.name for f in out.iterdir()) == [
+        'book.txt', 'extra.jsonl.txt', 'news.jsonl.txt']
     book = (out / 'book.txt').read_text(encoding='utf-8')
     assert '18 84' in book and '\u00a7' in book and '\u2588' not in book
     news = (out / 'news.jsonl.txt').read_text(encoding='utf-8')
@@ -106,10 +109,9 @@ def test_prepare_end_to_end(tmp_path):
     assert {f.name: f.stat().st_mtime_ns for f in out.iterdir()} == before
 
 
-# --- the v7 tokenizer contract (applies unchanged to v7.1) ---------------------
+# --- the v7 tokenizer contract ------------------------------------------------
 def _tok():
     from tokenizers import Tokenizer
-
     return Tokenizer.from_file(str(TOK))
 
 
@@ -122,7 +124,8 @@ def test_exact_vocab_size():
 def test_every_number_is_optimal_modulo_documented_exceptions():
     tok = _tok()
     manifest = json.loads((FOLDER / 'build-manifest.json').read_text())
-    exc = {(True, v) for v in manifest['numeric_exceptions_spaced']} | {(False, v) for v in manifest['numeric_exceptions_bare']}
+    exc = {(True, v) for v in manifest['numeric_exceptions_spaced']} \
+        | {(False, v) for v in manifest['numeric_exceptions_bare']}
     assert all(2000 <= v <= 2009 for s, v in exc if s)
     for v in range(0, 2100):
         s = str(v)
@@ -136,7 +139,8 @@ def test_every_number_is_optimal_modulo_documented_exceptions():
 @needs_tokenizer
 def test_no_token_with_three_consecutive_digits():
     spec = json.loads(TOK.read_text())
-    bad = [v7.bl_to_text(k) for k in v7.reachable_keys(spec) if not v7.digits_ok(v7.bl_to_text(k))]
+    bad = [v7.bl_to_text(k) for k in v7.reachable_keys(spec)
+           if not v7.digits_ok(v7.bl_to_text(k))]
     assert bad == []
 
 
@@ -156,11 +160,11 @@ def test_top2000_coverage_minus_documented_unfixables():
 def test_deployment_parity_tokie_and_gigatoken():
     import gigatoken
     import tokie
-
     hf = _tok()
     probes = v7.STRESS_STRINGS + [' '.join(v7.STRESS_STRINGS) * 5]
     refs = [hf.encode(s, add_special_tokens=False).ids for s in probes]
-    for name, t in (('tokie', tokie.Tokenizer.from_json(str(TOK))), ('gigatoken', gigatoken.Tokenizer(str(TOK)))):
+    for name, t in (('tokie', tokie.Tokenizer.from_json(str(TOK))),
+                    ('gigatoken', gigatoken.Tokenizer(str(TOK)))):
         for s, ref in zip(probes, refs):
             e = t.encode(s)
             ids = list(e.ids) if hasattr(e, 'ids') else list(e)

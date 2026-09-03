@@ -32903,68 +32903,68 @@
       "Ġconfusing": 32703,
       "ĠWOR": 32704,
       "Ġunborn": 32705,
-      "03": 32706,
-      "04": 32707,
-      "05": 32708,
-      "06": 32709,
-      "07": 32710,
-      "08": 32711,
-      "09": 32712,
-      "Ġmr": 32713,
-      "Ġillegible": 32714,
-      "Ġmrs": 32715,
-      "Ġengland": 32716,
-      "Ġjohn": 32717,
-      "Ġenglish": 32718,
-      "Ġfrench": 32719,
-      "Ġlondon": 32720,
-      "Ġfrance": 32721,
-      "Ġwilliam": 32722,
-      "Ġgeorge": 32723,
-      "Ġcharles": 32724,
-      "Ġfootnote": 32725,
-      "Ġhenry": 32726,
-      "Ġjames": 32727,
-      "Ġtis": 32728,
-      "Ġparis": 32729,
-      "Ġbrit": 32730,
-      "Ġbritish": 32731,
-      "Ġrome": 32732,
-      "Ġjesus": 32733,
-      "Ġmary": 32734,
-      "Ġeurope": 32735,
-      "Ġamer": 32736,
-      "Ġamerica": 32737,
-      "Ġroman": 32738,
-      "Ġindians": 32739,
-      "Ġthomas": 32740,
-      "Ġrobert": 32741,
-      "Ġindian": 32742,
-      "Ġamerican": 32743,
-      "Ġgreek": 32744,
-      "Ġyork": 32745,
-      "Ġedward": 32746,
-      "Ġscot": 32747,
-      "Ġscotland": 32748,
-      "Ġbritain": 32749,
-      "Ġspain": 32750,
-      "Ġjune": 32751,
-      "Ġrichard": 32752,
-      "Ġchristians": 32753,
-      "Ġjuly": 32754,
-      "Ġitaly": 32755,
-      "Ġpaul": 32756,
-      "Ġesq": 32757,
-      "Ġpeter": 32758,
-      "Ġspanish": 32759,
-      "Ġapril": 32760,
-      "Ġgerman": 32761,
-      "Ġsunday": 32762,
-      "Ġpg": 32763,
-      "Ġharry": 32764,
-      "Ġindia": 32765,
-      "Ġireland": 32766,
-      "Ġemily": 32767
+      "Company": 32706,
+      "Ġsoliciting": 32707,
+      "ĠShow": 32708,
+      "Ġarterial": 32709,
+      "Ġpalis": 32710,
+      "Ġexactions": 32711,
+      "Ġthrilled": 32712,
+      "Ġdive": 32713,
+      "Ġwidened": 32714,
+      "Ġdecoction": 32715,
+      "Ġworsted": 32716,
+      "Ezek": 32717,
+      "ĠPreacher": 32718,
+      "Ġpackages": 32719,
+      "ĠMoll": 32720,
+      "Ġundiminished": 32721,
+      "ĠLouvre": 32722,
+      "Ġsurrendering": 32723,
+      "Ġhoary": 32724,
+      "ĠFeet": 32725,
+      "Ġcompartments": 32726,
+      "Ġbroadest": 32727,
+      "Ġwatchman": 32728,
+      "Ġoppressions": 32729,
+      "Ġinorganic": 32730,
+      "understanding": 32731,
+      "Ġtresses": 32732,
+      "Ġjuices": 32733,
+      "Ġpry": 32734,
+      "Ġtul": 32735,
+      "Ġlyrical": 32736,
+      "ĠParticular": 32737,
+      "Hier": 32738,
+      "ruck": 32739,
+      "ĠLegion": 32740,
+      "atlantic": 32741,
+      "Ġcrucifixion": 32742,
+      "ĠBessie": 32743,
+      "Ġflimsy": 32744,
+      "load": 32745,
+      "Ġphleg": 32746,
+      "Ġministered": 32747,
+      "Ġfluency": 32748,
+      "ĠAe": 32749,
+      "illusion": 32750,
+      "superior": 32751,
+      "Caesar": 32752,
+      "osius": 32753,
+      "Nich": 32754,
+      "Ġcarcass": 32755,
+      "Ġcapitalist": 32756,
+      "03": 32757,
+      "04": 32758,
+      "05": 32759,
+      "06": 32760,
+      "07": 32761,
+      "08": 32762,
+      "09": 32763,
+      "Ġillegible": 32764,
+      "ĠIllustration": 32765,
+      "Ġtis": 32766,
+      "ĠFootnote": 32767
     },
     "merges": [
       [
@@ -162704,6 +162704,210 @@
         "born"
       ],
       [
+        "Comp",
+        "any"
+      ],
+      [
+        "Ġsolic",
+        "iting"
+      ],
+      [
+        "ĠSh",
+        "ow"
+      ],
+      [
+        "Ġarter",
+        "ial"
+      ],
+      [
+        "Ġpal",
+        "is"
+      ],
+      [
+        "Ġexact",
+        "ions"
+      ],
+      [
+        "Ġthri",
+        "lled"
+      ],
+      [
+        "Ġd",
+        "ive"
+      ],
+      [
+        "Ġwid",
+        "ened"
+      ],
+      [
+        "Ġdec",
+        "oction"
+      ],
+      [
+        "Ġworst",
+        "ed"
+      ],
+      [
+        "E",
+        "zek"
+      ],
+      [
+        "ĠPre",
+        "acher"
+      ],
+      [
+        "Ġpack",
+        "ages"
+      ],
+      [
+        "ĠM",
+        "oll"
+      ],
+      [
+        "Ġund",
+        "iminished"
+      ],
+      [
+        "ĠLou",
+        "vre"
+      ],
+      [
+        "Ġsurrender",
+        "ing"
+      ],
+      [
+        "Ġho",
+        "ary"
+      ],
+      [
+        "ĠFe",
+        "et"
+      ],
+      [
+        "Ġcomp",
+        "artments"
+      ],
+      [
+        "Ġbroad",
+        "est"
+      ],
+      [
+        "Ġwatch",
+        "man"
+      ],
+      [
+        "Ġoppress",
+        "ions"
+      ],
+      [
+        "Ġin",
+        "organic"
+      ],
+      [
+        "under",
+        "standing"
+      ],
+      [
+        "Ġt",
+        "resses"
+      ],
+      [
+        "Ġju",
+        "ices"
+      ],
+      [
+        "Ġp",
+        "ry"
+      ],
+      [
+        "Ġt",
+        "ul"
+      ],
+      [
+        "Ġly",
+        "rical"
+      ],
+      [
+        "ĠPart",
+        "icular"
+      ],
+      [
+        "H",
+        "ier"
+      ],
+      [
+        "ru",
+        "ck"
+      ],
+      [
+        "ĠLeg",
+        "ion"
+      ],
+      [
+        "at",
+        "lantic"
+      ],
+      [
+        "Ġcrucifix",
+        "ion"
+      ],
+      [
+        "ĠBess",
+        "ie"
+      ],
+      [
+        "Ġfl",
+        "imsy"
+      ],
+      [
+        "lo",
+        "ad"
+      ],
+      [
+        "Ġph",
+        "leg"
+      ],
+      [
+        "Ġmin",
+        "istered"
+      ],
+      [
+        "Ġflu",
+        "ency"
+      ],
+      [
+        "ĠA",
+        "e"
+      ],
+      [
+        "ill",
+        "usion"
+      ],
+      [
+        "su",
+        "perior"
+      ],
+      [
+        "Ca",
+        "esar"
+      ],
+      [
+        "os",
+        "ius"
+      ],
+      [
+        "N",
+        "ich"
+      ],
+      [
+        "Ġcarc",
+        "ass"
+      ],
+      [
+        "Ġcapital",
+        "ist"
+      ],
+      [
         "0",
         "3"
       ],
@@ -162732,224 +162936,20 @@
         "9"
       ],
       [
-        "Ġm",
-        "r"
-      ],
-      [
         "Ġ",
         "illegible"
       ],
       [
-        "Ġm",
-        "rs"
-      ],
-      [
-        "Ġeng",
-        "land"
-      ],
-      [
-        "Ġj",
-        "ohn"
-      ],
-      [
-        "Ġeng",
-        "lish"
-      ],
-      [
-        "Ġf",
-        "rench"
-      ],
-      [
-        "Ġl",
-        "ondon"
-      ],
-      [
-        "Ġfr",
-        "ance"
-      ],
-      [
-        "Ġwill",
-        "iam"
-      ],
-      [
-        "Ġge",
-        "orge"
-      ],
-      [
-        "Ġchar",
-        "les"
-      ],
-      [
-        "Ġfoot",
-        "note"
-      ],
-      [
-        "Ġhen",
-        "ry"
-      ],
-      [
-        "Ġj",
-        "ames"
+        "ĠIllust",
+        "ration"
       ],
       [
         "Ġt",
         "is"
       ],
       [
-        "Ġpar",
-        "is"
-      ],
-      [
-        "Ġbr",
-        "it"
-      ],
-      [
-        "Ġbrit",
-        "ish"
-      ],
-      [
-        "Ġrom",
-        "e"
-      ],
-      [
-        "Ġj",
-        "esus"
-      ],
-      [
-        "Ġm",
-        "ary"
-      ],
-      [
-        "Ġe",
-        "urope"
-      ],
-      [
-        "Ġam",
-        "er"
-      ],
-      [
-        "Ġamer",
-        "ica"
-      ],
-      [
-        "Ġrom",
-        "an"
-      ],
-      [
-        "Ġind",
-        "ians"
-      ],
-      [
-        "Ġth",
-        "omas"
-      ],
-      [
-        "Ġrob",
-        "ert"
-      ],
-      [
-        "Ġind",
-        "ian"
-      ],
-      [
-        "Ġamer",
-        "ican"
-      ],
-      [
-        "Ġg",
-        "reek"
-      ],
-      [
-        "Ġy",
-        "ork"
-      ],
-      [
-        "Ġed",
-        "ward"
-      ],
-      [
-        "Ġsc",
-        "ot"
-      ],
-      [
-        "Ġscot",
-        "land"
-      ],
-      [
-        "Ġbrit",
-        "ain"
-      ],
-      [
-        "Ġsp",
-        "ain"
-      ],
-      [
-        "Ġj",
-        "une"
-      ],
-      [
-        "Ġrich",
-        "ard"
-      ],
-      [
-        "Ġchrist",
-        "ians"
-      ],
-      [
-        "Ġj",
-        "uly"
-      ],
-      [
-        "Ġit",
-        "aly"
-      ],
-      [
-        "Ġp",
-        "aul"
-      ],
-      [
-        "Ġes",
-        "q"
-      ],
-      [
-        "Ġpet",
-        "er"
-      ],
-      [
-        "Ġsp",
-        "anish"
-      ],
-      [
-        "Ġap",
-        "ril"
-      ],
-      [
-        "Ġg",
-        "erman"
-      ],
-      [
-        "Ġsund",
-        "ay"
-      ],
-      [
-        "Ġp",
-        "g"
-      ],
-      [
-        "Ġhar",
-        "ry"
-      ],
-      [
-        "Ġind",
-        "ia"
-      ],
-      [
-        "Ġire",
-        "land"
-      ],
-      [
-        "Ġem",
-        "ily"
+        "ĠFoot",
+        "note"
       ]
     ]
   }

@@ -26,6 +26,8 @@ import {
   MIN_UNIQUE_CHARS,
 } from './features.ts';
 
+const IS_WORKER = typeof Bun !== 'undefined' && Bun.isMainThread === false;
+
 // Re-export the shared vocab builders so existing importers of import.ts keep working.
 export { buildVocabFromFiles, loadVocabFromFile } from './features.ts';
 
@@ -36,7 +38,9 @@ export { DEFAULT_MAX_LENGTH, MAX_UNIQUE_CHARS, MIN_LENGTH, MIN_UNIQUE_CHARS } fr
 // Constants
 // ──────────────────────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 512; // LevelDB batch flush size
+const BATCH_SIZE = 1024; // LevelDB batch flush size
+const LINES_PER_WORKER_BATCH = 256; // lines per postMessage round-trip
+const DEFAULT_WORKERS = Math.max(1, Math.min(16, navigator.hardwareConcurrency ?? 4));
 
 // ──────────────────────────────────────────────────────────────────────────────
 // CLI argument parsing
@@ -52,6 +56,7 @@ function parseArgs(): {
   extraFields: string[];
   offset: number;
   limit: number;
+  workers: number;
 } {
   const args = process.argv.slice(2);
   let inputs: string[] = [];
@@ -61,10 +66,11 @@ function parseArgs(): {
   let maxLength = DEFAULT_MAX_LENGTH;
   // Vocabulary for the dictHit signal. Defaults to vocab.json next to this script
   // so the path is correct regardless of the current working directory.
-  let vocabPath = './vocab.json';
+  let vocabPath = './vocab2.json';
   let extraFields: string[] = [];
   let offset = 0;
   let limit = 0;
+  let workers = DEFAULT_WORKERS;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -101,6 +107,12 @@ function parseArgs(): {
         console.error('Error: --limit must be a non-negative integer (0 = no limit).');
         process.exit(1);
       }
+    } else if ((arg === '-w' || arg === '--workers') && i + 1 < args.length) {
+      workers = parseInt(args[++i], 10);
+      if (isNaN(workers) || workers < 0) {
+        console.error('Error: --workers must be a non-negative integer (0 = in-process, no workers).');
+        process.exit(1);
+      }
     } else if (arg === '-h' || arg === '--help') {
       console.log(`Usage: bun run import.ts [options] [inputs...]
 
@@ -114,6 +126,7 @@ Options:
   -e, --extra-fields <list> Comma-separated extra field names to preserve from input JSONL (default: none)
   -o, --offset <n>          Fast-forward: skip the first N non-empty lines before processing (default: 0)
   -l, --limit <n>           Stop after indexing N records (default: 0 = no limit)
+  -w, --workers <n>         Parallel feature-extraction workers (default: ${DEFAULT_WORKERS}, 0/1 = in-process)
   -h, --help                Show this help`);
       process.exit(0);
     } else if (!arg.startsWith('-')) {
@@ -136,6 +149,7 @@ Options:
     maxLength,
     vocabPath,
     extraFields,
+    workers,
   };
 }
 
@@ -192,17 +206,219 @@ function printSummary(stats: FileStats, maxLength: number): void {
 // Pre-filter: length + unique chars
 // ──────────────────────────────────────────────────────────────────────────────
 
+// Whitespace-per-/\s/ lookup table, built from the regex itself so the class is
+// identical by construction.
+const SPACE_TABLE = new Uint8Array(65536);
+{
+  const re = /^\s$/;
+  for (let c = 0; c < 65536; c++) {
+    if (re.test(String.fromCharCode(c))) SPACE_TABLE[c] = 1;
+  }
+}
+
+// Generation-stamped scratch table for distinct-codepoint counting: bumping the
+// generation invalidates all entries without a 256KB memset per call.
+const UNIQ_STAMP = new Int32Array(65536);
+let uniqGeneration = 0;
+
+// Distinct codepoints in `text` — exactly what `new Set(text).size` computes
+// (surrogate pairs count once, lone surrogates count as themselves).
+function countUniqueCodepoints(text: string): number {
+  const gen = ++uniqGeneration;
+  let uniq = 0;
+  let astral: Set<number> | null = null;
+  const n = text.length;
+  for (let i = 0; i < n; i++) {
+    let c = text.charCodeAt(i);
+    if (c >= 0xd800 && c < 0xdc00 && i + 1 < n) {
+      const d = text.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d < 0xe000) {
+        c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00);
+        i++;
+      }
+    }
+    if (c < 65536) {
+      if (UNIQ_STAMP[c] !== gen) {
+        UNIQ_STAMP[c] = gen;
+        uniq++;
+      }
+    } else {
+      if (astral === null) astral = new Set();
+      if (!astral.has(c)) {
+        astral.add(c);
+        uniq++;
+      }
+    }
+  }
+  return uniq;
+}
+
+// Count whitespace-separated words, stopping as soon as `stopAt` are found —
+// the prefilter only needs to know whether there are more than 2.
+function countWords(text: string, stopAt: number): number {
+  let words = 0;
+  let inToken = false;
+  const n = text.length;
+  for (let i = 0; i < n; i++) {
+    if (SPACE_TABLE[text.charCodeAt(i)] === 0) {
+      if (!inToken) {
+        inToken = true;
+        if (++words >= stopAt) return words;
+      }
+    } else {
+      inToken = false;
+    }
+  }
+  return words;
+}
+
 export function prefilter(text: string, maxLength: number): Record<string, any> {
   const length = text.length;
   if (length <= MIN_LENGTH || length > maxLength) return { ok: false, length };
-  const uniqueChars = new Set(text).size;
+  const uniqueChars = countUniqueCodepoints(text);
   if (uniqueChars <= MIN_UNIQUE_CHARS || uniqueChars > MAX_UNIQUE_CHARS) {
     return { ok: false, uniqueChars };
   }
-  const toks = text.split(/\s+/).filter(t => t.length > 0);
-  const words = toks.length;
+  const words = countWords(text, 3);
   if (words <= 2) return { ok: false, words };
   return { ok: true };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Worker pool — parallel per-line feature extraction
+//
+// The heavy per-record work (JSON.parse → prefilter → computeRecord) is pure
+// and order-independent, so it can fan out across CPU cores. The main thread
+// keeps full control of ORDER: it dispatches line batches round-robin and
+// consumes the results strictly in input order, so stats, warnings, conflict
+// resolution, offset/limit semantics and the resulting DB are identical to the
+// sequential path. This very file is the worker script (guarded by
+// Bun.isMainThread), so the worker uses the exact same computeRecord/prefilter.
+// ──────────────────────────────────────────────────────────────────────────────
+
+interface WorkerConfig {
+  textKey: string;
+  maxLength: number;
+  source: string;
+  extraFields: string[];
+  vocab: Set<string> | null;
+}
+
+// Per-line outcome codes; keep these tiny — they cross the postMessage boundary.
+const enum LineKind {
+  BadJson = 0,
+  NonObject = 1,
+  NoText = 2,
+  Prefiltered = 3,
+  Ok = 4,
+}
+
+type LineResult = { k: LineKind; id?: string; value?: DocValue };
+
+function processLine(line: string, cfg: WorkerConfig): LineResult {
+  let obj: unknown;
+  try {
+    obj = JSON.parse(line);
+  } catch {
+    return { k: LineKind.BadJson };
+  }
+  if (obj === null || typeof obj !== 'object') return { k: LineKind.NonObject };
+
+  const record = obj as Record<string, unknown>;
+  const text = record[cfg.textKey];
+  if (!text || typeof text !== 'string') return { k: LineKind.NoText };
+
+  if (!prefilter(text, cfg.maxLength).ok) return { k: LineKind.Prefiltered };
+
+  // Reuse "source" field if present, otherwise use CLI arg
+  let docSource = cfg.source;
+  if (record.source && typeof record.source === 'string') {
+    docSource = record.source;
+  }
+
+  // Extract optional extra fields (only those that exist on the record)
+  let extra: Record<string, unknown> | undefined;
+  for (const f of cfg.extraFields) {
+    if (f in record && record[f] != null) {
+      if (!extra) extra = {};
+      extra[f] = record[f];
+    }
+  }
+
+  const { id, value } = computeRecord(text, docSource, cfg.vocab as unknown as Set<string>, extra);
+  return { k: LineKind.Ok, id, value };
+}
+
+if (IS_WORKER) {
+  let cfg: WorkerConfig | null = null;
+  // @ts-expect-error — worker global
+  self.onmessage = (event: MessageEvent) => {
+    const msg = event.data;
+    if (msg.type === 'init') {
+      cfg = msg.cfg as WorkerConfig;
+    } else if (msg.type === 'batch') {
+      const lines: string[] = msg.lines;
+      const results = new Array<LineResult>(lines.length);
+      for (let i = 0; i < lines.length; i++) {
+        results[i] = processLine(lines[i], cfg!);
+      }
+      // @ts-expect-error — worker global
+      self.postMessage({ seq: msg.seq, results });
+    }
+  };
+}
+
+export class WorkerPool {
+  private workers: Worker[] = [];
+  private next = 0;
+  private pending = new Map<number, { resolve: (r: LineResult[]) => void; reject: (e: unknown) => void }>();
+  private seq = 0;
+  private failure: unknown = null;
+
+  constructor(size: number, cfg: WorkerConfig) {
+    for (let i = 0; i < size; i++) {
+      const w = new Worker(import.meta.url);
+      w.onmessage = (event: MessageEvent) => {
+        const { seq, results } = event.data;
+        const entry = this.pending.get(seq);
+        if (entry) {
+          this.pending.delete(seq);
+          entry.resolve(results);
+        }
+      };
+      w.addEventListener('error', (event: ErrorEvent) => {
+        this.fail(event.error ?? new Error(event.message || 'worker error'));
+      });
+      w.postMessage({ type: 'init', cfg });
+      this.workers.push(w);
+    }
+  }
+
+  private fail(err: unknown): void {
+    this.failure = err;
+    for (const { reject } of this.pending.values()) reject(err);
+    this.pending.clear();
+  }
+
+  get size(): number {
+    return this.workers.length;
+  }
+
+  run(lines: string[]): Promise<LineResult[]> {
+    if (this.failure !== null) return Promise.reject(this.failure);
+    const seq = this.seq++;
+    return new Promise((resolve, reject) => {
+      this.pending.set(seq, { resolve, reject });
+      this.workers[this.next].postMessage({ type: 'batch', seq, lines });
+      this.next = (this.next + 1) % this.workers.length;
+    });
+  }
+
+  terminate(): void {
+    for (const w of this.workers) w.terminate();
+    this.workers = [];
+    this.pending.clear();
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -347,31 +563,9 @@ async function processTextFile(
 // Process a single JSONL file
 // ──────────────────────────────────────────────────────────────────────────────
 
-export async function processFile(
-  filePath: string,
-  source: string,
-  db: ClassicLevel<string, DocValue>,
-  textKey: string,
-  maxLength: number,
-  vocab: Set<string>,
-  extraFields: string[],
-  offset: number,
-  limit: number
-): Promise<{ stats: FileStats; remainingOffset: number; remainingLimit: number }> {
-  const stats: FileStats = {
-    path: filePath,
-    rowsLoaded: 0,
-    rowsDropped: 0,
-    rowsSkipped: 0,
-    rowsLimited: 0,
-    rowsDuplicate: 0,
-    rowsIndexed: 0,
-  };
-  let skipRemaining = offset;
-  let limitRemaining = limit;
-
-  // Pending writes keyed by id. Using a Map dedups within-batch collisions and
-  // lets us resolve them via onConflict before they ever hit the DB.
+// Pending writes keyed by id. Using a Map dedups within-batch collisions and
+// lets us resolve them via onConflict before they ever hit the DB.
+function makeBatcher(db: ClassicLevel<string, DocValue>, stats: FileStats) {
   const batch = new Map<string, DocValue>();
 
   async function flushBatch(): Promise<void> {
@@ -404,7 +598,7 @@ export async function processFile(
       await db.batch(ops);
     }
 
-    console.log(`  Flushed ${keys.length} keys (${ops.length} writes) to LevelDB...`);
+    // console.log(`  Flushed ${keys.length} keys (${ops.length} writes) to LevelDB...`);
     batch.clear();
   }
 
@@ -421,6 +615,39 @@ export async function processFile(
       batch.set(id, value);
     }
   }
+
+  return { batch, flushBatch, addToBatch };
+}
+
+export async function processFile(
+  filePath: string,
+  source: string,
+  db: ClassicLevel<string, DocValue>,
+  textKey: string,
+  maxLength: number,
+  vocab: Set<string>,
+  extraFields: string[],
+  offset: number,
+  limit: number,
+  pool?: WorkerPool
+): Promise<{ stats: FileStats; remainingOffset: number; remainingLimit: number }> {
+  if (pool) {
+    return processFileParallel(filePath, source, db, textKey, maxLength, vocab, extraFields, offset, limit, pool);
+  }
+
+  const stats: FileStats = {
+    path: filePath,
+    rowsLoaded: 0,
+    rowsDropped: 0,
+    rowsSkipped: 0,
+    rowsLimited: 0,
+    rowsDuplicate: 0,
+    rowsIndexed: 0,
+  };
+  let skipRemaining = offset;
+  let limitRemaining = limit;
+
+  const { batch, flushBatch, addToBatch } = makeBatcher(db, stats);
 
   // Stream the file line by line (gzip files are decompressed on-the-fly)
   const fileStream = fileToAsyncIterable(filePath);
@@ -533,11 +760,166 @@ export async function processFile(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Parallel variant of processFile
+//
+// Same observable behavior as the sequential path: line batches fan out to the
+// worker pool, but results are consumed strictly in input order, so stats,
+// warnings, within-batch conflict resolution and offset/limit handling are
+// identical — and so is the resulting database.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function processFileParallel(
+  filePath: string,
+  source: string,
+  db: ClassicLevel<string, DocValue>,
+  textKey: string,
+  maxLength: number,
+  vocab: Set<string>,
+  extraFields: string[],
+  offset: number,
+  limit: number,
+  pool: WorkerPool
+): Promise<{ stats: FileStats; remainingOffset: number; remainingLimit: number }> {
+  const stats: FileStats = {
+    path: filePath,
+    rowsLoaded: 0,
+    rowsDropped: 0,
+    rowsSkipped: 0,
+    rowsLimited: 0,
+    rowsDuplicate: 0,
+    rowsIndexed: 0,
+  };
+  let skipRemaining = offset; // consumed at dispatch: offset lines never reach a worker
+  let limitRemaining = limit;
+
+  const { batch, flushBatch, addToBatch } = makeBatcher(db, stats);
+
+  // One dispatched unit: `layout` holds one entry per qualifying line in input
+  // order (SKIPPED for offset fast-forward, PROCESSED for lines sent to the
+  // pool); `lines` holds only the PROCESSED lines.
+  const SKIPPED = 0;
+  const PROCESSED = 1;
+  interface Dispatched {
+    layout: number[];
+    resultsPromise: Promise<LineResult[]>;
+  }
+
+  const inflight: Dispatched[] = [];
+  const maxInflight = pool.size * 4;
+
+  let layout: number[] = [];
+  let lines: string[] = [];
+
+  function dispatch(): void {
+    if (layout.length === 0) return;
+    const resultsPromise = lines.length > 0 ? pool.run(lines) : Promise.resolve([]);
+    inflight.push({ layout, resultsPromise });
+    layout = [];
+    lines = [];
+  }
+
+  // Consume the oldest dispatched batch, replaying its lines in input order.
+  // Returns true when the limit was hit and processing must stop.
+  async function consumeHead(): Promise<boolean> {
+    const head = inflight.shift()!;
+    const results = await head.resultsPromise;
+    let ri = 0;
+    for (const kind of head.layout) {
+      stats.rowsLoaded++;
+
+      if (stats.rowsLoaded % 100_000 === 0) {
+        console.log(`  Processed ${stats.rowsLoaded} lines...`);
+      }
+
+      if (kind === SKIPPED) {
+        stats.rowsSkipped++;
+        continue;
+      }
+
+      const r = results[ri++];
+      if (r.k === LineKind.BadJson) {
+        console.warn(`  [WARN] Skipping malformed JSON line ${stats.rowsLoaded} in ${basename(filePath)}`);
+        stats.rowsDropped++;
+      } else if (r.k === LineKind.NonObject) {
+        console.warn(`  [WARN] Skipping non-object line ${stats.rowsLoaded} in ${basename(filePath)}`);
+        stats.rowsDropped++;
+      } else if (r.k === LineKind.NoText) {
+        console.warn(`  [WARN] Missing "${textKey}" field on line ${stats.rowsLoaded} in ${basename(filePath)}`);
+        stats.rowsDropped++;
+      } else if (r.k === LineKind.Prefiltered) {
+        stats.rowsDropped++;
+      } else {
+        if (limit > 0 && limitRemaining === 0) {
+          stats.rowsLimited++;
+          await flushBatch();
+          return true;
+        }
+        if (limit > 0) limitRemaining--;
+
+        addToBatch(r.id!, r.value!);
+        if (batch.size >= BATCH_SIZE) {
+          await flushBatch();
+        }
+      }
+    }
+    return false;
+  }
+
+  // Stream the file line by line (gzip files are decompressed on-the-fly)
+  const fileStream = fileToAsyncIterable(filePath);
+  let lineBuffer = '';
+
+  for await (const chunk of fileStream) {
+    lineBuffer += chunk;
+
+    let newlineIdx: number;
+    while ((newlineIdx = lineBuffer.indexOf('\n')) !== -1) {
+      const line = lineBuffer.slice(0, newlineIdx).trim();
+      lineBuffer = lineBuffer.slice(newlineIdx + 1);
+      if (line.length <= 10) continue;
+
+      if (skipRemaining > 0) {
+        skipRemaining--;
+        layout.push(SKIPPED);
+      } else {
+        layout.push(PROCESSED);
+        lines.push(line);
+      }
+
+      if (layout.length >= LINES_PER_WORKER_BATCH) {
+        dispatch();
+        if (inflight.length >= maxInflight) {
+          if (await consumeHead()) {
+            return { stats, remainingOffset: skipRemaining, remainingLimit: 0 };
+          }
+        }
+      }
+    }
+  }
+
+  // Dispatch the tail and drain everything in order.
+  dispatch();
+  while (inflight.length > 0) {
+    if (await consumeHead()) {
+      return { stats, remainingOffset: skipRemaining, remainingLimit: 0 };
+    }
+  }
+
+  await flushBatch();
+
+  return {
+    stats,
+    remainingOffset: skipRemaining,
+    remainingLimit: limitRemaining,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Main
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { inputs, source, dbPath, textKey, maxLength, vocabPath, extraFields, offset, limit } = parseArgs();
+  const { inputs, source, dbPath, textKey, maxLength, vocabPath, extraFields, offset, limit, workers } = parseArgs();
 
   // Sort for deterministic processing order
   inputs.sort();
@@ -561,12 +943,28 @@ async function main(): Promise<void> {
   console.log(`Limit: ${limit === 0 ? 'none' : limit}`);
   console.log(`LevelDB: ${dbPath}`);
   console.log(`Vocabulary: ${vocab ? `${vocab.size} words (${vocabPath})` : 'none'}`);
+  console.log(`Workers: ${workers > 1 ? workers : 'none (in-process)'}`);
 
   const db = new ClassicLevel<string, DocValue>(dbPath, {
     valueEncoding: 'json',
     maxFileSize: 1_000_000_000,
   });
   await db.open();
+
+  // Spin up the worker pool only if some input actually needs it (JSONL files).
+  // (Passive extension check — unsupported extensions still error out at the
+  // same point in the file loop as before.)
+  const hasJsonl = inputs.some(p => JSONL_EXTENSIONS.has(extname(isGzipped(p) ? stripGz(p) : p).toLowerCase()));
+  const pool =
+    workers > 1 && hasJsonl
+      ? new WorkerPool(workers, {
+          textKey,
+          maxLength,
+          source,
+          extraFields,
+          vocab: vocab ?? null,
+        })
+      : undefined;
 
   let grandLoaded = 0;
   let grandDropped = 0;
@@ -591,7 +989,7 @@ async function main(): Promise<void> {
       const result =
         fileType === 'text'
           ? await processTextFile(filePath, source, db, maxLength, vocab, remainingOffset, remainingLimit)
-          : await processFile(filePath, source, db, textKey, maxLength, vocab, extraFields, remainingOffset, remainingLimit);
+          : await processFile(filePath, source, db, textKey, maxLength, vocab!, extraFields, remainingOffset, remainingLimit, pool);
 
       const { stats } = result;
       remainingOffset = result.remainingOffset;
@@ -620,6 +1018,7 @@ async function main(): Promise<void> {
       }
     }
   } finally {
+    pool?.terminate();
     await db.close();
   }
 
@@ -642,7 +1041,7 @@ async function main(): Promise<void> {
   console.log(summaryLines.join('\n'));
 }
 
-if (import.meta.main) {
+if (import.meta.main && !IS_WORKER) {
   main().catch(err => {
     console.error('Fatal error:', err);
     process.exit(1);

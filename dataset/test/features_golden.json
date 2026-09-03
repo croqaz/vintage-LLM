@@ -1,0 +1,169 @@
+{
+ "vocab": [
+  "the",
+  "quick",
+  "brown",
+  "fox",
+  "o'brien",
+  "don't",
+  "word",
+  "noise",
+  "chars",
+  "text",
+  "pad"
+ ],
+ "cases": [
+  {
+   "text": "Yet not the less must we be glad And grateful, in this latter day, To Him who made our Mariners glad, And smooth’d for them their dangerous way. For commerce binds the lands in peace, And links the nations great and small, And, profit-ploughing, bids increase The harvest, which supports them all.",
+   "id": "0000021323b494f2051e9db972d6c6e0afdf807fa15cd9ae3a96c0467c10c5f7",
+   "value": {
+    "source": "golden",
+    "len": 288,
+    "uniqChar": 29,
+    "tokens": 52,
+    "sentences": 2,
+    "entropy": 98.59,
+    "quality": 101.43,
+    "compress": 116.89,
+    "dictHit": 7.69,
+    "alpha": 100,
+    "vowel": 100,
+    "ascii": 100,
+    "text": "Yet not the less must we be glad And grateful, in this latter day, To Him who made our Mariners glad, And smooth’d for them their dangerous way. For commerce binds the lands in peace, And links the nations great and small, And, profit-ploughing, bids increase The harvest, which supports them all."
+   }
+  },
+  {
+   "text": "The Neue Preussische Zeitung reports that the king, in a private letter, has expressed himself in terms of warm sympathy with the movement, and that several other persons of distinction have shown themselves favorable to the cause.\n\nIt appears also that a considerable number of prominent men are expected in Berlin, who will participate in the debate. There is nothing improbable in these rumors, for the German Bund, having the support of Austria and the other smaller states, has in its favor the general opinion of the people, and would undoubtedly be able to enforce respect for the constitution, even against the majority of the Reichstag. The most serious difficulty in the way of constitutional reform would seem to be that which lies in the antagonism between the Reichstag and the Bundestag.",
+   "id": "0000034a0e05853d5d58105318eb3e3fc144e811f88de0d09b683300ec3d3f7e",
+   "value": {
+    "source": "golden",
+    "len": 788,
+    "uniqChar": 34,
+    "tokens": 132,
+    "sentences": 4,
+    "entropy": 96.39,
+    "quality": 106.09,
+    "compress": 104.43,
+    "dictHit": 13.64,
+    "alpha": 100,
+    "vowel": 100,
+    "ascii": 100,
+    "text": "The Neue Preussische Zeitung reports that the king, in a private letter, has expressed himself in terms of warm sympathy with the movement, and that several other persons of distinction have shown themselves favorable to the cause.\n\nIt appears also that a considerable number of prominent men are expected in Berlin, who will participate in the debate. There is nothing improbable in these rumors, for the German Bund, having the support of Austria and the other smaller states, has in its favor the general opinion of the people, and would undoubtedly be able to enforce respect for the constitution, even against the majority of the Reichstag. The most serious difficulty in the way of constitutional reform would seem to be that which lies in the antagonism between the Reichstag and the Bundestag."
+   }
+  },
+  {
+   "text": "héllo wörld — “curly” quotes… naïve café über—straße xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "id": "967b946c4bc991a805718d0188e76bd103e2c521e382eb011fec0289174c2c76",
+   "value": {
+    "source": "golden",
+    "len": 96,
+    "uniqChar": 20,
+    "tokens": 8,
+    "sentences": 1,
+    "entropy": 74.97,
+    "quality": 105.1,
+    "compress": 113.87,
+    "dictHit": 0,
+    "alpha": 37.5,
+    "vowel": 66.67,
+    "ascii": 100,
+    "text": "héllo wörld — “curly” quotes… naïve café über—straße xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
+  },
+  {
+   "text": "it's O'Brien's rock-'n'-roll DON’T can’t 'quoted' _under_score_ 123abc abc123 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+   "id": "0c070493baa94a11198f85db47fb961f81f812269a1a2bdcff8216cf4bec83fc",
+   "value": {
+    "source": "golden",
+    "len": 124,
+    "uniqChar": 26,
+    "tokens": 10,
+    "sentences": 1,
+    "entropy": 84.76,
+    "quality": 95.31,
+    "compress": 115.91,
+    "dictHit": 28.57,
+    "alpha": 70,
+    "vowel": 100,
+    "ascii": 87.9,
+    "text": "it's O'Brien's rock-'n'-roll DON’T can’t 'quoted' _under_score_ 123abc abc123 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+   }
+  },
+  {
+   "text": "emoji 😀😀 test 𝔸𝕭 astral \ud800 lone \udfff pair ok. Mixed. Ends! Yes? zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+   "id": "d3c1ff4b66b07edd71acb870d8fecd7346ab5f7d39164009d2b4876221111837",
+   "value": {
+    "source": "golden",
+    "len": 86,
+    "uniqChar": 20,
+    "tokens": 11,
+    "sentences": 4,
+    "entropy": 78.33,
+    "quality": 84.62,
+    "compress": 116.38,
+    "dictHit": 0,
+    "alpha": 90.91,
+    "vowel": 90,
+    "ascii": 100,
+    "text": "emoji 😀😀 test 𝔸𝕭 astral \ud800 lone \udfff pair ok. Mixed. Ends! Yes? zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+   }
+  },
+  {
+   "text": "      　 unicode spaces\ttabs\r\nnewlines  word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+   "id": "7d084c84a9d45043bee85fca84f2eb428f26be4cbf455ff4cffa68d0a6cd2be9",
+   "value": {
+    "source": "golden",
+    "len": 180,
+    "uniqChar": 16,
+    "tokens": 34,
+    "sentences": 2,
+    "entropy": 69.95,
+    "quality": 99.34,
+    "compress": 74.61,
+    "dictHit": 88.24,
+    "alpha": 100,
+    "vowel": 100,
+    "ascii": 100,
+    "text": "      　 unicode spaces\ttabs\r\nnewlines  word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word "
+   }
+  },
+  {
+   "text": "Greek: αβγδ ΑΒΓΔ ωΩ. French: àâäçèéêëîïôöùûüÿæœß ÀÂÄ. pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad ",
+   "id": "b85ea7dc4ffb16dca306073113d3bae7c8404bfc9e30fe521fb9960fe022c568",
+   "value": {
+    "source": "golden",
+    "len": 133,
+    "uniqChar": 12,
+    "tokens": 37,
+    "sentences": 2,
+    "entropy": 84.89,
+    "quality": 99.14,
+    "compress": 98.54,
+    "dictHit": 93.75,
+    "alpha": 86.49,
+    "vowel": 100,
+    "ascii": 100,
+    "text": "Greek: αβγδ ΑΒΓΔ ωΩ. French: àâäçèéêëîïôöùûüÿæœß ÀÂÄ. pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad "
+   }
+  },
+  {
+   "text": "•▪■□●○◦·※†‡§¶ noise @#$%&*_+ chars <>{}| text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text ",
+   "id": "4369af02de1c064a575db9f4221e8109267b563e0bb54c18060073f334e3d9b8",
+   "value": {
+    "source": "golden",
+    "len": 165,
+    "uniqChar": 13,
+    "tokens": 32,
+    "sentences": 1,
+    "entropy": 72.65,
+    "quality": 73.17,
+    "compress": 85.51,
+    "dictHit": 100,
+    "alpha": 100,
+    "vowel": 100,
+    "ascii": 21.21,
+    "text": "•▪■□●○◦·※†‡§¶ noise @#$%&*_+ chars <>{}| text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text "
+   }
+  }
+ ]
+}
