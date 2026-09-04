@@ -89,9 +89,7 @@ def run_one(label: str, checkpoint: Path, items, device, dtype, args) -> dict:
 
 
 def render(suspect_path, control_path, suspect, control, delta, args) -> str:
-    no_signature = (
-        delta.get('mean_delta_longest_span', 0) < 1.0 and delta.get('p95_delta_longest_span', 0) < 4.0
-    )
+    no_signature = delta.get('mean_delta_longest_span', 0) < 1.0 and delta.get('p95_delta_longest_span', 0) < 4.0
     verdict = 'NO MEMORIZATION SIGNATURE' if no_signature else 'POSSIBLE RECALL - investigate'
 
     lines = [
@@ -138,8 +136,7 @@ def render(suspect_path, control_path, suspect, control, delta, args) -> str:
         'Reading it: memorisation produces a HEAVY RIGHT TAIL (a few documents recited at',
         'length), not a small uniform shift. A large p95/max delta with a near-zero mean is',
         'the signature to worry about. If the control is also the WEAKER model, a modest',
-        'positive delta is expected on capability grounds alone -- check both models'
-        " held-out BPB before concluding anything.",
+        'positive delta is expected on capability grounds alone -- check both models held-out BPB before concluding anything.',
         '',
     ]
     return '\n'.join(lines) + '\n'
@@ -164,8 +161,7 @@ def main(argv=None) -> None:
         '--out',
         type=Path,
         default=None,
-        help='Output JSON path. Markdown is written beside it. '
-        'Default: <results dir>/memorization-probe.json',
+        help='Output JSON path. Markdown is written beside it. Default: <results dir>/memorization-probe.json',
     )
     args = p.parse_args(argv)
 

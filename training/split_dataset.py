@@ -18,6 +18,7 @@ import json
 import re
 import sys
 import tomllib
+from array import array
 from pathlib import Path
 from random import Random
 
@@ -37,32 +38,59 @@ def detect_format(line: str) -> str:
     return 'text'
 
 
-def read_texts(path: Path) -> tuple[list[str], str]:
-    """
-    Read *path* and return (texts, fmt).
-
-    JSONL  — each non-empty line is a separate document: returns one entry per line.
-    Plain text — the entire file is a single document: returns one entry total.
-
-    Format is auto-detected from the first non-empty line.
-    """
+def sniff_format(path: Path) -> str:
+    """Detect 'jsonl' vs 'text' by reading ONLY the first non-empty line."""
     with open(path, encoding='utf-8') as fh:
-        content = fh.read()
+        for raw in fh:
+            line = raw.strip()
+            if line:
+                return detect_format(line)
+    return 'text'
 
-    fmt = 'text'
-    for raw in content.splitlines():
-        line = raw.strip()
-        if line:
-            fmt = detect_format(line)
-            break
-    if fmt == 'jsonl':
-        texts = [json.loads(line)['text'] for line in content.splitlines() if line.strip()]
-    else:
-        # Whole file is one document — do NOT split by line.
-        stripped = content.strip()
-        texts = [stripped] if stripped else []
 
-    return texts, fmt
+def read_whole_text(path: Path) -> list[str]:
+    """Read a plain-text file as ONE document. Only used for the non-JSONL path."""
+    with open(path, encoding='utf-8') as fh:
+        stripped = fh.read().strip()
+    return [stripped] if stripped else []
+
+
+def scan_jsonl(path: Path) -> tuple[array, array, array]:
+    """
+    Pass 1 of the streaming JSONL split: index the file without holding it.
+
+    Returns three parallel arrays, one entry per non-empty line:
+      offsets  — byte offset of the line in the file
+      lengths  — character length of that line's "text" field
+      scores   — _boundary_score() of that text
+
+    Cost is ~26 bytes/line of RAM (vs. the whole corpus), so a 38 GB / 10 M-line
+    shard indexes in well under a gigabyte.
+    """
+    offsets, lengths, scores = array('q'), array('q'), array('b')
+    size = path.stat().st_size
+    next_report = 1 << 30
+    with open(path, 'rb') as fh:
+        offset = 0
+        for raw in fh:
+            start = offset
+            offset += len(raw)
+            if not raw.strip():
+                continue
+            text = json.loads(raw)['text']
+            offsets.append(start)
+            lengths.append(len(text))
+            scores.append(_boundary_score(text))
+            if start >= next_report:
+                print(f'        indexing {start / size:5.1%}  ({len(offsets):,} docs)', flush=True)
+                next_report = start + (1 << 30)
+    return offsets, lengths, scores
+
+
+def read_jsonl_text(fh, offset: int) -> str:
+    """Pass 2 helper: pull one document back out of the file by byte offset."""
+    fh.seek(offset)
+    return json.loads(fh.readline())['text']
 
 
 # Patterns for boundary detection
@@ -117,39 +145,38 @@ def find_char_split(text: str, train_ratio: float, tolerance: float = 0.05) -> i
     return target  # last resort: hard cut
 
 
-def find_split_index(texts: list[str], train_ratio: float = 0.9, tolerance: float = 0.05) -> int:
+def find_split_index(lengths, scores, train_ratio: float = 0.9, tolerance: float = 0.05) -> int:
     """
-    Return index i so that texts[:i] go to train and texts[i:] to valid.
+    Return index i so that entries [:i] go to train and [i:] to valid.
 
-    Looks for the cleanest boundary (paragraph > sentence > word) within
-    tolerance of the target character position. Falls back to the nearest
+    Takes per-entry CHARACTER LENGTHS and pre-computed _boundary_score() values
+    rather than the texts themselves, so the caller never has to hold the corpus
+    in memory. Looks for the cleanest boundary (paragraph > sentence > word)
+    within tolerance of the target character position; falls back to the nearest
     entry boundary when nothing lands in that window.
     """
-    total = sum(len(t) for t in texts)
+    total = sum(lengths)
     target = total * train_ratio
     tol = total * tolerance
 
-    # cumulative[i] = total chars after including texts[i]
-    cumulative: list[int] = []
+    # cumulative[i] = total chars after including entry i
+    cumulative = array('q')
     acc = 0
-    for t in texts:
-        acc += len(t)
+    for n in lengths:
+        acc += n
         cumulative.append(acc)
 
     # Consider all entry-end positions inside the tolerance window.
     # Exclude the very last entry so validation always has at least one entry.
-    candidates = [i for i, c in enumerate(cumulative[:-1]) if target - tol <= c <= target + tol]
+    candidates = [i for i in range(len(cumulative) - 1) if target - tol <= cumulative[i] <= target + tol]
 
     if not candidates:
         # Nothing in the window — pick the nearest entry boundary.
-        candidates = [min(range(len(texts) - 1), key=lambda i: abs(cumulative[i] - target))]
+        candidates = [min(range(len(lengths) - 1), key=lambda i: abs(cumulative[i] - target))]
 
     # Highest score wins; ties broken by proximity to the target position.
-    best = max(
-        candidates,
-        key=lambda i: (_boundary_score(texts[i]), -abs(cumulative[i] - target)),
-    )
-    # texts[:best+1] → train, texts[best+1:] → valid
+    best = max(candidates, key=lambda i: (scores[i], -abs(cumulative[i] - target)))
+    # entries[:best+1] → train, entries[best+1:] → valid
     return best + 1
 
 
@@ -170,6 +197,76 @@ def write_texts(path: Path, texts: list[str], fmt: str) -> None:
                 fh.write(json.dumps({'text': text}, ensure_ascii=False) + '\n')
             else:
                 fh.write(text.strip() + '\n')
+
+
+def split_jsonl_streaming(
+    input_path: Path,
+    train_path: Path,
+    valid_path: Path,
+    wrap,
+    valid_ratio: float,
+    split_tolerance: float,
+    shuffle: bool,
+    seed: int,
+) -> None:
+    """
+    Split a JSONL file without ever holding it in memory.
+
+    Two passes over the file:
+      1. scan_jsonl() builds a compact index (byte offset, char length, boundary
+         score) — a few tens of bytes per document instead of the document.
+      2. Documents are re-read one at a time by byte offset and streamed straight
+         out to the -train / -valid files.
+
+    This is what makes 38 GB shards splittable on a 62 GB machine. The result is
+    identical to the old in-memory path, including the shuffled output ordering.
+    """
+    print(f'        pass 1/2: indexing {input_path.name} …', flush=True)
+    offsets, lengths, scores = scan_jsonl(input_path)
+    n_docs = len(offsets)
+    if not n_docs:
+        print(f'[skip]  {input_path.name}  — empty file')
+        return
+    if n_docs < 2:
+        print(f'[train] {input_path.name}  — single document, writing as train only')
+        with open(input_path, encoding='utf-8') as src, open(train_path, 'w', encoding='utf-8') as out:
+            out.write(json.dumps({'text': wrap(read_jsonl_text(src, offsets[0]))}, ensure_ascii=False) + '\n')
+        return
+
+    order = list(range(n_docs))
+    if shuffle:
+        Random(seed).shuffle(order)
+
+    # find_split_index works on the SHUFFLED sequence, exactly as before.
+    ordered_lengths = array('q', (lengths[i] for i in order))
+    ordered_scores = array('b', (scores[i] for i in order))
+    split_at = find_split_index(ordered_lengths, ordered_scores, 1.0 - valid_ratio, tolerance=split_tolerance)
+
+    raw_total = sum(ordered_lengths)
+    raw_train = sum(ordered_lengths[:split_at])
+    raw_valid = sum(ordered_lengths[split_at:])
+    _assert_no_loss(input_path.name, raw_total, raw_train, raw_valid)
+
+    print(f'        pass 2/2: writing {split_at:,} train / {n_docs - split_at:,} valid …', flush=True)
+    written = 0
+    with (
+        open(input_path, encoding='utf-8') as src,
+        open(train_path, 'w', encoding='utf-8', buffering=1 << 22) as train_fh,
+        open(valid_path, 'w', encoding='utf-8', buffering=1 << 22) as valid_fh,
+    ):
+        for rank, idx in enumerate(order):
+            out = train_fh if rank < split_at else valid_fh
+            text = wrap(read_jsonl_text(src, offsets[idx]))
+            out.write(json.dumps({'text': text}, ensure_ascii=False) + '\n')
+            written += 1
+            if written % 1_000_000 == 0:
+                print(f'        wrote {written:,}/{n_docs:,} docs', flush=True)
+
+    actual_ratio = raw_valid / raw_total
+    print(
+        f'[split] {input_path.name}  — {split_at:,} train / {n_docs - split_at:,} valid '
+        f'(valid {actual_ratio:.1%} of chars, jsonl, streamed)'
+    )
 
 
 def process_file(
@@ -194,11 +291,7 @@ def process_file(
             print(f'[skip]  {input_path.name}  — already has a -train/-valid suffix, skipping to avoid double-split')
         return
 
-    texts, fmt = read_texts(input_path)
-
-    if not texts:
-        print(f'[skip]  {input_path.name}  — empty file')
-        return
+    fmt = sniff_format(input_path)
 
     eos = tokenizer.eos_token or ''
     if not eos:
@@ -212,60 +305,49 @@ def process_file(
             t = f'{t}\n{eos}'
         return t
 
-    if fmt == 'text':
-        # Single document — wrap the whole file once, carve validation from the centre.
-        text = wrap('\n'.join(t.strip() for t in texts).strip())
+    if fmt == 'jsonl':
+        split_jsonl_streaming(input_path, train_path, valid_path, wrap, valid_ratio, split_tolerance, shuffle, seed)
+        if delete_original:
+            input_path.unlink()
+        return
 
-        if len(text) < MIN_CHARS_FOR_SPLIT:
-            print(f'[train] {input_path.name}  — {len(text)} chars < {MIN_CHARS_FOR_SPLIT}, writing as train only')
-            write_texts(train_path, [text], fmt)
-            if delete_original:
-                input_path.unlink()
-            return
+    texts = read_whole_text(input_path)
+    if not texts:
+        print(f'[skip]  {input_path.name}  — empty file')
+        return
 
-        # Validation is carved from the middle so both halves of the training text
-        # stay contextually clean.  Two boundaries are found independently:
-        #   split1 — end of train-part-1  (~45 % for valid_ratio=0.10)
-        #   split2 — start of train-part-2 (~55 %)
-        # train = text[:split1] + text[split2:]
-        # valid = text[split1:split2]
-        mid_start = (1.0 - valid_ratio) / 2  # e.g. 0.45
-        mid_end = mid_start + valid_ratio  # e.g. 0.55
+    # Single document — wrap the whole file once, carve validation from the centre.
+    text = wrap('\n'.join(t.strip() for t in texts).strip())
 
-        split1 = find_char_split(text, mid_start, tolerance=split_tolerance)
-        split2 = find_char_split(text, mid_end, tolerance=split_tolerance)
+    if len(text) < MIN_CHARS_FOR_SPLIT:
+        print(f'[train] {input_path.name}  — {len(text)} chars < {MIN_CHARS_FOR_SPLIT}, writing as train only')
+        write_texts(train_path, [text], fmt)
+        if delete_original:
+            input_path.unlink()
+        return
 
-        if split2 <= split1:  # degenerate edge-case guard
-            split2 = split1 + 1
+    # Validation is carved from the middle so both halves of the training text
+    # stay contextually clean.  Two boundaries are found independently:
+    #   split1 — end of train-part-1  (~45 % for valid_ratio=0.10)
+    #   split2 — start of train-part-2 (~55 %)
+    # train = text[:split1] + text[split2:]
+    # valid = text[split1:split2]
+    mid_start = (1.0 - valid_ratio) / 2  # e.g. 0.45
+    mid_end = mid_start + valid_ratio  # e.g. 0.55
 
-        train_text = text[:split1] + text[split2:]
-        valid_text = text[split1:split2]
-        _assert_no_loss(input_path.name, len(text), len(train_text), len(valid_text))
-        write_texts(train_path, [train_text], fmt)
-        write_texts(valid_path, [valid_text], fmt)
-        actual_ratio = len(valid_text) / len(text)
-        print(f'[split] {input_path.name}  — valid {actual_ratio:.1%} of chars from centre (text)')
+    split1 = find_char_split(text, mid_start, tolerance=split_tolerance)
+    split2 = find_char_split(text, mid_end, tolerance=split_tolerance)
 
-    else:
-        if shuffle:
-            rng = Random(seed)
-            rng.shuffle(texts)
+    if split2 <= split1:  # degenerate edge-case guard
+        split2 = split1 + 1
 
-        split_at = find_split_index(texts, 1.0 - valid_ratio, tolerance=split_tolerance)
-        train_texts = [wrap(t) for t in texts[:split_at]]
-        valid_texts = [wrap(t) for t in texts[split_at:]]
-        raw_total = sum(len(t) for t in texts)
-        raw_train = sum(len(t) for t in texts[:split_at])
-        raw_valid = sum(len(t) for t in texts[split_at:])
-        _assert_no_loss(input_path.name, raw_total, raw_train, raw_valid)
-        write_texts(train_path, train_texts, fmt)
-        write_texts(valid_path, valid_texts, fmt)
-        train_chars = sum(len(t) for t in train_texts)
-        valid_chars = sum(len(t) for t in valid_texts)
-        actual_ratio = valid_chars / (train_chars + valid_chars)
-        print(
-            f'[split] {input_path.name}  — {len(train_texts)} train / {len(valid_texts)} valid  (valid {actual_ratio:.1%} of chars, jsonl)'
-        )
+    train_text = text[:split1] + text[split2:]
+    valid_text = text[split1:split2]
+    _assert_no_loss(input_path.name, len(text), len(train_text), len(valid_text))
+    write_texts(train_path, [train_text], fmt)
+    write_texts(valid_path, [valid_text], fmt)
+    actual_ratio = len(valid_text) / len(text)
+    print(f'[split] {input_path.name}  — valid {actual_ratio:.1%} of chars from centre (text)')
 
     if delete_original:
         input_path.unlink()

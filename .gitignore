@@ -144,15 +144,29 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
-# Crap
+# Stuff
 .claude/
-
-# Data
 data/
 docs/
-dataset/*DB
-!bench/data/
+dataset/*-DB
 
+!bench/data/
+!knowledge/pre1900/*.py
+!knowledge/pre1900/data/*.txt
+knowledge/bible/*.txt
+knowledge/complete/seeds.*
+knowledge/dialog/*.json*
+knowledge/dialog/gutenberg*
+knowledge/dialog/vintage*
+knowledge/genStruct/books/*.*
+knowledge/genStruct/TODO/
+knowledge/oldify/*.jsonl
+knowledge/oldify/*.txt
+knowledge/pre1900
+knowledge/synth-dialog/cards/
+knowledge/synth-fine/out/*.json*
+knowledge/synth-ft1/*.json*
+research/model-comparison/
 training/*-data/
 training/*-text/
 training/*.bin
@@ -164,20 +178,3 @@ training/llama-77/
 training/MODELS/
 training/patina/
 training/TimeCapsuleLLM*
-
-knowledge/pre1900
-!knowledge/pre1900/*.py
-!knowledge/pre1900/data/*.txt
-
-knowledge/bible/*.txt
-knowledge/complete/seeds.*
-knowledge/dialog/*.json*
-knowledge/dialog/vintage*
-knowledge/dialog/gutenberg*
-knowledge/synth-dialog/cards/
-knowledge/genStruct/books/*.*
-knowledge/oldify/*.jsonl
-knowledge/oldify/*.txt
-knowledge/synth-ft1/*.json*
-knowledge/synth-fine/out/*.json*
-knowledge/genStruct/TODO/
