@@ -222,15 +222,23 @@ def config_checks(cfg, mode, R, ctx, args):
     )
     if 'adamw' not in optim:
         R.warn(f'optim = "{optim}" — doctor probes assume an AdamW variant')
+    # Muon-family optimizers (muon, muonq, normuon) orthogonalize the update, so
+    # their step size is NOT on AdamW's scale and these AdamW bands do not apply.
+    # Our own 5-arm sweep (autoresearch2/optimizer/REPORT.md) measured the optimum
+    # at 1.6e-2 for both MuonQ and NorMuon, which the AdamW band would have called
+    # "guaranteed divergence". Band the two families separately rather than fail a
+    # value we have trained successfully many times.
+    _is_muon = any(k in optim for k in ('muon', 'normuon'))
+    _hi_fail, _hi_warn, _typical = (1e-1, 4e-2, '4e-3 … 3.2e-2') if _is_muon else (1e-2, 2e-3, '3e-4 … 1e-3')
     if mode == 'base':
-        if lr > 1e-2:
+        if lr > _hi_fail:
             R.fail(f'learning_rate {lr} is extremely high — guaranteed divergence territory')
-        elif lr > 2e-3:
-            R.warn(f'learning_rate {lr} is high for pre-training (typical for a ~50M model: 3e-4 … 1e-3)')
+        elif lr > _hi_warn:
+            R.warn(f'learning_rate {lr} is high for pre-training (typical for a ~50M model: {_typical})')
         elif lr < 1e-5:
             R.warn(f'learning_rate {lr} is very low for pre-training from scratch')
         else:
-            R.ok(f'learning_rate {lr} is in a sane pre-training range')
+            R.ok(f'learning_rate {lr} is in a sane pre-training range' + (f' for a Muon-family optimizer ({optim})' if _is_muon else ''))
         if tcfg.get('adam_beta2', 0.95) > 0.98:
             R.warn(f'adam_beta2 = {tcfg["adam_beta2"]} — 0.95 is the usual choice for pre-training stability')
     else:
@@ -1351,10 +1359,19 @@ def _report_binary_scan(stats, vocab_size, eos_id, seq, tokenizer, R):
     else:
         R.ok(f'{label}: token IDs in range [{min_id}, {max_id}] < vocab {vocab_size}')
 
-    eos_count = int(hist[eos_id]) if eos_id is not None and eos_id < 65536 else 0
+    # An unknown eos_id means the tokenizer never loaded (see CONFIG CHECKS).
+    # Reporting "no EOS tokens" here would be a vacuous finding — the scan had
+    # no id to look for — so say the check was skipped and let the real failure
+    # upstream carry the signal.
+    if eos_id is None:
+        R.info(f'{label}: EOS check skipped — tokenizer unavailable, no eos_token_id to scan for')
+        eos_count = -1  # -1 = not checked, distinct from 0 = checked and absent
+    else:
+        eos_count = int(hist[eos_id]) if eos_id < 65536 else 0
+
     if eos_count == 0:
         R.warn(f'{label}: no EOS tokens (id={eos_id}) in the sample — no document boundaries')
-    else:
+    elif eos_count > 0:
         density = scanned / eos_count
         R.ok(f'{label}: EOS every ~{density:,.0f} tokens ({eos_count:,} in sample)')
         dl = stats['doc_lens']

@@ -27,6 +27,25 @@ from transformers import AutoTokenizer
 MIN_CHARS_FOR_SPLIT = 1000
 
 
+def resolve_tokenizer(cfg: dict, config_path) -> str:
+    """
+    Resolve data.tokenizer the same way base_train.load_config() does: relative
+    paths are anchored to the CONFIG FILE's directory, not the shell's cwd, so
+    the value means the same thing from anywhere.  Non-path values (HuggingFace
+    hub ids) are passed through untouched.
+    """
+    from pathlib import Path
+
+    value = cfg['data']['tokenizer']
+    base = Path(config_path).resolve().parent
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return str(path)
+    if value.startswith(('.', '~', '/')) or (base / path).exists():
+        return str((base / path).resolve())
+    return value  # hub id
+
+
 def detect_format(line: str) -> str:
     """Return 'jsonl' if the line is a JSON object with a 'text' key, else 'text'."""
     try:
@@ -88,7 +107,15 @@ def scan_jsonl(path: Path) -> tuple[array, array, array]:
 
 
 def read_jsonl_text(fh, offset: int) -> str:
-    """Pass 2 helper: pull one document back out of the file by byte offset."""
+    """
+    Pass 2 helper: pull one document back out of the file by byte offset.
+
+    *fh* must be opened in BINARY mode. scan_jsonl() records raw byte offsets,
+    and seeking a text-mode handle to an arbitrary byte position is not
+    supported by TextIOWrapper -- it only promises to accept opaque cookies
+    from tell(). It happens to work for UTF-8 at a line boundary, but the
+    contract does not hold, so read bytes and let json.loads do the decoding.
+    """
     fh.seek(offset)
     return json.loads(fh.readline())['text']
 
@@ -229,7 +256,7 @@ def split_jsonl_streaming(
         return
     if n_docs < 2:
         print(f'[train] {input_path.name}  — single document, writing as train only')
-        with open(input_path, encoding='utf-8') as src, open(train_path, 'w', encoding='utf-8') as out:
+        with open(input_path, 'rb') as src, open(train_path, 'w', encoding='utf-8') as out:
             out.write(json.dumps({'text': wrap(read_jsonl_text(src, offsets[0]))}, ensure_ascii=False) + '\n')
         return
 
@@ -250,7 +277,7 @@ def split_jsonl_streaming(
     print(f'        pass 2/2: writing {split_at:,} train / {n_docs - split_at:,} valid …', flush=True)
     written = 0
     with (
-        open(input_path, encoding='utf-8') as src,
+        open(input_path, 'rb') as src,
         open(train_path, 'w', encoding='utf-8', buffering=1 << 22) as train_fh,
         open(valid_path, 'w', encoding='utf-8', buffering=1 << 22) as valid_fh,
     ):
@@ -407,7 +434,7 @@ def main() -> None:
     with open(config_path, 'rb') as fh:
         config = tomllib.load(fh)
 
-    tokenizer_path = config['data']['tokenizer']
+    tokenizer_path = resolve_tokenizer(config, config_path)
     print(f'Loading tokenizer from: {tokenizer_path}')
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
 

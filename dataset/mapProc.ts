@@ -32,13 +32,14 @@ Options:
 // - Return the modified object to save/update it in the database.
 // - Return null or undefined to skip the record (no-op, keeps original).
 function processRecord(key: string, record: any): any | null {
-  if (record.source === 'BritishLibrary') {
-    record.source = 'British';
-    return record;
-  } else if (record.source === 'LOC-PC') {
-    record.source = 'LOC-PD';
+  if (record.source === 'cli') {
+    record.source = 'TypeWriter';
     return record;
   }
+  // else if (record.source === 'LOC-PC') {
+  //   record.source = 'LOC-PD';
+  //   return record;
+  // }
 
   // Nothing changed for this record: return null so it is NOT rewritten.
   // (Rewriting every record in a multi-GB DB triggers a compaction storm and

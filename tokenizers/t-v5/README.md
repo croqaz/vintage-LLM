@@ -6,13 +6,15 @@
 | v3 | `t-v3` | 32,752 | in-house, April 2026, earlier corpus |
 | v4 | `t-v4` | 32,768 | in-house, cleaned corpus (datasets 1-4) |
 | v5 | `t-v5` | 32,768 | in-house: regex-free plain ByteLevel BPE - number, charset, and top-word guarantees enforced by data preparation and merge surgery, warranted against a case-preserving curated dictionary; runs id-exact in HF tokenizers, Tokie, and Gigatoken; fully reproducible from raw sources (`t-v5/`) |
-| violet | `violet` | 50,277 | external, Pythia/GPT-NeoX-style |
-| chatterbox | `chatterbox/tokenizer.json` | 32,768 | external Victorian BPE, plain ByteLevel pre-tokenizer |
-| typeWriter | `typeWriter/tokenizer.json` | 32,000 | external vintage BPE, Llama-3-style conventions |
-| talkie | `talkie/tokenizer.json` | 65,540 | external vintage BPE, Llama-3-style conventions |
+| timeCapsule | haykgrigorian/TimeCapsuleLLM-London-1800-1875-v2-1.2B | 32,000 | external period BPE, plain ByteLevel pre-tokenizer, whole-year tokens |
+| violet | zakarth/violet-1b4 | 50,277 | external, Pythia/GPT-NeoX-style |
+| chatterbox | tventurella/mr_chatterbox_model | 32,768 | external Victorian BPE, plain ByteLevel pre-tokenizer |
+| typeWriter | typewriter-ai/typewriter-1913-7B-base | 32,000 | external vintage BPE, Llama-3-style conventions |
+| talkie | talkie-lm/talkie-1930-13b-base | 65,540 | external vintage BPE, Llama-3-style conventions |
+| bartholomew | jbduran/bartholomew | 32,768 | external, nanochat (rustbpe) BPE trained on a 1930s corpus; converted id-exact from the tiktoken format (`bartholomew/convert.py`) |
 | SmolLM2 | `SmolLM/SmolLM2-tokenizer.json` | 49,152 | external general-purpose |
 | SmolLM3 | `SmolLM/SmolLM3-tokenizer.json` | 128,256 | external general-purpose |
-| GCT | `GCTokenizer/tokenizer.json` | 33,024 | corpus-free consensus of 6 frontier tokenizers; no whitespace tokens |
+| GCT | bench-labs/GCTokenizer-v1 | 33,024 | corpus-free consensus of 6 frontier tokenizers; no whitespace tokens |
 
 ## 1. How we test
 
@@ -42,10 +44,12 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | SmolLM3 | 10,902,499 | 4.499 |
 | v5 | 10,910,380 | 4.496 |
 | v4 | 10,932,606 | 4.487 |
+| bartholomew | 10,976,815 | 4.468 |
 | v3 | 11,112,931 | 4.414 |
 | v2 | 11,177,577 | 4.388 |
 | typeWriter | 11,216,024 | 4.373 |
 | SmolLM2 | 11,229,874 | 4.368 |
+| timeCapsule | 11,230,812 | 4.367 |
 | chatterbox | 11,256,976 | 4.357 |
 | violet | 11,287,511 | 4.345 |
 | GCT | 21,436,888 | 2.288 |
@@ -59,11 +63,13 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | talkie | 3.4420 | **2.2865** | 1,583 | 85.5% |
 | v5 | **3.3305** | 2.3054 | 1,336 | **99.3%** |
 | v4 | 3.3373 | 2.3131 | 1,348 | **99.3%** |
+| bartholomew | 3.3508 | 2.3448 | 1,445 | 98.6% |
 | v3 | 3.3922 | 2.3514 | 1,349 | 98.6% |
 | SmolLM3 | 3.7649 | 2.3539 | 1,562 | 39.7% |
 | v2 | 3.4114 | 2.3661 | 1,353 | 98.2% |
 | typeWriter | 3.4160 | 2.3705 | 1,338 | 97.3% |
 | SmolLM2 | 3.5617 | 2.3727 | 1,335 | 83.2% |
+| timeCapsule | 3.4205 | 2.3748 | 1,342 | 96.5% |
 | chatterbox | 3.4363 | 2.3765 | 1,327 | 97.7% |
 | violet | 3.5875 | 2.3933 | 1,369 | 77.1% |
 | GCT | 6.5487 | 3.1411 | **147** | 56.8% |
@@ -79,9 +85,11 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | talkie | **1.0730** | **1.1387** | 1.0687 | **1.0576** | **1.0571** | 1.0692 | **1.0776** |
 | v5 | 1.1046 | 1.1648 | **1.0632** | 1.0825 | 1.0829 | **1.0636** | 1.0943 |
 | v4 | 1.1090 | 1.1454 | 1.0830 | 1.0912 | 1.0919 | 1.0835 | 1.1011 |
+| bartholomew | 1.1052 | 1.1886 | 1.0994 | 1.0813 | 1.0816 | 1.1006 | 1.1096 |
 | typeWriter | 1.0999 | 1.1942 | 1.1038 | 1.0828 | 1.0832 | 1.1049 | 1.1116 |
 | chatterbox | 1.1071 | 1.1988 | 1.1138 | 1.0909 | 1.0910 | 1.1154 | 1.1195 |
 | v3 | 1.1084 | 1.1983 | 1.1145 | 1.0936 | 1.0936 | 1.1160 | 1.1208 |
+| timeCapsule | 1.1144 | 1.1856 | 1.1202 | 1.0936 | 1.0930 | 1.1213 | 1.1213 |
 | SmolLM3 | 1.1166 | 1.1993 | 1.1061 | 1.0998 | 1.0994 | 1.1066 | 1.1216 |
 | SmolLM2 | 1.1268 | 1.2148 | 1.0960 | 1.1017 | 1.1008 | 1.0965 | 1.1234 |
 | v2 | 1.1182 | 1.1892 | 1.1255 | 1.0973 | 1.0972 | 1.1267 | 1.1257 |
@@ -101,6 +109,8 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | SmolLM2 | 1.3362 | 1.3942 | 1.4286 | 1.3226 | 1.3218 | 1.4300 | 1.3709 |
 | v5 | 1.3275 | 1.3708 | 1.4441 | 1.3257 | 1.3270 | 1.4474 | 1.3720 |
 | GCT | 1.3498 | 1.3861 | 1.4710 | 1.3437 | 1.3440 | 1.4732 | 1.3928 |
+| bartholomew | 1.4591 | 1.4709 | 1.6241 | 1.4657 | 1.4656 | 1.6279 | 1.5163 |
+| timeCapsule | 1.5206 | 1.5592 | 1.6940 | 1.5321 | 1.5328 | 1.6979 | 1.5868 |
 | typeWriter | 1.5297 | 1.5852 | 1.7139 | 1.5474 | 1.5482 | 1.7178 | 1.6043 |
 | chatterbox | 1.5617 | 1.6206 | 1.7366 | 1.5762 | 1.5760 | 1.7407 | 1.6327 |
 
@@ -115,8 +125,10 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | talkie | **5.29%** | 10.07% | 5.50% | **4.25%** | **4.22%** | 5.51% | **5.81%** |
 | v5 | 6.59% | 11.02% | **4.38%** | 5.38% | 5.40% | **4.39%** | 6.23% |
 | v4 | 7.04% | **9.77%** | 6.00% | 6.11% | 6.14% | 6.04% | 6.87% |
+| bartholomew | 6.95% | 12.86% | 7.32% | 5.67% | 5.67% | 7.38% | 7.64% |
 | typeWriter | 6.42% | 13.09% | 7.62% | 5.64% | 5.67% | 7.68% | 7.68% |
 | chatterbox | 6.76% | 13.36% | 8.19% | 6.01% | 6.01% | 8.26% | 8.09% |
+| timeCapsule | 7.55% | 12.90% | 8.93% | 6.33% | 6.30% | 8.99% | 8.48% |
 | v3 | 7.24% | 13.67% | 8.63% | 6.43% | 6.43% | 8.72% | 8.51% |
 | SmolLM2 | 8.48% | 14.84% | 7.11% | 6.98% | 6.92% | 7.10% | 8.60% |
 | v2 | 7.79% | 13.19% | 9.48% | 6.78% | 6.77% | 9.56% | 8.91% |
@@ -137,6 +149,8 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | SmolLM2 | 24.85% | 28.14% | 32.92% | 24.30% | 24.30% | 33.01% | 27.80% |
 | GCT | 25.64% | 28.22% | 34.72% | 25.49% | 25.52% | 34.85% | 28.94% |
 | talkie | 25.35% | 26.88% | 36.76% | 25.73% | 25.72% | 36.91% | 29.39% |
+| bartholomew | 33.54% | 33.32% | 44.27% | 34.28% | 34.29% | 44.48% | 37.20% |
+| timeCapsule | 36.82% | 38.36% | 47.74% | 37.70% | 37.76% | 47.95% | 40.89% |
 | typeWriter | 36.66% | 38.92% | 47.43% | 37.88% | 37.94% | 47.60% | 40.91% |
 | chatterbox | 39.22% | 41.80% | 49.49% | 40.23% | 40.22% | 49.66% | 43.29% |
 
@@ -152,7 +166,9 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | v5 | **99.80%** | 99.50% | 98.42% | 58.86% | 30.09% | 94.58% |
 | v4 | 99.70% | 99.35% | **98.59%** | 52.11% | 26.66% | 93.78% |
 | typeWriter | 99.60% | 99.55% | 94.55% | 56.42% | 29.36% | 93.44% |
+| bartholomew | 99.60% | 99.10% | 95.07% | 54.91% | 28.64% | 93.31% |
 | chatterbox | 99.50% | 99.00% | 93.15% | 55.43% | 29.24% | 92.94% |
+| timeCapsule | 99.50% | 98.95% | 93.35% | 49.93% | 26.41% | 92.36% |
 | v3 | 99.60% | 99.05% | 93.29% | 49.09% | 25.37% | 92.30% |
 | SmolLM2 | 99.40% | 98.50% | 87.89% | 55.38% | 34.14% | 91.85% |
 | v2 | 99.50% | 98.95% | 92.87% | 46.12% | 23.94% | 91.78% |
@@ -173,6 +189,8 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | SmolLM2 | 73.70% | 62.10% | 32.20% | 16.13% | 9.65% | 68.03% |
 | talkie | 76.60% | 57.60% | 28.11% | 15.20% | 9.14% | 67.26% |
 | GCT | 71.10% | 58.90% | 31.34% | 17.54% | 11.45% | 66.94% |
+| bartholomew | 48.70% | 35.35% | 17.09% | 7.96% | 4.59% | 56.79% |
+| timeCapsule | 41.30% | 27.95% | 10.44% | 4.78% | 2.80% | 51.62% |
 | typeWriter | 40.40% | 26.95% | 10.10% | 4.51% | 2.63% | 51.42% |
 | chatterbox | 39.40% | 28.35% | 11.07% | 4.99% | 2.92% | 48.43% |
 
@@ -187,12 +205,14 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | SmolLM3 | **99.70%** | 0.30% | **0.00%** | **2.002** |
 | talkie | 99.30% | 0.70% | **0.00%** | 2.004 |
 | v2 | 99.30% | 0.60% | 0.10% | 2.005 |
+| timeCapsule | 99.30% | 0.60% | 0.10% | 2.005 |
 | SmolLM2 | 99.00% | 1.00% | **0.00%** | 2.006 |
 | v3 | 98.90% | 1.00% | 0.10% | 2.007 |
 | v4 | 98.90% | 1.00% | 0.10% | 2.007 |
 | v5 | 98.90% | 1.00% | 0.10% | 2.007 |
 | chatterbox | 98.90% | 1.00% | 0.10% | 2.007 |
 | typeWriter | 98.90% | 1.00% | 0.10% | 2.007 |
+| bartholomew | 98.90% | 1.00% | 0.10% | 2.007 |
 | violet | 98.80% | 1.10% | 0.10% | 2.008 |
 | GCT | 0.00% | **0.00%** | 100.00% | 4.039 |
 
@@ -203,7 +223,9 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | talkie | **98.25%** | 1.67% | **0.08%** | **2.011** |
 | SmolLM3 | 97.54% | 2.27% | 0.19% | 2.012 |
 | v2 | 97.40% | 2.05% | 0.55% | 2.018 |
+| timeCapsule | 97.56% | 1.82% | 0.62% | 2.018 |
 | SmolLM2 | 96.75% | 2.86% | 0.39% | 2.020 |
+| bartholomew | 97.12% | 2.36% | 0.52% | 2.020 |
 | v5 | 97.00% | 2.48% | 0.52% | 2.020 |
 | v4 | 96.95% | 2.54% | 0.51% | 2.020 |
 | v3 | 97.04% | 2.35% | 0.61% | 2.021 |
@@ -221,8 +243,10 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 |---|---:|---:|---:|
 | v5 | 8 / 0.025% | **0 / 0.000%** | 5 / 0.015% |
 | chatterbox | 2 / 0.006% | 10 / 0.031% | **0 / 0.000%** |
+| timeCapsule | 8 / 0.025% | 13 / 0.041% | **0 / 0.000%** |
 | v4 | 12 / 0.037% | **0 / 0.000%** | 13 / 0.040% |
 | typeWriter | 2 / 0.006% | 15 / 0.048% | **0 / 0.000%** |
+| bartholomew | 6 / 0.018% | 22 / 0.068% | 3 / 0.009% |
 | v2 | 8 / 0.025% | 27 / 0.083% | 3 / 0.009% |
 | v3 | 12 / 0.037% | 56 / 0.17% | 16 / 0.049% |
 | talkie | 41 / 0.063% | 78 / 0.12% | 12 / 0.018% |
@@ -248,8 +272,11 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | SmolLM2 | 0 / 0.000% | 0 / 0.000% | 0 / 0.000% | 0 / 0.000% |
 | SmolLM3 | 100 / 0.078% | 1000 / 0.78% | 0 / 0.000% | 0 / 0.000% |
 | GCT | 0 / 0.000% | 0 / 0.000% | 0 / 0.000% | 0 / 0.000% |
+| bartholomew | 100 / 0.31% | 0 / 0.000% | 0 / 0.000% | 0 / 0.000% |
+| timeCapsule | 200 / 0.63% | 453 / 1.43% | 174 / 0.55% | 0 / 0.000% |
 
-**Top 3 smallest (vocab share spent on numbers):** 1. SmolLM2 - 0.00% · 2. GCT - 0.00% · 3. v5 - 0.62%
+**Top 3 smallest (vocab share spent on numbers):** 1. SmolLM2 - 0.00% · 2. GCT - 0.00% · 3. bartholomew - 0.31%
+
 **Top 3 biggest:** 1. violet - 4.03% · 2. chatterbox - 3.31% · 3. v3 - 2.66%
 
 ## 8. Character-set plausibility (OCR debris and out-of-domain scripts)
@@ -263,7 +290,9 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | v4 | 38 / 0.12% | § ― │ ¦ ▪ · ¶ ½ ❞ ─ ʒ ❝ • ´ ¹ ╌ ℥ » י ₂ ‖ U+0097 |
 | chatterbox | 41 / 0.13% | • ■ § « » с и н в о а е © т ъ ™ р л ♦ м у ы п я |
 | v2 | 42 / 0.13% | ─ ― ┼ ═ │ ½ ¹ © U+00A0 · ⁄ § ₂ ┴ ₄ ² י ³ ¾ ا ¼ ╤ |
+| bartholomew | 46 / 0.14% | § · • U+200B ′ ― ¶ − √ ⁄ т о י ་ و ⚫ р ו а ا ר ❜ с ر |
 | v3 | 76 / 0.23% | ─ ― ┼ ═ ½ § » │ © U+00A0 · ´ • « ■ ¹ ¼ ¶ ♦ ₂ ⁄ י ¾ ו |
+| timeCapsule | 81 / 0.26% | « • » § © ■ ® а ¢ о е € ™ р т с ¥ А п Р ¬ и н ♦ |
 | SmolLM2 | 321 / 0.66% | о а н е и т р ا л • с ─ к м µ ل € █ в д · ® © − |
 | talkie | 426 / 0.65% | « » • ■ ꝛ © § ® ¢ ¥ ♦ ⸗ · ▼ ™ € U+200B ± ½ ו ˙ ל ا ► |
 | violet | 1316 / 2.63% | о а е т и с н р л в п д к у м U+00A0 ا я ь г ы б い з |
@@ -278,12 +307,14 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 |---|---:|---:|---:|---:|
 | talkie | **5,146** | **52.99%** | **9.76%** | **0.68%** |
 | v5 | **5,146** | 54.14% | 13.21% | **0.68%** |
+| bartholomew | **5,146** | 53.96% | 14.19% | **0.68%** |
 | SmolLM3 | **5,146** | 53.83% | 14.36% | 0.70% |
 | v4 | **5,146** | 54.59% | 14.52% | 0.70% |
 | typeWriter | **5,146** | 54.78% | 15.31% | 0.70% |
 | v3 | **5,146** | 54.96% | 15.43% | 0.70% |
 | SmolLM2 | **5,146** | 54.57% | 15.51% | 0.74% |
 | chatterbox | **5,146** | 55.29% | 15.70% | 0.74% |
+| timeCapsule | **5,146** | 55.42% | 15.70% | 0.72% |
 | v2 | **5,146** | 55.31% | 15.95% | 0.72% |
 | violet | **5,146** | 55.11% | 16.63% | 0.74% |
 | GCT | **5,146** | 89.43% | 54.88% | 15.99% |
@@ -296,9 +327,11 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 |---|---:|
 | GCT | **100.00%** |
 | v2 | 57.98% |
+| timeCapsule | 57.97% |
 | violet | 57.94% |
 | v3 | 57.04% |
 | chatterbox | 56.76% |
+| bartholomew | 56.61% |
 | SmolLM3 | 56.47% |
 | v4 | 56.40% |
 | SmolLM2 | 56.26% |
@@ -316,9 +349,11 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | v5 | 74.75% | 6.35% | 18.90% | 1,495 | 46.10 |
 | SmolLM2 | 71.50% | 4.60% | 22.30% | 1,432 | 44.34 |
 | v4 | 71.45% | 6.95% | 21.50% | 1,430 | 45.90 |
+| bartholomew | 71.25% | 5.80% | 22.60% | 1,426 | 45.34 |
 | SmolLM3 | 69.65% | 4.90% | 23.40% | 1,393 | 43.75 |
 | typeWriter | 67.30% | 7.45% | 24.70% | 1,347 | 44.67 |
 | chatterbox | 65.95% | 7.75% | 25.55% | 1,320 | 44.48 |
+| timeCapsule | 65.30% | 6.90% | 27.25% | 1,307 | 44.67 |
 | v3 | 64.20% | 7.15% | 28.15% | 1,285 | 44.41 |
 | v2 | 62.90% | 7.30% | 29.30% | 1,259 | 44.37 |
 | violet | 61.75% | 6.45% | 29.00% | 1,237 | 42.23 |
@@ -334,6 +369,7 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | SmolLM3 | 3.672 | 4.499 | 0.816 |
 | v4 | 3.624 | 4.487 | 0.808 |
 | violet | 3.492 | 4.345 | 0.804 |
+| timeCapsule | 3.498 | 4.367 | 0.801 |
 | v5 | 3.594 | 4.496 | 0.799 |
 | SmolLM2 | 3.464 | 4.368 | 0.793 |
 | GCT | 1.711 | 2.288 | 0.748 |
@@ -341,6 +377,7 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | v2 | 2.879 | 4.388 | 0.656 |
 | chatterbox | 2.843 | 4.357 | 0.652 |
 | typeWriter | 2.843 | 4.373 | 0.650 |
+| bartholomew | 2.866 | 4.468 | 0.641 |
 
 ## 12. Encoding throughput and deployment compatibility
 
@@ -350,16 +387,18 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 
 | tokenizer | MB/s | Mtokens/s |
 |---|---:|---:|
-| talkie | **12.0** | **2.6** |
-| SmolLM3 | 11.3 | 2.5 |
-| SmolLM2 | 9.4 | 2.1 |
-| v5 | 9.3 | 2.1 |
-| chatterbox | 9.2 | 2.1 |
-| v4 | 9.2 | 2.1 |
-| typeWriter | 9.1 | 2.1 |
-| v3 | 9.0 | 2.0 |
-| v2 | 8.9 | 2.0 |
-| violet | 8.2 | 1.9 |
+| talkie | **11.3** | 2.4 |
+| bartholomew | 11.1 | **2.5** |
+| SmolLM3 | 10.6 | 2.4 |
+| timeCapsule | 9.1 | 2.1 |
+| chatterbox | 8.8 | 2.0 |
+| SmolLM2 | 8.6 | 2.0 |
+| v7 | 8.6 | 1.9 |
+| typeWriter | 8.6 | 2.0 |
+| v4 | 8.5 | 1.9 |
+| v2 | 8.4 | 1.9 |
+| v3 | 8.4 | 1.9 |
+| violet | 7.9 | 1.8 |
 | GCT | 2.6 | 1.1 |
 
 **Tokie:**
@@ -367,15 +406,17 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | tokenizer | MB/s | vs HF | parity |
 |---|---:|---:|---:|
 | v5 | **558.2** | **60.3×** | OK |
-| chatterbox | 537.3 | 58.1× | **IDS DIFFER - 11,257,498 tokens vs HF 11,256,976** |
-| SmolLM2 | 533.4 | 57.0× | OK |
-| v4 | 530.8 | 57.5× | OK |
-| v3 | 522.9 | 57.9× | OK |
-| typeWriter | 502.9 | 55.2× | OK |
-| talkie | 429.1 | 35.8× | OK |
-| v2 | 425.0 | 47.7× | OK |
-| SmolLM3 | 413.2 | 36.5× | OK |
-| violet | 199.6 | 24.4× | OK |
+| bartholomew | **549.5** | 49.4× | **IDS DIFFER - 10,984,590 tokens vs HF 10,976,815** |
+| chatterbox | 540.1 | 61.6× | **IDS DIFFER - 11,257,498 tokens vs HF 11,256,976** |
+| timeCapsule | 528.3 | 58.0× | OK |
+| v4 | 517.6 | 60.9× | OK |
+| SmolLM2 | 517.0 | 59.9× | OK |
+| v3 | 496.7 | 58.8× | OK |
+| typeWriter | 464.8 | 54.4× | OK |
+| SmolLM3 | 414.6 | 39.0× | OK |
+| v2 | 408.5 | 48.4× | OK |
+| talkie | 401.9 | 35.7× | OK |
+| violet | 191.7 | 24.1× | OK |
 | GCT | - | - | **LOAD FAILED - Invalid format: vocab should be object** |
 
 **Gigatoken:**
@@ -383,7 +424,8 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | tokenizer | MB/s | vs HF | parity |
 |---|---:|---:|---:|
 | typeWriter | **1610.3** | **176.7×** | OK |
-| talkie | 1543.1 | 128.9× | OK |
+| talkie | 1550.1 | 128.9× | OK |
+| timeCapsule | 1550.3 | 170.5× | OK |
 | SmolLM3 | 1289.1 | 114.0× | OK |
 | violet | 1028.7 | 125.7× | OK |
 | v5 | 605.4 | 65.4× | OK |
@@ -393,3 +435,4 @@ Result tables are sorted best-first (by the OVERALL / headline column), except �
 | chatterbox | - | - | **LOAD FAILED - Byte remapping failed: no single-byte vocab entry for byte 0x00** |
 | SmolLM2 | - | - | **LOAD FAILED - Byte remapping failed: no single-byte vocab entry for byte 0x04** |
 | GCT | - | - | **LOAD FAILED - Failed to parse tokenizer JSON: missing field `model` at line 33032 column 13** |
+| bartholomew | — | — | **LOAD FAILED — Unknown pre_tokenizer Split regexes, no fast pretokenizer** |

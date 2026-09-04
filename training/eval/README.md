@@ -117,6 +117,40 @@ Produces one ranked JSON + Markdown with:
 level up ONLY when the target is a `final/` or `checkpoint-*/` export -- pointing the
 eval at a run directory used to read the sibling run's files from the parent tree.
 
+## WARNING: the two held-out sets are NOT interchangeable
+
+There are two prose held-out files, one per corpus. **Each is contaminated relative to
+its own corpus** — pick the one that does NOT match the model's training data.
+
+| file | clean for | contaminated for |
+|---|---|---|
+| `heldout-Sprocket-n-Say.jsonl` | nothing measured clean | Sprocket-n-Say (20/20 probed, see REPORT-tokenizer-tv3-vs-tv4.md) **and** Piston-n-Prose (152/153) |
+| `heldout-Piston-n-Prose.jsonl` | Piston-n-Prose models (0/200) | untested against Sprocket-n-Say |
+
+So: score a **Piston-n-Prose** model on `heldout-Piston-n-Prose.jsonl`. A
+Sprocket-n-Say model has no verified-clean prose set — `heldout-Sprocket-n-Say.jsonl`
+was measured 20/20 inside that corpus, so its historical `prose_bpb` numbers carry a
+memorization component. They remain mutually comparable (every arm was inflated the
+same way) but are not absolute.
+
+`eval_data/chat_sample.jsonl` was checked against Piston-n-Prose and is **clean
+(0/199)**, so `chat_bpb` is valid there.
+
+**Never compare a score on one prose file against a score on the other.** They are
+different text of different difficulty — the same model scores ~1.28 bits/byte on
+`heldout-Sprocket-n-Say` and ~1.10 on `heldout-Piston-n-Prose`. That gap is the file,
+not the model.
+
+`BPB_LADDER` and every `measured` row in `REFERENCE_LADDER` are anchored on
+`heldout-Sprocket-n-Say.jsonl`, which is why it remains the CLI default. Adding a
+Piston-trained model to that ladder would mix two eval sets.
+
+Caveat on `heldout-Piston-n-Prose.jsonl`: it is drawn from the Piston-n-Prose
+validation shards, so it is in-distribution for models trained on that corpus and
+out-of-distribution for older ones. It is clean, not neutral.
+
+Full account: `research/REPORT-piston-v5-first-1h-run.md`.
+
 ## The reference ladder
 
 `REFERENCE_LADDER` in `metrics.py` drives the "Where it sits" figure. Rows tagged
@@ -126,7 +160,7 @@ are past measurements whose checkpoint is no longer on disk. A model that is its
 the ladder has its own row suppressed (detected by exact bits/byte match).
 
 To add a model: `python -m eval MODELS/<name> --force`, then paste its `prose_bpb`.
-If `eval_data/heldout.jsonl` ever changes, EVERY `measured` row must be re-run or the
+If `eval_data/heldout-Sprocket-n-Say.jsonl` ever changes, EVERY `measured` row must be re-run or the
 ladder silently mixes two different held-out sets.
 
 `REFERENCE_LADDER` (display) is separate from `BPB_LADDER` (bake-score anchors) on

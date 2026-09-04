@@ -1054,61 +1054,163 @@ def main():
         )
         optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
     elif optim_name == 'normuon':
-        # NorMuon lives in ./NorMuon as a bare source tree (a single module).
-        # Only the SingleDevice* classes are usable here -- the others call into
-        # torch.distributed, and this box trains on one GPU.
+        # NorMuon (Muon plus a per-row second-moment normalizer on the
+        # orthogonalized update, rescaled to preserve Muon's update norm --
+        # arXiv:2510.05491). Vendored in ./NorMuon as a bare source tree; only
+        # the SingleDevice* classes are usable here, the others call into
+        # torch.distributed and this box trains on one GPU.
+        #
+        # MERGE NOTE (2026-09-04): base_train.py carried TWO `normuon` branches
+        # in the same if/elif chain, so the second was unreachable dead code.
+        # The DEAD one is what produced every published arm in
+        # autoresearch2/optimizer/norMuon_lr_* (its log line "N hidden tensors
+        # on the Muon path" appears in those train.logs), so its NUMERICS are
+        # authoritative and are kept verbatim below. The live one contributed
+        # the engineering (requires_grad filter, accelerator.print, the
+        # applied-decay invariant) but had a serious defect: it read the Muon
+        # group's LR from `normuon_muon_lr` (default 0.02) and NOT from
+        # `learning_rate`, so an LR sweep driven by `learning_rate` would have
+        # swept only the auxiliary AdamW group.
         sys.path.insert(0, str(Path(__file__).resolve().parent / 'NorMuon'))
         from normuon import SingleDeviceNorMuonWithAuxAdam
 
-        # Muon orthogonalises a 2D update via Newton-Schulz, which is only
-        # meaningful for weight MATRICES. Embeddings, norms and biases go to the
-        # auxiliary Adam instead. `tie_word_embeddings = true` means lm_head IS
-        # embed_tokens, so it appears once here and lands in the Adam group --
-        # which is what we want either way.
-        muon_p, adam_p = [], []
-        for n, prm in model.named_parameters():
-            if not prm.requires_grad:
+        # Route parameters with MuonQ's EXACT rule so that a NorMuon-vs-MuonQ
+        # comparison differs only in the update rule, not in which tensors each
+        # rule touches: >=2D and not an embedding/head -> Muon; the rest -> aux
+        # AdamW. Newton-Schulz orthogonalisation is only meaningful for weight
+        # MATRICES, so embeddings, norms and biases must go to Adam.
+        # `tie_word_embeddings = true` means lm_head IS embed_tokens, so it is
+        # seen once and lands in the Adam group -- which is what we want.
+        _EXCLUDE = ('embeddings', 'embed_tokens', 'wte', 'lm_head', 'wpe')
+        muon_p, aux_p = [], []
+        for _n, _p in model.named_parameters():
+            if not _p.requires_grad:
                 continue
-            if prm.ndim >= 2 and 'embed' not in n and 'lm_head' not in n:
-                muon_p.append(prm)
-            else:
-                adam_p.append(prm)
+            is_hidden = _p.ndim >= 2 and not any(e in _n for e in _EXCLUDE)
+            (muon_p if is_hidden else aux_p).append(_p)
 
-        muon_lr = train_cfg.get('normuon_muon_lr', 0.02)
-        aux_lr = train_cfg.get('normuon_aux_lr', train_cfg.get('learning_rate', 1.2e-3))
-        # Decoupled decay applies lr * wd per step, so per-group wd is set to hold
-        # lr * wd = normuon_lrwd -- the same applied-decay invariant every run in
-        # this study has used (1.2e-4). Without this, sweeping the Muon LR would
-        # silently sweep the regularisation with it.
-        lrwd = train_cfg.get('normuon_lrwd', 1.2e-4)
+        # ONE lr drives both groups, matching MuonQ, whose AdamW backup reads
+        # group['lr'] rather than a separate adamw_lr. The aux betas/eps below
+        # are MuonQ's defaults (0.95, 0.95)/1e-8, NOT NorMuon's own
+        # (0.9, 0.95)/1e-10, for the same reason -- keep the comparison to the
+        # update rule alone.
+        _lr = train_cfg.get('learning_rate', 8e-3)
+        _wd = train_cfg.get('weight_decay', 0.1)
+        _aux_lr = train_cfg.get('normuon_aux_lr', _lr)
+
+        # OPT-IN applied-decay invariant (from the old live branch). Decoupled
+        # decay applies lr * wd per step, so sweeping the LR silently sweeps the
+        # regularisation with it. Setting `normuon_lrwd` pins lr * wd to a
+        # constant per group instead. ABSENT BY DEFAULT: the published arms used
+        # a plain shared weight_decay, and this must stay reproducible.
+        _lrwd = train_cfg.get('normuon_lrwd')
+        if _lrwd is not None:
+            _muon_wd, _aux_wd = _lrwd / _lr, _lrwd / _aux_lr
+        else:
+            _muon_wd = _aux_wd = _wd
 
         # SingleDeviceNorMuonWithAuxAdam asserts an EXACT key set per group, so
         # these dicts must carry precisely these keys and nothing else.
         param_groups = [
             dict(
                 params=muon_p,
-                lr=muon_lr,
-                momentum=train_cfg.get('normuon_momentum', 0.95),
-                beta2=train_cfg.get('normuon_beta2', 0.95),
-                weight_decay=lrwd / muon_lr,
                 use_muon=True,
+                lr=_lr,
+                weight_decay=_muon_wd,
+                momentum=train_cfg.get('muon_momentum', 0.95),
+                beta2=train_cfg.get('normuon_beta2', 0.95),
             ),
             dict(
-                params=adam_p,
-                lr=aux_lr,
-                betas=(train_cfg.get('adam_beta1', 0.9), train_cfg.get('adam_beta2', 0.95)),
-                eps=train_cfg.get('adam_epsilon', 1e-10),
-                weight_decay=lrwd / aux_lr,
+                params=aux_p,
                 use_muon=False,
+                lr=_aux_lr,
+                weight_decay=_aux_wd,
+                betas=(
+                    train_cfg.get('normuon_adamw_beta1', 0.95),
+                    train_cfg.get('normuon_adamw_beta2', 0.95),
+                ),
+                eps=train_cfg.get('normuon_adamw_eps', 1e-8),
             ),
         ]
-        accelerator.print(
-            f'  NorMuon: {len(muon_p)} matrices via Muon (lr {muon_lr:g}, '
-            f'wd {lrwd / muon_lr:.4g}), {len(adam_p)} tensors via aux Adam '
-            f'(lr {aux_lr:g}, wd {lrwd / aux_lr:.4g})'
-        )
 
-        optimizer_cls_and_kwargs = (SingleDeviceNorMuonWithAuxAdam, {'params': param_groups})
+        # --- the one MuonQ feature NorMuon was missing -------------------
+        # MuonQ exposes `nesterov` (default False) and `ns_steps` (default 5).
+        # normuon_update() accepts both, but SingleDeviceNorMuonWithAuxAdam.step()
+        # never forwards them, pinning them at nesterov=True / ns_steps=5 --
+        # the "KNOWN RESIDUAL DIFFERENCE ... not removable without editing
+        # vendored upstream" recorded in autoresearch2/optimizer/REPORT.md.
+        # A subclass forwards them without touching the vendored file.
+        # The defaults below reproduce upstream exactly, so unless a config
+        # overrides one of these keys the vendored class is used UNCHANGED and
+        # this run stays bit-comparable with the published arms.
+        _nesterov = train_cfg.get('normuon_nesterov', True)
+        _ns_steps = train_cfg.get('normuon_ns_steps', 5)
+        _optim_cls = SingleDeviceNorMuonWithAuxAdam
+        if (_nesterov, _ns_steps) != (True, 5):
+            from normuon import adam_update, normuon_update
+
+            class _NorMuonTunable(SingleDeviceNorMuonWithAuxAdam):
+                """
+                MIRRORS SingleDeviceNorMuonWithAuxAdam.step() (NorMuon/normuon.py)
+                and differs ONLY by forwarding nesterov/ns_steps. Re-sync this if
+                the vendored normuon.py is ever updated.
+                """
+
+                @torch.no_grad()
+                def step(self, closure=None):
+                    loss = None
+                    if closure is not None:
+                        with torch.enable_grad():
+                            loss = closure()
+                    for group in self.param_groups:
+                        for p in group['params']:
+                            had_grad = p.grad is not None
+                            if not had_grad:
+                                p.grad = torch.zeros_like(p)
+                            state = self.state[p]
+                            if group['use_muon']:
+                                if len(state) == 0:
+                                    state['momentum_buffer'] = torch.zeros_like(p)
+                                    state['second_momentum_buffer'] = torch.zeros_like(p[..., 0:1])
+                                update = normuon_update(
+                                    p.grad,
+                                    state['momentum_buffer'],
+                                    state['second_momentum_buffer'],
+                                    beta=group['momentum'],
+                                    beta2=group['beta2'],
+                                    ns_steps=_ns_steps,
+                                    nesterov=_nesterov,
+                                ).reshape(p.shape)
+                            else:
+                                if len(state) == 0:
+                                    state['exp_avg'] = torch.zeros_like(p)
+                                    state['exp_avg_sq'] = torch.zeros_like(p)
+                                    state['step'] = 0
+                                state['step'] += 1
+                                update = adam_update(
+                                    p.grad,
+                                    state['exp_avg'],
+                                    state['exp_avg_sq'],
+                                    state['step'],
+                                    group['betas'],
+                                    group['eps'],
+                                )
+                            if group['weight_decay'] and had_grad:
+                                p.mul_(1 - group['lr'] * group['weight_decay'])
+                            p.add_(update, alpha=-group['lr'])
+                    return loss
+
+            _optim_cls = _NorMuonTunable
+
+        accelerator.print(
+            f'  NorMuon: {len(muon_p)} hidden tensors via Muon '
+            f'(lr {_lr:g}, wd {_muon_wd:.4g}, momentum {param_groups[0]["momentum"]:g}, '
+            f'beta2 {param_groups[0]["beta2"]:g}, nesterov {_nesterov}, ns_steps {_ns_steps}), '
+            f'{len(aux_p)} tensors via aux AdamW '
+            f'(lr {_aux_lr:g}, wd {_aux_wd:.4g}, betas {param_groups[1]["betas"]}, '
+            f'eps {param_groups[1]["eps"]:g})'
+        )
+        optimizer_cls_and_kwargs = (_optim_cls, {'params': param_groups})
         optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
     elif optim_name == 'muonq':
         # MuonQ (4-bit quantized Muon) lives in ./MuonQ as a bare source tree,
@@ -1138,54 +1240,6 @@ def main():
             },
         )
         optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
-    elif optim_name == 'normuon':
-        # NorMuon (Muon + a per-row second-moment normalizer on the orthogonalized
-        # update, arXiv:2510.05491) lives in ./NorMuon as a bare source tree;
-        # normuon.py has no dependency beyond torch.
-        sys.path.insert(0, str(Path(__file__).resolve().parent / 'NorMuon'))
-        from normuon import SingleDeviceNorMuonWithAuxAdam
-
-        # Route parameters with MuonQ's EXACT rule so that a NorMuon-vs-MuonQ
-        # comparison differs only in the update rule, not in which tensors each
-        # rule touches: >=2D and not an embedding/head -> Muon; the rest -> AdamW.
-        _EXCLUDE = ('embeddings', 'embed_tokens', 'wte', 'lm_head', 'wpe')
-        hidden, aux = [], []
-        for _n, _p in model.named_parameters():
-            is_hidden = _p.ndim >= 2 and not any(e in _n for e in _EXCLUDE)
-            (hidden if is_hidden else aux).append(_p)
-
-        _lr = train_cfg.get('learning_rate', 8e-3)
-        _wd = train_cfg.get('weight_decay', 0.1)
-        # ONE lr drives both groups, matching MuonQ, whose AdamW backup reads
-        # group['lr'] rather than a separate adamw_lr. The aux betas/eps below are
-        # MuonQ's defaults (0.95, 0.95)/1e-8, NOT NorMuon's own (0.9, 0.95)/1e-10,
-        # for the same reason -- keep the comparison to the update rule alone.
-        # The optimizer asserts these key sets EXACTLY; do not add keys.
-        _groups = [
-            dict(
-                params=hidden,
-                use_muon=True,
-                lr=_lr,
-                weight_decay=_wd,
-                momentum=train_cfg.get('muon_momentum', 0.95),
-                beta2=train_cfg.get('normuon_beta2', 0.95),
-            ),
-            dict(
-                params=aux,
-                use_muon=False,
-                lr=_lr,
-                weight_decay=_wd,
-                betas=(
-                    train_cfg.get('normuon_adamw_beta1', 0.95),
-                    train_cfg.get('normuon_adamw_beta2', 0.95),
-                ),
-                eps=train_cfg.get('normuon_adamw_eps', 1e-8),
-            ),
-        ]
-        print(f'NorMuon: {len(hidden)} hidden tensors on the Muon path, {len(aux)} on the aux AdamW path')
-        optimizer_cls_and_kwargs = (SingleDeviceNorMuonWithAuxAdam, {'params': _groups})
-        optim_name = 'adamw_torch'  # placeholder, overridden by optimizer_cls_and_kwargs
-
     training_args = TrainingArguments(
         output_dir=output_dir,
         # Training duration

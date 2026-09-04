@@ -14,7 +14,7 @@ valid_files = ["./data/valid_*.bin"]
 max_seq_length = 1024
 
 # Tokenizer (must match the one used to create .bin files)
-tokenizer = "./tokenizers/t-v5/"
+tokenizer = "../tokenizers/t-v5/"
 
 [training]
 # Training duration

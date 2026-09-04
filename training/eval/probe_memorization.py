@@ -149,7 +149,7 @@ def main(argv=None) -> None:
     )
     p.add_argument('suspect', help='Checkpoint that MAY have trained on the held-out documents.')
     p.add_argument('control', help='Checkpoint that did NOT. Required: the delta is the evidence.')
-    p.add_argument('--heldout', type=Path, default=EVAL_DATA / 'heldout.jsonl')
+    p.add_argument('--heldout', type=Path, default=EVAL_DATA / 'heldout-Sprocket-n-Say.jsonl')
     p.add_argument('--docs', type=int, default=200, help='Held-out documents to probe.')
     p.add_argument('--prefix-tokens', type=int, default=256, help='Context tokens fed before decoding.')
     p.add_argument('--gen-tokens', type=int, default=128, help='Tokens to greedy-decode and score.')

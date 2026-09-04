@@ -828,7 +828,7 @@ def paired_bootstrap(candidate: list[dict], leader: list[dict], draws: int, conf
 # Every anchor was MEASURED with the same code path (same heldout docs, max 1024
 # tokens/doc) on real models in this project. Calibrated for tiny (<=1B) models
 # on 19th-century English.
-BPB_LADDER = [  # (bits/byte on eval_data/heldout.jsonl, bake points)
+BPB_LADDER = [  # (bits/byte on eval_data/heldout-Sprocket-n-Say.jsonl, bake points)
     (3.50, 0),  # untrained: pure noise
     (2.00, 20),  # word-salad: real words, no sentences
     (1.50, 40),  # broken prose: sentences form, meaning drifts within a line
@@ -845,7 +845,7 @@ BPB_LADDER = [  # (bits/byte on eval_data/heldout.jsonl, bake points)
 # entries are qualitative signposts, not model measurements.
 #
 # TO ADD A MODEL: run `python -m eval MODELS/<name>` and paste its prose_bpb here.
-# TO RE-ANCHOR after changing eval_data/heldout.jsonl: every `measured` row must
+# TO RE-ANCHOR after changing eval_data/heldout-Sprocket-n-Say.jsonl: every `measured` row must
 # be re-run, or the ladder silently mixes two different held-out sets.
 REFERENCE_LADDER = [
     (3.50, 'untrained model (uniform noise)', 'synthetic'),

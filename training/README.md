@@ -10,6 +10,7 @@ split_dataset.py → tokenize_dataset.py → doctor.py → base_train.py
 ## Data preparation
 
 - **`split_dataset.py`** — Splits JSONL (`{"text": ...}`) or plain-text files into `<name>-train` / `<name>-valid` sets, appending the tokenizer's EOS to each document. Tiny files (<1000 chars) get only a `-train` output.
+- **`verify_split.py`** — Audits a `split_dataset.py` result before tokenizing: per-shard document counts, an order-independent content fingerprint (proves no document was lost, duplicated, truncated or altered), EOS coverage, byte accounting, and cross-shard train/valid leakage. Run it on the whole corpus; ~20 min for 190 GB.
 - **`tokenize_dataset.py`** — Tokenizes `.txt` / `.jsonl` / `.parquet` files into sharded uint16 binary files (`train_0000.bin`, ...) that `base_train.py` consumes. Expects input already EOS-terminated by `split_dataset.py`. Shards are capped at 1 GiB.
 
 ## Training

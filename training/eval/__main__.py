@@ -646,7 +646,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     )
     p.add_argument('targets', nargs='*', type=Path, help='Checkpoint dir, folder of checkpoints, or experiment tree.')
     p.add_argument('--tokenizer', type=Path, default=None, help='Force one tokenizer for every checkpoint.')
-    p.add_argument('--heldout', type=Path, default=EVAL_DATA / 'heldout.jsonl')
+    p.add_argument('--heldout', type=Path, default=EVAL_DATA / 'heldout-Sprocket-n-Say.jsonl')
     p.add_argument('--chat-data', type=Path, default=EVAL_DATA / 'chat_sample.jsonl')
     p.add_argument('--docs', type=int, default=200, help='Held-out docs to score.')
     p.add_argument('--chat-docs', type=int, default=200)
@@ -909,7 +909,7 @@ def main(argv=None) -> None:
     chat_path = args.chat_data.resolve()
     if heldout_path.exists():
         heldout = load_text_items(heldout_path, args.docs)
-        if heldout_path != (EVAL_DATA / 'heldout.jsonl').resolve():
+        if heldout_path != (EVAL_DATA / 'heldout-Sprocket-n-Say.jsonl').resolve():
             extra_notes.append('Custom held-out set: ladder placement is approximate; overlapping training data flatters BPB.')
     else:
         heldout = []

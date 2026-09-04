@@ -47,6 +47,25 @@ MAX_SHARD_BYTES = 1 * 1024 * 1024 * 1024
 # ============================================================================
 
 
+def resolve_tokenizer(cfg: dict, config_path) -> str:
+    """
+    Resolve data.tokenizer the same way base_train.load_config() does: relative
+    paths are anchored to the CONFIG FILE's directory, not the shell's cwd, so
+    the value means the same thing from anywhere.  Non-path values (HuggingFace
+    hub ids) are passed through untouched.
+    """
+    from pathlib import Path
+
+    value = cfg['data']['tokenizer']
+    base = Path(config_path).resolve().parent
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return str(path)
+    if value.startswith(('.', '~', '/')) or (base / path).exists():
+        return str((base / path).resolve())
+    return value  # hub id
+
+
 def wrap(t: str, eos: str) -> str:
     if not t.rstrip().endswith(eos):
         t = f'{t}\n{eos}'
@@ -343,7 +362,7 @@ def main() -> None:
     with open(config_path, 'rb') as fh:
         cfg = tomllib.load(fh)
 
-    tokenizer_path = cfg['data']['tokenizer']
+    tokenizer_path = resolve_tokenizer(cfg, config_path)
     print(f'Loading tokenizer from: {tokenizer_path}...\n')
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, use_fast=True)
 
