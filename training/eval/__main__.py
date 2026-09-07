@@ -1,39 +1,13 @@
-"""Merged evaluator CLI - run everything, load each model ONCE.
+"""Checkpoint evaluation CLI: python -m eval [targets ...].
 
-Usage examples:
-
-  python -m eval                                  # latest checkpoint in ./checkpoints
-  python -m eval path/to/checkpoint-22944         # one checkpoint
-  python -m eval autoresearch autoresearch2       # every final/ export in those trees
-  python -m eval Vintage1 --gen-mode sample       # cheaper generation pass
-  python -m eval --render-report old-results.json # re-render Markdown only
-
-For every checkpoint this computes, in ONE model load:
-  * architecture / size / tokenizer info and training lineage
-  * period fidelity on fixed historical-vs-modern probe sentences
-  * diachronic word-sense separation (contextual embeddings)
-  * held-out prose BPB with per-document records (A/B splits, early/late)
-  * conditional chat-target BPB
-  * forced-choice logic accuracy and anachronism-trap shocks
-  * ONE merged prompt battery generated once per decoding mode (greedy +
-    sampled), with ALL text-quality metrics computed on those same texts
-
-Outputs:
-  * <out>.json  - machine-readable payload; results[i].summary is a FLAT dict of
-    canonically-named headline numbers meant for agents to grep across runs;
-    per-document records allow bootstrap comparisons without reloading models.
-  * <out>.md    - human-readable report rendered by report.py.
-
-Re-runs reuse cached per-checkpoint results when the fingerprint (weights,
-tokenizer) and the settings hash are unchanged, so pointing this at
-autoresearch/ + autoresearch2/ repeatedly is cheap.
+Loads each model once. Writes measurements to a full JSON and a Markdown report.
+Collection resamples saved document records; report rendering does not score models.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import math
 import platform
 import sys
 import time
@@ -41,8 +15,10 @@ from pathlib import Path
 
 import torch
 
+from . import SCHEMA_VERSION
 from . import metrics as M
 from . import report as R
+from .comparison import chat_comparison_key, composite_comparison_key, identity, prose_comparison_key
 from .helpers import (
     DEFAULT_RESULTS_DIR,
     EVAL_DATA,
@@ -53,7 +29,6 @@ from .helpers import (
     file_hash,
     fmt,
     free_model,
-    interp_curve,
     load_chat_items,
     load_model_and_tokenizer,
     load_text_items,
@@ -67,6 +42,7 @@ from .helpers import (
     select_dtype,
     training_curve,
 )
+from .measurements import summarize_result
 from .metric_guide import HOW_TO_READ, PRIMARY_METRIC, describe, undocumented
 from .prompts import (
     HISTORICAL_CONTEXTS,
@@ -79,18 +55,43 @@ from .prompts import (
     TRAP_PAIRS,
 )
 
-SCHEMA_VERSION = 1
-
-
 # ============================================================================
 # Settings identity for the cache
 # ============================================================================
+
+
+# Modules whose contents can change a measured number. Rendering, documentation and
+# the standalone side scripts are deliberately excluded: hashing them would invalidate
+# every cached result AND split comparison groups on a cosmetic edit, because this
+# digest is part of comparison.prose_comparison_key.
+SCORING_MODULES = ('helpers.py', 'measurements.py', 'metrics.py', 'prompts.py')
 
 
 def settings_fingerprint(args, heldout_hash: str, chat_hash: str | None) -> dict:
     """Identity of everything except model weights that affects the numbers."""
     return {
         'schema': SCHEMA_VERSION,
+        'scoring_code_sha256': identity({name: file_hash(Path(__file__).parent / name) for name in SCORING_MODULES}),
+        'prompts_sha256': identity(
+            {
+                'generation': SEED_SETS[args.seed_set](),
+                'logic': LOGIC_ITEMS,
+                'traps': TRAP_PAIRS,
+                'probes': PROBE_SENTENCES,
+                'probe_labels': PROBE_LABELS,
+                'words': HISTORICAL_WORDS,
+                'historical': HISTORICAL_CONTEXTS,
+                'modern': MODERN_CONTEXTS,
+            }
+        ),
+        'chat_template_enabled': args.chat,
+        'skip_probes': args.skip_probes,
+        'skip_embeddings': args.skip_embeddings,
+        'device': str(select_device(args.device)),
+        'resolved_dtype': str(select_dtype(args.dtype, select_device(args.device))),
+        'torch': torch.__version__,
+        'transformers': __import__('transformers').__version__,
+        'threads': torch.get_num_threads(),
         'heldout_sha256': heldout_hash,
         'chat_sha256': chat_hash,
         'docs': args.docs,
@@ -122,11 +123,7 @@ def settings_fingerprint(args, heldout_hash: str, chat_hash: str | None) -> dict
 
 
 def _temp_label(temp: float) -> str:
-    """Stable key fragment for a temperature.
-
-    f'{1.0:g}' renders '1', so `sweep_t1_*` would break anyone grepping
-    `sweep_t1.0_*` while 0.8 and 1.2 keep their decimal. Always keep one.
-    """
+    """Temperature key with at least one decimal digit (for example, sweep_t1.0)."""
     label = f'{temp:g}'
     return label if '.' in label else f'{label}.0'
 
@@ -135,15 +132,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
     started = time.time()
 
     def save(stage: str) -> None:
-        """Persist everything computed SO FAR for this checkpoint.
-
-        A model evaluation is many expensive suites in one load. Talkie-1930-13b
-        completed prose, chat, logic and traps over 44 minutes and then OOMed in
-        the generation suite, and all of it was lost because results are only
-        recorded once a checkpoint finishes. Snapshotting after each EXPENSIVE
-        suite (not the cheap ones - this must not hammer the disk) makes that
-        work recoverable.
-        """
+        """Persist completed suites and generation batches for interrupted evaluations."""
         if snapshot is not None:
             try:
                 snapshot(stage, result)
@@ -209,14 +198,14 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
         result['lineage']['line'] = provenance_line(lineage)
         print(f'  params {n_params:,} | disk {disk_mb:.0f} MB | lineage: {result["lineage"]["line"]}')
 
-        # ---- period fidelity on fixed probes ---------------------------------
+        # ---- fixed-sentence likelihood on fixed probes ---------------------------------
         if not args.skip_probes:
-            banner('SUITE: PERIOD FIDELITY ON FIXED PROBE SENTENCES')
+            banner('SUITE: FIXED-SENTENCE LIKELIHOOD ON FIXED PROBE SENTENCES')
             result['period_probes'] = M.score_probe_sentences(tokenizer, model, prompts['probe_sentences'], prompts['probe_labels'])
             pp = result['period_probes']
             print(
-                f'  hist ppl {pp["historical"]["perplexity"]:.2f} | modern ppl '
-                f'{pp["modern"]["perplexity"]:.2f} | ratio {pp.get("modern_over_historical_ratio", float("nan")):.2f}'
+                f'  hist ppl {pp["historical"]["ppl"]:.2f} | modern ppl '
+                f'{pp["modern"]["ppl"]:.2f} | ratio {pp.get("modern_historical_ppl_ratio", float("nan")):.2f}'
             )
 
         # ---- word-sense separation -------------------------------------------
@@ -236,7 +225,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                 )
                 if result['embeddings'].get('missing_words'):
                     print(f'  (skipped words not locatable in context: {", ".join(result["embeddings"]["missing_words"])})')
-                print(f'  mean shift similarity: {fmt(result["embeddings"].get("mean_shift_similarity"), 3)}')
+                print(f'  mean shift similarity: {fmt(result["embeddings"].get("shift_mean_cosine"), 3)}')
             except Exception as exc:
                 result['embeddings'] = {'unavailable': f'{type(exc).__name__}: {exc}'}
                 print(f'  UNAVAILABLE for this architecture: {type(exc).__name__}: {exc}')
@@ -244,7 +233,9 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
         # ---- held-out prose --------------------------------------------------
         if data['heldout']:
             banner('SUITE: HELD-OUT PROSE (per-document records)')
-            result['prose_records'] = M.score_prose_records(tokenizer, model, data['heldout'], args.max_tokens)
+            result['prose_records'], result['prose_docs_skipped'] = M.score_prose_records(
+                tokenizer, model, data['heldout'], args.max_tokens
+            )
             print()
             save('prose')
 
@@ -254,13 +245,13 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                 print('  (chat skipped: requires a fast tokenizer)')
             else:
                 banner('SUITE: CONDITIONAL CHAT-TARGET LOSS')
-                result['chat_records'] = M.score_chat_records(tokenizer, model, data['chat'], args.chat_max_tokens)
+                result['chat_records'], result['chat_target_docs_skipped'] = M.score_chat_records(
+                    tokenizer, model, data['chat'], args.chat_max_tokens
+                )
                 print()
                 save('chat')
 
-        # ---- tokenizer efficiency + optimisation health ----------------------
-        # Neither needs the GPU. Both were previously only obtainable by hand-writing
-        # a throwaway script against the tokenizer / trainer_state.json.
+        # ---- tokenizer and training-log diagnostics ----------------------
         if data['heldout']:
             result['tokenizer_stats'] = M.tokenizer_stats(tokenizer, data['heldout'], args.max_tokens)
         result['training_curve'] = training_curve(checkpoint)
@@ -270,8 +261,8 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
         result['logic'] = M.run_logic(tokenizer, model, prompts['logic_items'])
         result['traps'] = M.run_traps(tokenizer, model, prompts['trap_pairs'])
         print(
-            f'  logic acc {result["logic"]["acc"]:.3f} (margin {result["logic"]["margin"]:+.3f}) | '
-            f'trap shock {result["traps"]["mean_shock"]:+.3f} bits/byte'
+            f'  logic acc {result["logic"]["accuracy"]:.3f} (margin {result["logic"]["margin_bpb"]:+.3f} bits/byte) | '
+            f'trap mean delta {result["traps"]["mean_delta_bpb"]:+.3f} bits/byte'
         )
         save('logic_traps')
 
@@ -279,6 +270,16 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
         if args.generation_modes:
             banner('SUITE: GENERATION OVER MERGED PROMPT BATTERY')
             print(f'  {len(prompts["generation"])} unique prompts x modes {args.generation_modes}, {args.gen_tokens} new tokens each')
+            gen_block = {'temperature': args.temperature, 'top_p': args.top_p, 'top_k': args.top_k}
+            gen_block['chat_template_sha256'] = identity(tokenizer.chat_template) if args.chat and tokenizer.chat_template else None
+            result['generation'] = gen_block
+
+            def save_generation_batch(mode: str, rows: list[dict]) -> None:
+                prefix = 'sampled' if mode == 'sample' else 'greedy'
+                gen_block[f'{prefix}_samples'] = rows
+                gen_block[f'{prefix}_summary'] = M.summarize_generations(rows)
+                save(f'generation_{prefix}_g{len(rows)}/{len(prompts["generation"])}')
+
             modes_out = M.generate_continuations(
                 tokenizer,
                 model,
@@ -291,30 +292,33 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                 seed=args.seed,
                 batch_size=args.generation_batch_size,
                 chat=args.chat,
+                on_batch=save_generation_batch,
             )
-            gen_block = {'temperature': args.temperature, 'top_p': args.top_p, 'top_k': args.top_k}
             for mode, prefix in (('greedy', 'greedy'), ('sample', 'sampled')):
                 rows = modes_out.get(mode, [])
                 gen_block[f'{prefix}_samples'] = rows
                 gen_block[f'{prefix}_summary'] = M.summarize_generations(rows)
-            result['generation'] = gen_block
             save('generation')
 
             # ---- optional temperature sweep ---------------------------------
-            # Degeneracy at high temperature is a TAIL property of the
-            # distribution; BPB measures the head and is nearly blind to it. A
-            # model can compress beautifully and still fall apart at t=1.2,
-            # which is the regime a bulk synth-data run actually uses.
-            # Off by default: each extra temperature costs one more full
-            # sampled pass.
+            # Each additional temperature adds a sampled pass over the same prompts.
             if args.temp_sweep and 'sample' in args.generation_modes:
                 sweep = {}
+                gen_block['temperature_sweep'] = sweep
                 for temp in args.temp_sweep:
                     label = _temp_label(temp)
                     if abs(temp - args.temperature) < 1e-9 and gen_block.get('sampled_summary'):
                         sweep[label] = gen_block['sampled_summary']
                         continue
                     print(f'  temperature sweep: t={temp:g}', flush=True)
+
+                    def save_sweep_batch(mode: str, rows: list[dict], _label=label, _temp=temp) -> None:
+                        sweep[_label] = M.summarize_generations(rows)
+                        # Keep the active sweep's text in the snapshot; completed
+                        # sweeps retain aggregate measurements in the full report.
+                        gen_block['temperature_sweep_in_progress'] = {'temperature': _temp, 'samples': rows}
+                        save(f'sweep_t{_label}_g{len(rows)}/{len(prompts["generation"])}')
+
                     swept = M.generate_continuations(
                         tokenizer,
                         model,
@@ -327,177 +331,22 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                         seed=args.seed,
                         batch_size=args.generation_batch_size,
                         chat=args.chat,
+                        on_batch=save_sweep_batch,
                     )
                     sweep[label] = M.summarize_generations(swept.get('sample', []))
-                    gen_block['temperature_sweep'] = sweep
-                    result['generation'] = gen_block
+                    gen_block.pop('temperature_sweep_in_progress', None)
                     save(f'sweep_t{label}')
-                gen_block['temperature_sweep'] = sweep
-            result['generation'] = gen_block
     finally:
         free_model(model, device)
         print(f'  model freed ({time.time() - started:.0f}s elapsed)', flush=True)
 
     # ---- derived numbers (pure math over what we just collected) ------------
-    finalize_result(result, args)
+    summarize_result(result)
     # Put the headline numbers at the TOP of the object. A human or an agent
     # opening a 200 KB result should hit `summary` on line 3, not after 4,000
     # lines of per-document records.
-    lead = ('label', 'checkpoint', 'summary', 'verdict', 'bake_score', 'points')
+    lead = ('label', 'checkpoint', 'summary', 'bake_score', 'points')
     return {**{k: result[k] for k in lead if k in result}, **result}
-
-
-def finalize_result(result: dict, args) -> None:
-    """Build summary + bake score from the raw measurements. No model needed."""
-    s: dict = {}
-
-    prose = result.get('prose_records') or []
-    if prose:
-        s['prose_bpb'] = M.records_bpb(prose)
-        # Never let a dropped document be invisible: a non-zero count means the
-        # headline bpb was computed over fewer than n_prose_docs documents.
-        s['prose_nonfinite_docs'] = M.count_nonfinite_records(prose)
-        if s['prose_nonfinite_docs']:
-            print(
-                f'  WARNING: {s["prose_nonfinite_docs"]} document(s) scored NaN/Inf and were '
-                f'EXCLUDED from prose_bpb (of {len(prose)} total)'
-            )
-        s['prose_bpb_split_a'] = M.records_bpb(prose, 'A')
-        s['prose_bpb_split_b'] = M.records_bpb(prose, 'B')
-        s['prose_bpb_early'] = M.records_bpb(prose, prefix='early_')
-        s['prose_bpb_late'] = M.records_bpb(prose, prefix='late_')
-
-    chat = result.get('chat_records') or []
-    if chat:
-        s['chat_bpb'] = M.records_bpb(chat)
-
-    logic = result.get('logic') or {}
-    if logic:
-        s['logic_acc'] = logic.get('acc')
-        s['logic_margin'] = logic.get('margin')
-
-    traps = result.get('traps') or {}
-    if traps:
-        s.update(
-            trap_mean_shock=traps.get('mean_shock'),
-            trap_min_shock=traps.get('min_shock'),
-            trap_n_leaked=traps.get('n_leaked'),
-            trap_n_pairs=traps.get('n'),
-        )
-
-    probes = result.get('period_probes') or {}
-    if probes:
-        s['probe_historical_ppl'] = probes.get('historical', {}).get('perplexity')
-        s['probe_modern_ppl'] = probes.get('modern', {}).get('perplexity')
-        s['probe_modern_over_historical_ratio'] = probes.get('modern_over_historical_ratio')
-        # Model-health signals from the legacy evaluate.py token-stat block: they were
-        # computed but only reachable deep in period_probes.overall. Surfaced flat so
-        # they can be grepped across runs like every other headline number.
-        _ov = probes.get('overall') or {}
-        s['probe_frac_low_confidence'] = _ov.get('frac_low_confidence')
-        s['probe_mean_entropy_nats'] = _ov.get('mean_entropy_nats')
-        s['probe_mean_token_prob'] = _ov.get('mean_token_prob')
-
-    emb = result.get('embeddings') or {}
-    if emb:
-        s['sense_shift_mean_cosine'] = emb.get('mean_shift_similarity')
-
-    emb_stats = result.get('embedding_stats') or {}
-    s['embedding_mean_norm'] = emb_stats.get('mean_norm')
-    s['embedding_mean_cosine'] = emb_stats.get('mean_cosine')
-
-    lineage = result.get('lineage') or {}
-    s['tokens_seen_estimate'] = lineage.get('tokens_seen')
-    s['tokens_per_param'] = lineage.get('tokens_per_param')
-
-    tstats = result.get('tokenizer_stats') or {}
-    s['tokenizer_bytes_per_token'] = tstats.get('bytes_per_token')
-    s['tokenizer_vocab_size'] = tstats.get('vocab_size')
-
-    curve = result.get('training_curve') or {}
-    s['final_eval_loss'] = curve.get('final_eval_loss')
-    s['final_eval_ppl'] = curve.get('final_eval_ppl')
-    s['final_eval_step'] = curve.get('final_eval_step')
-    s['final_train_loss'] = curve.get('final_train_loss')
-    s['grad_norm_max'] = curve.get('grad_norm_max')
-    s['grad_norm_mean'] = curve.get('grad_norm_mean')
-    s['grad_norm_min'] = curve.get('grad_norm_min')
-    s['grad_norm_nonfinite'] = curve.get('grad_norm_nonfinite')
-
-    gen = result.get('generation') or {}
-    greedy_sum, sampled_sum = gen.get('greedy_summary') or {}, gen.get('sampled_summary') or {}
-    if greedy_sum:
-        s['greedy_mean_loop_words'] = greedy_sum.get('mean_loop_words')
-        s['greedy_worst_loop_words'] = greedy_sum.get('worst_loop_words')
-    if sampled_sum:
-        s['sampled_mean_distinct_1'] = sampled_sum.get('mean_distinct_1')
-        s['sampled_mean_distinct_2'] = sampled_sum.get('mean_distinct_2')
-        s['sampled_mean_echo_rate'] = sampled_sum.get('mean_echo_rate')
-        s['sampled_temperature'] = (result.get('generation') or {}).get('temperature')
-        s['sampled_mean_loop_words'] = sampled_sum.get('mean_loop_words')
-        s['sampled_degenerate_rate'] = sampled_sum.get('degenerate_rate')
-        s['sampled_prompt_copy_rate'] = sampled_sum.get('mean_prompt_copy_rate')
-        s['sampled_punct_issues_p100'] = sampled_sum.get('mean_punct_issues_p100')
-        # Back matter (indexes/catalogues/TOC): lexically diverse, so distinct-n,
-        # echo and loop detection are ALL blind to it. It was the dominant
-        # low-scoring pattern in a real bulk run.
-        s['sampled_back_matter_rate'] = sampled_sum.get('back_matter_rate')
-        s['sampled_mean_sentence_words'] = sampled_sum.get('mean_sentence_words')
-        # Mode collapse ACROSS completions; distinct-n only sees within one.
-        s['sampled_self_bleu_4'] = sampled_sum.get('self_bleu_4')
-        # degenerate OR back matter = what a synth-data filter would drop.
-        s['sampled_unusable_rate'] = sampled_sum.get('unusable_rate')
-        s['greedy_self_bleu_4'] = greedy_sum.get('self_bleu_4') if greedy_sum else None
-        s['greedy_back_matter_rate'] = greedy_sum.get('back_matter_rate') if greedy_sum else None
-
-    sweep = (result.get('generation') or {}).get('temperature_sweep') or {}
-    for temp, row in sweep.items():
-        s[f'sweep_t{temp}_unusable_rate'] = row.get('unusable_rate')
-        s[f'sweep_t{temp}_degenerate_rate'] = row.get('degenerate_rate')
-        s[f'sweep_t{temp}_back_matter_rate'] = row.get('back_matter_rate')
-        s[f'sweep_t{temp}_self_bleu_4'] = row.get('self_bleu_4')
-        s[f'sweep_t{temp}_mean_loop_words'] = row.get('mean_loop_words')
-    result['summary'] = s
-
-    # ---- BAKE score: computed exactly ONCE from these same numbers ----------
-    points = {}
-    if s.get('prose_bpb') is not None:
-        points['bpb'] = M.interp(s['prose_bpb'], M.BPB_LADDER)
-    if s.get('logic_acc') is not None:
-        points['logic'] = M.logic_points(s['logic_acc'])
-    if s.get('chat_bpb') is not None:
-        points['chat'] = M.interp(s['chat_bpb'], M.CHAT_LADDER)
-    if greedy_sum and sampled_sum:
-        loop = greedy_sum.get('mean_loop_words', 0.0)
-        punct = sampled_sum.get('mean_punct_issues_p100', 0.0)
-        if loop is not None and punct is not None:
-            points['hygiene'] = M.hygiene_points(loop, punct)
-    result['points'] = points
-    # HONESTY GUARD: bake_score() renormalises over whichever components are
-    # present, so a model evaluated with --gen-mode none silently scores as if
-    # hygiene did not exist. That is exactly how Talkie-1930-13b posted 97.6
-    # from {bpb, logic, chat} while missing the one axis it fails. Record what
-    # was missing so no ranking can quietly compare a partial score to a full
-    # one.
-    missing = [k for k in M.WEIGHTS if k not in points]
-    result['bake_components_missing'] = missing
-    result['bake_is_partial'] = bool(missing)
-    s['bake_components_missing'] = ','.join(missing) if missing else None
-    s['bake_is_partial'] = bool(missing)
-    s['bake_weight_covered'] = round(sum(w for k, w in M.WEIGHTS.items() if k in points), 3)
-    if missing:
-        print(
-            f'  WARNING: bake score is PARTIAL — missing {", ".join(missing)} '
-            f'({100 * (1 - s["bake_weight_covered"]):.0f}% of the weight); not comparable to a full score'
-        )
-    score = M.bake_score(points)
-    result['bake_score'] = score
-    tier, text = M.verdict_text(score, lineage)
-    result['verdict'] = {'tier': tier, 'text': text}
-    s['bake_score'] = score
-    s['verdict_tier'] = tier
-    for k, v in points.items():
-        s[f'points_{k}'] = v
 
 
 # ============================================================================
@@ -505,36 +354,116 @@ def finalize_result(result: dict, args) -> None:
 # ============================================================================
 
 
-def rank_by_prose(results: list[dict], args) -> list[dict]:
-    eligible = [r for r in results if r.get('prose_records') and math.isfinite(r['summary'].get('prose_bpb', float('nan')))]
-    if not eligible:
-        return []
-    eligible.sort(key=lambda r: r['summary']['prose_bpb'])
-    leader = eligible[0]
-    epsilon = leader['summary']['prose_bpb'] * args.equivalence
-    rows = []
-    for rank, r in enumerate(eligible, 1):
-        ci_lo, ci_hi = M.bootstrap_ci(r['prose_records'], args.bootstrap, args.confidence, args.seed)
-        pair = M.paired_bootstrap(r['prose_records'], leader['prose_records'], args.bootstrap, args.confidence, args.seed + rank)
-        rows.append(
-            {
-                'rank': rank,
-                'label': r['label'],
-                'checkpoint': r['checkpoint'],
-                'bpb': r['summary']['prose_bpb'],
-                'ci_low': ci_lo,
-                'ci_high': ci_hi,
-                'delta_vs_leader': pair['delta'],
-                'delta_ci_low': pair['low'],
-                'delta_ci_high': pair['high'],
-                'p_beats_leader': pair['p_beats'],
-                'equivalent_to_leader': pair['low'] <= epsilon,
-                'chat_bpb': r['summary'].get('chat_bpb'),
-                'bake_score': r['bake_score'],
+def _rank_records(results: list[dict], args, *, block: str, key_fn, prefix: str) -> list[dict]:
+    """Rank one per-document BPB family within matching protocol/coverage groups.
+
+    Shared by prose and chat targets: both retain per-document records, so both
+    get a marginal bootstrap CI and a PAIRED interval against their group leader.
+    """
+    if args.bootstrap < 1 or not 0 < args.confidence < 1 or not M.is_finite(args.equivalence) or args.equivalence < 0:
+        raise ValueError('positive bootstrap draws, 0 < confidence < 1 and nonnegative equivalence required')
+    comparison_key = prefix + '_comparison'
+    bpb_key = prefix + '_bpb'
+    groups = {}
+    for result in results:
+        if block in result:
+            result.pop(comparison_key, None)
+            summarize_result(result)
+        records = M.finite_records(result.get(block) or [])
+        if not records:
+            continue
+        if len({r['id'] for r in records}) != len(records):
+            # Conservative, but never silent: an unrankable result says why.
+            result[comparison_key] = {
+                'comparison_to_leader': 'unavailable',
+                'comparison_unavailable_reason': 'duplicate document IDs cannot be paired unambiguously',
             }
-        )
-        r['ci_low'], r['ci_high'] = ci_lo, ci_hi  # surfaced in the detail section too
+            summarize_result(result)
+            print(f'  note: {result["label"]} is not ranked on {prefix}: duplicate document IDs')
+            continue
+        groups.setdefault(key_fn(result), []).append(result)
+    rows = []
+    for group, eligible in sorted(groups.items()):
+        eligible.sort(key=lambda r: r['summary'][bpb_key])
+        leader = eligible[0]
+        epsilon = leader['summary'][bpb_key] * args.equivalence
+        for rank, r in enumerate(eligible, 1):
+            ci_lo, ci_hi = M.bootstrap_ci(r[block], args.bootstrap, args.confidence, args.seed)
+            # One common set of resample indices for every candidate in the group, so
+            # the deltas are mutually consistent and the order cannot flip on the seed.
+            pair = M.paired_bootstrap(r[block], leader[block], args.bootstrap, args.confidence, args.seed)
+            is_leader = r is leader
+            comparison = 'leader' if is_leader else M.classify_bpb_interval(pair['low'], pair['high'], epsilon)
+            # A model compared with itself has no fraction to report; null, not zero.
+            fraction = None if is_leader else pair['bootstrap_fraction_lower']
+            rows.append(
+                {
+                    'rank': rank,
+                    'metric': bpb_key,
+                    'comparison_group': group,
+                    'leader_label': leader['label'],
+                    'label': r['label'],
+                    'checkpoint': r['checkpoint'],
+                    'bpb': r['summary'][bpb_key],
+                    'ci_low': ci_lo,
+                    'ci_high': ci_hi,
+                    'delta_vs_leader': pair['delta'],
+                    'delta_ci_low': pair['low'],
+                    'delta_ci_high': pair['high'],
+                    'bootstrap_fraction_lower_than_leader': fraction,
+                    'paired_docs': pair['paired_docs'],
+                    'equivalence_margin_bpb': epsilon,
+                    'comparison_to_leader': comparison,
+                    'equivalent_to_leader': comparison in ('leader', 'equivalent'),
+                    'chat_target_bpb': r['summary'].get('chat_target_bpb'),
+                    'bake_score': r.get('bake_score'),
+                }
+            )
+            r[comparison_key] = {
+                'bpb_ci_low': ci_lo,
+                'bpb_ci_high': ci_hi,
+                'bpb_ci_confidence': args.confidence,
+                'comparison_group': group,
+                'comparison_leader': leader['label'],
+                'comparison_to_leader': comparison,
+                'delta_vs_leader_bpb': pair['delta'],
+                'delta_ci_low_bpb': pair['low'],
+                'delta_ci_high_bpb': pair['high'],
+                'equivalence_margin_bpb': epsilon,
+                'paired_docs': pair['paired_docs'],
+                'bootstrap_fraction_lower_than_leader': fraction,
+            }
+            summarize_result(r)
     return rows
+
+
+def rank_by_prose(results: list[dict], args) -> list[dict]:
+    return _rank_records(results, args, block='prose_records', key_fn=prose_comparison_key, prefix='prose')
+
+
+def rank_by_chat(results: list[dict], args) -> list[dict]:
+    """Chat targets carry per-document records too, so they get the same treatment."""
+    return _rank_records(results, args, block='chat_records', key_fn=chat_comparison_key, prefix='chat_target')
+
+
+def rank_by_composite(results: list[dict]) -> list[dict]:
+    """Only complete scores, ranked within the same recorded evaluation protocol."""
+    groups = {}
+    for r in results:
+        s = r.get('summary') or {}
+        if (
+            s.get('bake_status') == 'complete'
+            and M.is_finite(r.get('bake_score'))
+            and r.get('evaluation_settings')
+            and r.get('prose_records')
+            and r.get('chat_records')
+        ):
+            groups.setdefault(composite_comparison_key(r), []).append(r)
+    return [
+        {'rank': rank, 'label': r['label'], 'bake_score': r['bake_score'], 'comparison_group': group}
+        for group, members in sorted(groups.items())
+        for rank, r in enumerate(sorted(members, key=lambda r: -r['bake_score']), 1)
+    ]
 
 
 # ============================================================================
@@ -552,13 +481,20 @@ def run_judge(args, results, device, dtype, heldout_texts) -> None:
     try:
         real_bpb = M.bits_per_byte_of_texts(judge_tok, judge_model, heldout_texts[:100], max_tokens=320)
         for r in results:
+            r['judge'] = {
+                'checkpoint': str(judge_dir.resolve()),
+                'tokenizer': str(jtok_dir),
+                'fingerprint': model_fingerprint(judge_dir, jtok_dir),
+                'max_tokens': 320,
+            }
             texts = [s['continuation'] for s in (r.get('generation') or {}).get('sampled_samples', [])]
             texts = [t for t in texts if len(t.split()) >= 20]
             if not texts:
                 continue
             gen_bpb = M.bits_per_byte_of_texts(judge_tok, judge_model, texts, max_tokens=320)
             dev = abs(gen_bpb - real_bpb)
-            r.setdefault('summary', {}).update(judge_bpb_real=real_bpb, judge_bpb_gen=gen_bpb, judge_deviation=dev)
+            r['judge']['scores'] = dict(reference_bpb=real_bpb, generated_bpb=gen_bpb, absolute_bpb_difference=dev)
+            summarize_result(r)
             print(f'  {r["label"]}: judge deviation {dev:.3f} bits/byte')
     finally:
         free_model(judge_model, device)
@@ -580,22 +516,25 @@ def collect_results(roots: list[Path]) -> list[dict]:
     Per-document prose records are stored in each JSON, so a full PAIRED bootstrap
     across separately-evaluated models needs no model loads and no GPU at all.
     """
-    seen: dict[str, dict] = {}
+    seen: dict[tuple, dict] = {}
     for root in roots:
         root = root.resolve()
         files = sorted(root.rglob('eval-*.json')) if root.is_dir() else [root]
+        files = [f for f in files if not f.stem.endswith(('.partial', '.prev'))]
         for f in files:
             try:
-                payload = json.loads(f.read_text())
+                payload = read_results(f)
             except Exception as exc:
                 print(f'  skipping {f}: {exc}')
                 continue
             for r in payload.get('results', []):
+                r.setdefault('source_file', str(f))
                 # Key on the PROJECT-RELATIVE label, not the absolute checkpoint path:
                 # JSONs produced on another machine or in a container carry unrelated
                 # absolute paths (e.g. /root/PWD/...) and would escape de-duplication.
-                key = r.get('label') or r.get('checkpoint')
-                if not key:
+                model_label = r.get('model_label') or r.get('label') or r.get('checkpoint')
+                key = (model_label, r.get('fingerprint'), identity([r['evaluation_settings'], r['evaluation_environment']]))
+                if not model_label:
                     continue
                 prev = seen.get(key)
                 if prev is None:
@@ -610,37 +549,25 @@ def collect_results(roots: list[Path]) -> list[dict]:
 
                 if _score(r) > _score(prev):
                     seen[key] = r
-    return list(seen.values())
-
-
-def compare_curves(results: list[dict], grid_points: int = 10) -> dict:
-    """Eval loss for every run interpolated onto ONE common step grid.
-
-    `eval_steps` is in MINUTES, so runs of different speed evaluate at different
-    step numbers and their raw curves are not directly comparable. The grid spans
-    the largest step every run actually reached.
-    """
-    curves = {r['label']: (r.get('training_curve') or {}).get('eval_curve') or [] for r in results}
-    curves = {k: v for k, v in curves.items() if len(v) >= 2}
-    if len(curves) < 2:
-        return {}
-    common_max = min(v[-1][0] for v in curves.values())
-    common_min = max(v[0][0] for v in curves.values())
-    if common_max <= common_min:
-        return {}
-    step = (common_max - common_min) / (grid_points - 1)
-    grid = [round(common_min + i * step) for i in range(grid_points)]
-    return {
-        'grid': grid,
-        'series': {k: [interp_curve(v, g) for g in grid] for k, v in curves.items()},
-    }
+    results = list(seen.values())
+    labels = [r.get('model_label') or r['label'] for r in results]
+    for r, label in zip(results, labels):
+        r['model_label'] = label
+        if labels.count(label) > 1:
+            r['label'] = (
+                label
+                + ' [eval '
+                + identity([r.get('fingerprint'), r.get('evaluation_settings'), r.get('evaluation_environment')])[:8]
+                + ']'
+            )
+    return results
 
 
 def parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog='python -m eval',
-        description='Merged evaluation for tiny vintage LLMs: info+lineage, period fidelity, '
-        'held-out BPB, bake score, logic/traps, chat readiness and generation hygiene - '
+        description='Merged evaluation for tiny vintage LLMs: info+lineage, fixed-sentence likelihood, '
+        'held-out BPB, experimental composite, logic/traps, chat-target loss and surface statistics - '
         'one model load, one prompt battery.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -657,23 +584,20 @@ def parse_args(argv=None) -> argparse.Namespace:
         '--gen-mode',
         choices=('both', 'greedy', 'sample', 'none'),
         default='both',
-        help="Decoding modes over the merged prompt battery ('both' = greedy for loop detection + sampled for quality).",
+        help='Decoding modes over the prompt battery.',
     )
     p.add_argument(
         '--gen-tokens',
         type=int,
         default=256,
-        help='New tokens per continuation. Default raised from 120 to 256: a real 49k-completion '
-        'bulk run had median 240 tokens (p90 727), and loops often only develop past 120.',
+        help='Maximum new tokens per continuation.',
     )
     p.add_argument('--generation-batch-size', type=int, default=4)
     p.add_argument(
         '--seed-set',
         choices=('curated', 'cold', 'both'),
         default='both',
-        help="Prompt battery. 'curated' = 46 topical stems; 'cold' = 26 bare function-word openers "
-        'sampled from a real 49k bulk run (much harder, no subject handed to the model); '
-        "'both' = the default 72.",
+        help="Prompt battery: 'curated' topical stems, 'cold' function-word openers, or both.",
     )
     p.add_argument(
         '--temp-sweep',
@@ -687,20 +611,24 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument('--top-p', type=float, default=0.9)
     p.add_argument('--top-k', type=int, default=25)
     p.add_argument('--chat', action='store_true', help='Apply a chat template to generation prompts.')
-    p.add_argument('--skip-probes', action='store_true', help='Skip fixed-probe period-fidelity suite.')
+    p.add_argument('--skip-probes', action='store_true', help='Skip fixed-probe fixed-sentence suite.')
     p.add_argument('--skip-embeddings', action='store_true', help='Skip word-sense separation suite.')
-    p.add_argument('--judge', type=str, default=None, help='Optional big period model dir for the coherence judge.')
+    p.add_argument('--judge', type=str, default=None, help='Optional reference model directory for reference/generated-text BPB.')
     p.add_argument('--bootstrap', type=int, default=10_000)
     p.add_argument('--confidence', type=float, default=0.95)
-    p.add_argument('--equivalence', type=float, default=0.001, help='Relative BPB difference treated as practically equivalent.')
+    p.add_argument(
+        '--equivalence',
+        type=float,
+        default=0.001,
+        help='Relative BPB tolerance: the entire paired CI must lie within +/- this fraction of leader BPB.',
+    )
     p.add_argument('--seed', type=int, default=1337)
     p.add_argument('--device', choices=('auto', 'cpu', 'cuda', 'mps'), default='auto')
     p.add_argument('--dtype', choices=('auto', 'float32', 'float16', 'bfloat16'), default='auto')
     p.add_argument(
         '--load-8bit',
         action='store_true',
-        help='Load weights with bitsandbytes int8. Halves resident size so a 13B fits a 16GB card, '
-        'at a small measurement cost (-0.0075 nll on the 75M control). Recorded in the results JSON.',
+        help='Load weights with bitsandbytes int8; recorded as a separate scoring precision.',
     )
     p.add_argument('--threads', type=int, default=None, help='Set PyTorch CPU worker threads.')
     p.add_argument('--include-checkpoints', action='store_true', help='Include checkpoint-N dirs during recursive discovery.')
@@ -718,8 +646,7 @@ def parse_args(argv=None) -> argparse.Namespace:
         '--slim',
         action='store_true',
         help='Drop per-document records and generated texts from the main JSON (~85%% smaller). '
-        'The -summary.json sidecar is written either way. NOTE: a slim file cannot be used for '
-        'paired-bootstrap --collect or a full --render-report.',
+        'A slim file cannot be used for paired-bootstrap --collect or a full --render-report.',
     )
     p.add_argument(
         '--audit-guide',
@@ -737,12 +664,27 @@ def parse_args(argv=None) -> argparse.Namespace:
         help='Merge existing eval-*.json under these paths into ONE ranked comparison '
         '(paired bootstrap across separately-run models). No models are loaded.',
     )
-    return p.parse_args(argv)
+    args = p.parse_args(argv)
+    if args.bootstrap < 1 or not 0 < args.confidence < 1 or not M.is_finite(args.equivalence) or args.equivalence < 0:
+        p.error('use positive --bootstrap, 0 < --confidence < 1 and nonnegative --equivalence')
+    if args.docs < 0 or args.chat_docs < 0 or args.max_tokens < 8 or args.chat_max_tokens < 8:
+        p.error('document counts must be nonnegative and context budgets at least 8 tokens')
+    if args.gen_tokens < 1 or args.generation_batch_size < 1:
+        p.error('generation length and batch size must be positive')
+    return args
+
+
+def read_results(path: Path) -> dict:
+    """Read a result payload using the evaluator's schema."""
+    payload = json.loads(path.read_text())
+    if payload.get('schema_version') != SCHEMA_VERSION:
+        raise ValueError(f'{path}: expected evaluation schema {SCHEMA_VERSION}')
+    return payload
 
 
 def audit_guide(path: Path) -> int:
     """Fail loudly if any summary key in `path` lacks a metric_guide entry."""
-    payload = json.loads(path.read_text())
+    payload = read_results(path)
     keys: set[str] = set()
     for r in payload.get('results', []):
         keys.update((r.get('summary') or {}).keys())
@@ -763,37 +705,10 @@ def main(argv=None) -> None:
     # ---- report-only mode ----------------------------------------------------
     if args.render_report:
         src = Path(args.render_report)
-        payload = json.loads(src.read_text())
-        # Refresh the self-description in place. This costs NOTHING (no model
-        # load, no GPU) and is the only way to bring a result forward onto the
-        # current schema when re-running the model is impractical -- e.g.
-        # MODELS/Talkie-1930-13b, whose 13B int8 weights cannot be re-evaluated
-        # on this machine safely.
-        keys: set[str] = set()
-        for r in payload.get('results', []):
-            keys.update((r.get('summary') or {}).keys())
-        payload['primary_metric'] = PRIMARY_METRIC
-        payload['how_to_read'] = HOW_TO_READ
-        payload['metric_guide'] = describe(sorted(keys))
-        missing = undocumented(keys)
-        if missing:
-            payload['metric_guide_undocumented'] = missing
-            print(f'  WARNING: {len(missing)} summary keys have no metric_guide entry: {", ".join(missing)}')
-        atomic_json(src, payload)
-        slim = {
-            'primary_metric': payload['primary_metric'],
-            'how_to_read': payload['how_to_read'],
-            'models': [
-                {'label': r.get('label'), 'params_millions': r.get('params_millions'), **(r.get('summary') or {})}
-                for r in payload.get('results', [])
-            ],
-            'metric_guide': payload['metric_guide'],
-        }
-        atomic_json(src.with_name(src.stem + '-summary.json'), slim)
+        payload = read_results(src)
         out_md = args.out or src.with_suffix('.md')
         out_md.write_text(R.render_report(payload), encoding='utf-8')
         print(f'report: {out_md}')
-        print(f'summary: {src.with_name(src.stem + "-summary.json")}')
         return
 
     # ---- collect-only mode: compare models evaluated in separate runs ---------
@@ -810,13 +725,10 @@ def main(argv=None) -> None:
             'environment': {'python': platform.python_version(), 'torch': torch.__version__},
             'notes': [
                 'Collected from existing per-model JSONs. Metrics were computed in their '
-                'original runs; only the rankings and curve comparison are new.',
-                'Paired bootstrap uses the retained per-document records, so it is exact even though the models were evaluated separately.',
+                'recorded protocols; collection recomputes the rankings.',
+                'Paired bootstrap resamples matching scored documents within protocol groups; it estimates document-sampling uncertainty, not training-seed uncertainty.',
             ],
             'bootstrap_confidence': args.confidence,
-            # SELF-DESCRIPTION. This collected file is the one a cold agent opens
-            # FIRST - it is the cross-model ranking - so it must carry the same
-            # guide as a single-model result, not less.
             'primary_metric': PRIMARY_METRIC,
             'how_to_read': HOW_TO_READ,
             'metric_guide': {},
@@ -825,19 +737,10 @@ def main(argv=None) -> None:
             'failures': [],
             'rankings': {
                 'prose': rank_by_prose(results, args),
-                'bake': sorted(
-                    (
-                        {'label': r['label'], 'bake_score': r.get('bake_score'), 'tier': (r.get('verdict') or {}).get('tier')}
-                        for r in results
-                        if r.get('bake_score') is not None
-                    ),
-                    key=lambda x: -x['bake_score'],
-                ),
+                'chat_target': rank_by_chat(results, args),
+                'bake': rank_by_composite(results),
             },
-            'curve_comparison': compare_curves(results),
         }
-        for i, row in enumerate(payload['rankings']['bake'], 1):
-            row['rank'] = i
 
         seen_keys: set[str] = set()
         for r in results:
@@ -851,17 +754,6 @@ def main(argv=None) -> None:
         out_json = (args.out or args.results_dir / 'eval-collected.json').resolve()
         out_json.parent.mkdir(parents=True, exist_ok=True)
         atomic_json(out_json, payload)
-        atomic_json(
-            out_json.with_name(out_json.stem + '-summary.json'),
-            {
-                'primary_metric': payload['primary_metric'],
-                'how_to_read': payload['how_to_read'],
-                'models': [
-                    {'label': r.get('label'), 'params_millions': r.get('params_millions'), **(r.get('summary') or {})} for r in results
-                ],
-                'metric_guide': payload['metric_guide'],
-            },
-        )
         out_md = out_json.with_suffix('.md')
         out_md.write_text(R.render_report(payload), encoding='utf-8')
         print(f'JSON (for agents): {out_json}')
@@ -908,9 +800,9 @@ def main(argv=None) -> None:
     heldout_path = args.heldout.resolve()
     chat_path = args.chat_data.resolve()
     if heldout_path.exists():
-        heldout = load_text_items(heldout_path, args.docs)
+        heldout = load_text_items(heldout_path, args.docs) if args.docs else []
         if heldout_path != (EVAL_DATA / 'heldout-Sprocket-n-Say.jsonl').resolve():
-            extra_notes.append('Custom held-out set: ladder placement is approximate; overlapping training data flatters BPB.')
+            extra_notes.append('Custom held-out set: composite anchors are fixed, not calibrated for this dataset.')
     else:
         heldout = []
         extra_notes.append('NO HELD-OUT DATA FOUND - the strongest metric was skipped. Pass --heldout FILE.jsonl.')
@@ -930,7 +822,6 @@ def main(argv=None) -> None:
     # never evaluated. Fall back to the raw targets only if every one was skipped.
     _skipped_paths = {item['path'] for item in resolved.skipped}
     eval_targets = [t for t in targets if str(t.resolve()) not in _skipped_paths] or targets
-    target_label = eval_targets[0].name if len(resolved.checkpoints) > 1 else resolved.checkpoints[0].name
 
     # ---- output location: next to what was pointed at ------------------------
     # Default: the folder that was pointed to (llama-77/final/ -> results in
@@ -955,9 +846,13 @@ def main(argv=None) -> None:
         out_json = fallback
     out_json = out_json.resolve()
     out_md = out_json.with_suffix('.md')
+    partial_path = out_json.with_name(out_json.stem + '.partial.json')
+    prev_path = out_json.with_name(out_json.stem + '.prev.json')
 
     # ---- resumable cache -------------------------------------------------------
-    settings = settings_fingerprint(args, file_hash(heldout_path), file_hash(chat_path) if chats else None)
+    settings = settings_fingerprint(
+        args, file_hash(heldout_path) if heldout_path.exists() else None, file_hash(chat_path) if chats else None
+    )
     payload: dict = {
         'schema_version': SCHEMA_VERSION,
         'created': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
@@ -972,11 +867,6 @@ def main(argv=None) -> None:
         },
         'notes': extra_notes,
         'bootstrap_confidence': args.confidence,
-        # ---- SELF-DESCRIPTION -------------------------------------------
-        # This file must be readable by an agent on another machine with no
-        # access to this repo's history. `how_to_read` states the three rules
-        # that prevent wrong conclusions; `metric_guide` gives every summary
-        # key a unit, a direction and its comparability caveats.
         'primary_metric': PRIMARY_METRIC,
         'how_to_read': HOW_TO_READ,
         'metric_guide': {},
@@ -984,24 +874,19 @@ def main(argv=None) -> None:
         'skipped': resolved.skipped,
         'failures': [],
     }
-    # SNAPSHOT BEFORE OVERWRITING. `payload['results']` starts EMPTY and is
-    # written incrementally, so a --force run that dies partway (e.g. an OOM in
-    # the generation suite) leaves an empty file where good results used to be.
-    # That destroyed a 13B evaluation that could not be re-run. Never again:
-    # keep the previous file beside the new one until the run succeeds.
+    # Retain a recoverable copy before writing incremental results.
     if out_json.exists():
         try:
-            prev = out_json.with_name(out_json.stem + '.prev.json')
-            prev.write_bytes(out_json.read_bytes())
+            prev_path.write_bytes(out_json.read_bytes())
         except Exception as exc:  # insurance must never block the run
             print(f'  (could not snapshot previous results: {exc})')
 
     cached: dict[str, dict] = {}
     if out_json.exists() and not args.force:
         try:
-            old = json.loads(out_json.read_text())
-            if old.get('settings') == settings:
-                cached = {r['fingerprint']: r for r in old.get('results', []) if r.get('fingerprint')}
+            saved = read_results(out_json)
+            if saved['settings'] == settings:
+                cached = {r['fingerprint']: r for r in saved['results']}
         except Exception as exc:
             print(f'warning: could not read cache {out_json}: {exc}', file=sys.stderr)
 
@@ -1016,10 +901,25 @@ def main(argv=None) -> None:
         try:
             tok_dir = resolve_tokenizer(checkpoint, args.tokenizer)
             fingerprint = model_fingerprint(checkpoint, tok_dir)
+
+            def _snapshot(stage: str, partial: dict, _p=partial_path, _c=checkpoint) -> None:
+                # Retain the latest completed suite or batch until all outputs are saved.
+                atomic_json(
+                    _p,
+                    {
+                        'incomplete': True,
+                        'stage_completed': stage,
+                        'checkpoint': str(_c),
+                        'note': 'In-progress measurements; removed after successful evaluation and report writing.',
+                        'result': partial,
+                    },
+                )
+
+            # Both protocol and checkpoint identity must match for a cache hit.
             if fingerprint in cached:
                 result = cached[fingerprint]
                 # Lineage files are tiny and may have changed (resumed runs);
-                # refresh them even when expensive scores come from cache.
+                # refresh them even when the expensive scores come from cache.
                 result['lineage'] = {
                     k: v
                     for k, v in checkpoint_lineage(checkpoint, result.get('params'), result.get('params_no_embed')).items()
@@ -1028,34 +928,23 @@ def main(argv=None) -> None:
                 result['lineage']['line'] = provenance_line(result['lineage'])
                 print('  [cached]')
             else:
-                partial_path = out_json.with_name(out_json.stem + '.partial.json')
-
-            def _snapshot(stage: str, partial: dict, _p=partial_path, _c=checkpoint) -> None:
-                # ONE small file per model, overwritten in place - not a growing
-                # pile. If a later suite dies, everything up to `stage` survives.
-                atomic_json(
-                    _p,
-                    {
-                        'incomplete': True,
-                        'stage_completed': stage,
-                        'checkpoint': str(_c),
-                        'note': 'Partial snapshot written mid-evaluation. Superseded by the '
-                        'main eval-*.json once the checkpoint finishes; kept so an '
-                        'expensive run that dies late is not lost.',
-                        'result': partial,
-                    },
-                )
-
-            result = evaluate_checkpoint(checkpoint, tok_dir, device, dtype, args, prompts, data, snapshot=_snapshot)
+                result = evaluate_checkpoint(checkpoint, tok_dir, device, dtype, args, prompts, data, snapshot=_snapshot)
             result['fingerprint'] = fingerprint
-            result['n_prose_docs'] = len(heldout)
-            result['n_chat_docs'] = len(chats)
+            # The optional judge runs after the evaluated models are freed.
+            # Never carry a previous judge pass through the model-score cache.
+            result.pop('judge', None)
+            result['evaluation_settings'] = settings
+            result['evaluation_environment'] = payload['environment']
+            result.update(prose_docs_requested=len(heldout), chat_target_docs_requested=len(chats))
+            summarize_result(result)
             payload['results'].append(result)
             atomic_json(out_json, payload)  # incremental: safe to interrupt
             s = result.get('summary', {})
+            covered = s.get('bake_weight_covered')
+            coverage = f'{100 * covered:.0f}% weight' if M.is_finite(covered) else 'no weight'
             print(
-                f'  => bake {fmt(result.get("bake_score"), 0)}/100 | bpb {fmt(s.get("prose_bpb"), 4)}'
-                f' | logic {fmt(s.get("logic_acc"), 3)} | tier {result["verdict"]["tier"]}'
+                f'  => bake {fmt(result.get("bake_score"), 0)}/100 ({s.get("bake_status")}, {coverage})'
+                f' | bpb {fmt(s.get("prose_bpb"), 4)} | logic accuracy {fmt(s.get("logic_accuracy"), 3)}'
             )
         except KeyboardInterrupt:
             atomic_json(out_json, payload)
@@ -1068,30 +957,21 @@ def main(argv=None) -> None:
             atomic_json(out_json, payload)
 
     if not payload['results']:
+        if prev_path.exists():
+            out_json.write_bytes(prev_path.read_bytes())
+            print(f'  restored previous results from {prev_path}; failed run produced no complete results')
         die('every checkpoint failed')
 
     # ---- optional judge --------------------------------------------------------
     if args.judge:
-        banner('SUITE: BIG-MODEL COHERENCE JUDGE')
+        banner('SUITE: REFERENCE-MODEL TEXT LIKELIHOOD')
         run_judge(args, payload['results'], device, dtype, [t.text for t in heldout])
         atomic_json(out_json, payload)
 
     # ---- rankings ----------------------------------------------------------------
     payload['rankings'] = {'prose': rank_by_prose(payload['results'], args)}
-    scored = [r for r in payload['results'] if isinstance(r.get('bake_score'), float) and not math.isnan(r['bake_score'])]
-    payload['rankings']['bake'] = [
-        {'rank': i, 'label': r['label'], 'bake_score': r['bake_score'], 'tier': r['verdict']['tier']}
-        for i, r in enumerate(sorted(scored, key=lambda r: -r['bake_score']), 1)
-    ]
-    if not payload['results']:
-        # Every checkpoint failed. Writing this would replace a good previous
-        # result with an empty one - exactly the failure that lost Talkie's 13B
-        # evaluation. Leave whatever is on disk alone.
-        prev = out_json.with_name(out_json.stem + '.prev.json')
-        if prev.exists():
-            out_json.write_bytes(prev.read_bytes())
-            print(f'  RESTORED previous results from {prev} (this run produced none)')
-        die('every checkpoint failed - previous results left intact')
+    payload['rankings']['chat_target'] = rank_by_chat(payload['results'], args)
+    payload['rankings']['bake'] = rank_by_composite(payload['results'])
 
     atomic_json(out_json, payload)
 
@@ -1107,31 +987,6 @@ def main(argv=None) -> None:
         print(f'  WARNING: {len(missing)} summary keys have no metric_guide entry: {", ".join(missing)}')
     atomic_json(out_json, payload)
 
-    # ---- small sidecars for humans and greps ---------------------------------
-    # The full JSON is ~85% per-document records and generated texts, which exist
-    # so --collect can run paired bootstrap and --render-report can re-render
-    # without reloading models. Nobody should have to read that to get a number.
-    # NUMBERS FIRST, dictionary after: metric_guide is ~600 lines and the data is
-    # ~60, so putting the guide first would bury exactly what you opened this for.
-    slim = {
-        'primary_metric': payload['primary_metric'],
-        'how_to_read': payload['how_to_read'],
-        'models': [
-            {'label': r.get('label'), 'params_millions': r.get('params_millions'), **(r.get('summary') or {})} for r in payload['results']
-        ],
-        'metric_guide': payload['metric_guide'],
-    }
-    atomic_json(out_json.with_name(out_json.stem + '-summary.json'), slim)
-
-    # One line per model, append-only: greppable and diffable across runs.
-    try:
-        DEFAULT_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-        with open(DEFAULT_RESULTS_DIR / 'summaries.jsonl', 'a', encoding='utf-8') as fh:
-            for row in slim['models']:
-                fh.write(json.dumps({'generated': payload.get('created'), **row}) + '\n')
-    except Exception as exc:  # a convenience index must never fail a run
-        print(f'  (could not append to summaries.jsonl: {exc})')
-
     # ---- Markdown report ------------------------------------------------------------
     report_text = R.render_report(payload)
     out_md.write_text(report_text, encoding='utf-8')
@@ -1141,8 +996,8 @@ def main(argv=None) -> None:
             f.write('\n' + notes + '\n')
 
     if args.slim:
-        # Destroys paired-bootstrap and re-render ability for this file; the
-        # numbers are all still in the -summary.json sidecar.
+        # Keep aggregate measurements in results[].summary; dropping raw records
+        # prevents paired bootstrap and full report re-rendering.
         for r in payload['results']:
             for key in ('prose_records', 'chat_records', 'period_probes', 'training_curve'):
                 r.pop(key, None)
@@ -1158,8 +1013,11 @@ def main(argv=None) -> None:
         ]
         atomic_json(out_json, payload)
 
+    if not payload['failures']:
+        partial_path.unlink(missing_ok=True)
+        prev_path.unlink(missing_ok=True)
+
     print(f'\nJSON (for agents): {out_json}')
-    print(f'Summary (small):   {out_json.with_name(out_json.stem + "-summary.json")}')
     print(f'Markdown (humans): {out_md}')
 
 

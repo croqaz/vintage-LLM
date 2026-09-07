@@ -1275,6 +1275,13 @@ def main():
         # they step on this eval metric instead of per optimizer step
         metric_for_best_model=train_cfg.get('metric_for_best_model', None),
         warmup_steps=train_cfg.get('warmup_steps', 200),
+        # Resume behaviour. HF's default replays the sampler by fetching and
+        # discarding every batch already consumed. On this corpus that costs
+        # ~1,350 samples/s, so resuming a 23k-step run burns ~73 min before the
+        # first new step. Set true to start from a fresh sampler draw instead --
+        # only sound when the seed is also changed, otherwise the run replays
+        # the batches from step 0. See llama-75/anneal-1h-step23098/config.toml.
+        ignore_data_skip=train_cfg.get('ignore_data_skip', False),
         # Precision
         bf16=train_cfg.get('bf16', BF16_SUPPORTED),
         fp16=train_cfg.get('fp16', False),

@@ -44,7 +44,6 @@ python tokenize_dataset.py data/*-valid.jsonl --output valid.bin
 python doctor.py                    # sanity-check the setup
 python base_train.py                # or: accelerate launch base_train.py
 python vibe_check.py                # eyeball the output
-python evaluate2.py                 # measure how well it trained
 ```
 
 Most inference/eval scripts default to the latest checkpoint in `./checkpoints`; pass `--checkpoint PATH` or `--checkpoints-dir DIR` to override.

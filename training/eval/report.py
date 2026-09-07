@@ -1,522 +1,703 @@
-"""JSON -> Markdown report rendering for the merged evaluator.
-
-This file is deliberately separate from everything else: it consumes the payload
-JSON produced by __main__.py and nothing more, so the human-readable report can
-be re-styled, re-ordered or extended at any time WITHOUT touching metric code.
-To regenerate a report from an existing JSON:
-
-    python -m eval --render-report path/to/results.json [-o report.md]
-
-Sections map to the payload keys; every number comes from results[i].summary or
-a detail block. The flat `summary` dict in the JSON is the machine interface
-(stable key names for agents to grep); this file is the human interface.
-"""
+"""Render retained evaluator measurements, without inferring model readiness."""
 
 from __future__ import annotations
 
-import math
+from html import escape
 
 from .helpers import fmt, human_tokens
-from .metrics import (
-    CHINCHILLA_TOKENS_PER_PARAM,
-    REFERENCE_LADDER,
-    WEIGHTS,
-    band_label,
+from .metrics import SURFACE_REASONS, WEIGHTS, is_finite
+from .prompts import HISTORICAL_WORDS
+
+# Recorded reference runs: autoresearch/HANDOFF15.md, 2026-08-23.
+# Display context only: these aggregates lack matched scored-span/protocol records
+# and must never enter composite transforms or statistical comparison groups.
+REFERENCE_PROSE_SHA256 = '51b30a75d40a40d3499b3372ab08b87752b756dc6b4ebccad51f507c89765f00'
+PROSE_REFERENCES = (
+    ('TypeWriter-1913-7B-v1', 7240, 1.44380, 'BF16; chat-tuned; chat-target BPB 0.7128'),
+    ('Violet-160m', 152, 1.36439, 'BF16; GPT-NeoX; 1800–1899 training'),
+    ('TypeWriter-1913-7B-v2', 7240, 1.27043, 'BF16; chat-tuned; chat-target BPB 0.7068'),
+    ('TimeCapsule', 498.8, 1.19189, 'BF16; Llama; ~4.7B training tokens'),
+    ('Llama-77M-v1', 77, 1.16932, 'BF16; Llama; 16.7B training tokens / 80 h'),
+    ('vintage-LLM-340m', 340.8, 1.11899, 'BF16; Llama'),
+    ('Talkie-1930-13b', 13280, 0.91380, 'INT8'),
 )
 
 
-def _ladder_figure(bpb: float, _unused: str | None = None) -> str:
-    """ASCII placement of the model on the reference ladder.
-
-    Rows marked `measured` in REFERENCE_LADDER are real models scored through
-    this same code path on the same held-out file, so the comparison is exact.
-    `synthetic` rows are qualitative signposts. If the model being reported IS a
-    reference model its own row is dropped -- detected by an exact bits/byte
-    match, since a reference row is produced by this identical code path.
-    """
-    rows = sorted((r for r in REFERENCE_LADDER if abs(r[0] - bpb) > 5e-6), key=lambda r: -r[0])
-    out, placed = [], False
-    for v, label, kind in rows:
-        if not placed and not math.isnan(bpb) and bpb >= v:
-            out.append(f'  --> {bpb:.3f}  YOUR MODEL')
-            placed = True
-        mark = '  ' if kind == 'measured' else ' ~'
-        out.append(f'     {mark}{v:.3f}  {label}')
-    if not placed and not math.isnan(bpb):
-        out.append(f'  --> {bpb:.3f}  YOUR MODEL (below every anchor - excellent)')
-    out.append('')
-    out.append('   (~ = qualitative signpost; the rest are real models measured')
-    out.append('    through this same eval on the same 200 held-out documents)')
-    return '\n'.join(out)
+def _literal(text) -> str:
+    """Treat measured text as text, not Markdown or HTML report structure."""
+    return escape(str(text), quote=False).translate(str.maketrans({c: '\\' + c for c in '\\`*_{}[]()#+-.!|'}))
 
 
-# ============================================================================
-# Per-checkpoint sections
-# ============================================================================
+def _cell(text) -> str:
+    return ' '.join(_literal(text).split())
+
+
+def _quote(text: str) -> list[str]:
+    return ['> ' + _literal(line) for line in text.splitlines()] + ['']
+
+
+def _spread(rows: list, limit: int) -> list:
+    """Select by position, including endpoints, without sorting by performance."""
+    if limit <= 0:
+        return []
+    if len(rows) <= limit:
+        return rows[:]
+    if limit == 1:
+        return rows[:1]
+    return [rows[i * (len(rows) - 1) // (limit - 1)] for i in range(limit)]
+
+
+def _percent(value) -> str:
+    return '—' if not is_finite(value) else f'{100 * value:.1f}%'
+
+
+def _confidence(value) -> str:
+    return 'unknown-confidence' if not is_finite(value) else f'{100 * value:g}%'
+
+
+def _descending(value) -> tuple:
+    """Sort finite measurements largest first, with missing/non-finite values last."""
+    return (0, -value) if is_finite(value) else (1, 0)
+
+
+def _training_time(minutes) -> str:
+    if not is_finite(minutes) or minutes < 0:
+        return '—'
+    hours, remainder = divmod(round(minutes, 1), 60)
+    return f'{int(hours)} h {remainder:.1f} min' if hours else f'{remainder:.1f} min'
+
+
+def model_title(r: dict) -> str:
+    """Compact architecture identity using only recorded model metadata."""
+    info = r.get('info') or {}
+    parts = [info.get('model_type') or 'Unknown model']
+    if is_finite(r.get('params_millions')):
+        parts.append(f'{fmt(r["params_millions"], 2)}M params')
+    for key, label in (
+        ('num_layers', 'depth'),
+        ('hidden_size', 'width'),
+        ('num_attention_heads', 'heads'),
+        ('num_key_value_heads', 'KV'),
+        ('max_position_embeddings', 'ctx'),
+        ('vocab_size_config', 'vocab'),
+    ):
+        if info.get(key) is not None:
+            parts.append(f'{label} {info[key]}')
+    if info.get('tie_word_embeddings') is True:
+        parts.append('tied embeddings')
+    elif info.get('tie_word_embeddings') is False:
+        parts.append('untied embeddings')
+    return ' · '.join(parts)
 
 
 def render_info_section(r: dict) -> list[str]:
-    info, lineage = r.get('info', {}), r.get('lineage', {})
-    s = r.get('summary', {})
-    L = ['## Model info and training lineage', '']
-    L.append(f'- **Checkpoint:** `{r["checkpoint"]}`')
-    L.append(
-        f'- **Architecture:** {info.get("architecture")} ({info.get("model_type")}), '
-        f'{fmt(r.get("params_millions"), 1)}M params, {fmt(info.get("disk_size_mb"), 0)} MB on disk'
-    )
-    L.append(
-        f'- **Layers / hidden / heads:** {info.get("num_layers")} / {info.get("hidden_size")} / '
-        f'{info.get("num_attention_heads")} (KV heads: {info.get("num_key_value_heads")})'
-    )
-    L.append(f'- **Vocab (config / tokenizer):** {info.get("vocab_size_config")} / {info.get("vocab_size_tokenizer")}')
-    L.append(f'- **Context length:** {info.get("max_position_embeddings")}')
-    L.append(f'- **Chat template:** {"yes" if info.get("has_chat_template") else "no"}')
-    L.append(f'- **Training lineage:** {lineage.get("line", "(unknown)")}')
-    if s.get('tokens_seen_estimate'):
-        note = ' (lower bound - run was restarted)' if lineage.get('tokens_lower_bound') else ''
-        L.append(
-            f'- **Training compute:** ~{human_tokens(s["tokens_seen_estimate"])} tokens seen '
-            f'({fmt(s.get("tokens_per_param"), 1)} per parameter{note}; rule of thumb for "fully fed" is '
-            f'~{CHINCHILLA_TOKENS_PER_PARAM}), budget bucket {lineage.get("budget")}'
-        )
-    sched = lineage.get('lr_scheduler')
-    if sched:
-        shape = ''
-        w, st, dc = lineage.get('warmup_steps'), lineage.get('stable_steps'), lineage.get('decay_steps')
-        if w is not None or st is not None or dc is not None:
-            shape = f' (warmup {w} / stable {st} / decay {dc})'
-        L.append(f'- **Schedule:** {sched}{shape}, max_steps {lineage.get("max_steps")}')
-    if lineage.get('tokens_per_step'):
-        L.append(f'- **Tokens per optimizer step:** {lineage["tokens_per_step"]:,} (seq {lineage.get("train_seq_length")})')
-    if lineage.get('runtime_minutes'):
-        minutes = lineage['runtime_minutes']
-        segs = lineage.get('runtime_segments_minutes') or []
-        # A resumed run is several processes. Showing only the total invites the
-        # reader to check it against max_train_minutes and conclude it is wrong.
-        detail = ''
-        if len(segs) > 1:
-            detail = ' = ' + ' + '.join(f'{x:.1f}' for x in segs) + f' over {len(segs)} segments (resumed)'
-        budget = lineage.get('max_train_minutes')
-        cfg = f'; configured max_train_minutes={budget} per process' if budget else ''
-        L.append(f'- **Recorded training time:** {fmt(minutes, 0)} minutes (~{fmt(minutes / 60, 1)} h){detail}{cfg}')
-    L.append(f'- **Embedding mean norm:** {fmt(s.get("embedding_mean_norm"))} (descriptive)')
-    L.append(
-        f'- **Embedding mean cosine:** {fmt(s.get("embedding_mean_cosine"))} — grows with training from ~0 at random init;'
-        ' near 0 does NOT mean healthy'
-    )
-    if info.get('vocab_size_tokenizer', 0) > info.get('vocab_size_config', 0):
-        L.append('- **WARNING:** tokenizer vocab is larger than config vocab_size - checkpoint/tokenizer mismatch?')
-    if lineage.get('note'):
-        L.append(f'- **Note:** {lineage["note"]}')
-    for w in lineage.get('warnings') or []:
-        L.append(f'- **Check:** {w}')
-    if lineage.get('config_file'):
-        L.append(f'- **Recipe read from:** `{lineage["config_file"]}`')
-    L.append('')
-    return L
-
-
-def render_period_probes_section(r: dict) -> list[str]:
-    p = r.get('period_probes') or {}
-    if not p:
-        return []
-    ov = p.get('overall', {})
-    hist, mod = p.get('historical', {}), p.get('modern', {})
-    ratio = p.get('modern_over_historical_ratio')
-    L = [
-        '## Period fidelity on fixed probe sentences',
+    lineage, s = r.get('lineage') or {}, r.get('summary') or {}
+    info = r.get('info') or {}
+    template = {True: 'yes', False: 'no'}.get(info.get('has_chat_template'), '—')
+    return [
+        '## Model and training records',
         '',
-        f'Scored {ov.get("num_tokens", "?")} tokens over fixed historical + modern sentences '
-        '(small set: read the RATIO, not absolute noise-level numbers).',
+        f'- Checkpoint: `{r["checkpoint"]}`',
+        f'- Recorded training time: {_training_time(lineage.get("runtime_minutes"))}',
+        f'- Recorded lineage: {lineage.get("line", "unknown")}',
+        f'- Estimated training tokens (`tokens_seen_estimate`): {human_tokens(s.get("tokens_seen_estimate"))}; '
+        f'per parameter: {fmt(s.get("tokens_per_param"), 1)}. Compute-derived estimate, not a training-sufficiency threshold.',
+        f'- Model storage: {fmt(info.get("disk_size_mb"), 1)} MB; chat template available: {template}.',
+        f'- Training schedule: {_cell(lineage.get("lr_scheduler") or "—")}; '
+        f'warmup / stable / decay: {fmt(lineage.get("warmup_steps"), 0)} / '
+        f'{fmt(lineage.get("stable_steps"), 0)} / {fmt(lineage.get("decay_steps"), 0)} steps; '
+        f'max optimizer steps: {fmt(lineage.get("max_steps"), 0)}.',
+        f'- Training batch: {fmt(lineage.get("tokens_per_step"), 0)} tokens/optimizer step; '
+        f'sequence: {fmt(lineage.get("train_seq_length"), 0)} tokens; '
+        f'configured time limit: {_training_time(lineage.get("max_train_minutes"))} per process.',
+        f'- Recipe: {_cell(lineage.get("config_file") or "—")}.',
         '',
-        '| group | sentences | perplexity | bits/byte |',
-        '|---|---:|---:|---:|',
     ]
-    for name, g in (('historical', hist), ('modern', mod)):
-        if g:
-            bpb = f'{g["bits_per_byte"]:.3f}' if g.get('bits_per_byte') is not None else '—'
-            L.append(f'| {name} | {g["num_sentences"]} | {g["perplexity"]:.2f} | {bpb} |')
-    L.append('')
-    if ratio is not None:
-        verdict = (
-            '> Comfortably period-biased, as intended for a ~1900 knowledge cutoff.'
-            if ratio >= 1.5
-            else (
-                '> Barely above 1.0: weak period preference.' if ratio >= 1.0 else '> BELOW 1.0: modern text is easier - check the corpus.'
-            )
-        )
-        L += [f'MODERN/HISTORICAL perplexity ratio: **{ratio:.2f}** (>1 = period text easier, desired).', '', verdict, '']
-    ov = p.get('overall') or {}
-    if ov:
-        L += [
-            'Token-level health over the same probes '
-            f'(mean token prob {ov.get("mean_token_prob", float("nan")):.4f}, '
-            f'low-confidence tokens {100 * ov.get("frac_low_confidence", float("nan")):.1f}%, '
-            f'mean entropy {ov.get("mean_entropy_nats", float("nan")):.3f} nats). '
-            'Low-confidence = predicted with <1% probability; high entropy = hedging.',
-            '',
-        ]
-    worst = sorted(p.get('per_sentence', []), key=lambda x: -x['perplexity'])[:5]
-    if worst:
-        L += ['Most surprising probe sentences:', '']
-        for st in worst:
-            L.append(f'- [{st["label"]}] ppl {st["perplexity"]:.1f}: {st["sentence"][:70]}')
-        L.append('')
-    return L
 
 
 def render_heldout_section(r: dict) -> list[str]:
-    s = r.get('summary', {})
-    if s.get('prose_bpb') is None or (isinstance(s.get('prose_bpb'), float) and math.isnan(s['prose_bpb'])):
+    s = r.get('summary') or {}
+    if 'prose_bpb' not in s and 'chat_target_bpb' not in s:
         return []
-    n_docs = r.get('n_prose_docs')
     L = [
-        '## Held-out period prose (bits per UTF-8 byte, lower = better)',
+        '## Prose and chat-target loss',
         '',
-        f'{n_docs} unseen documents; byte-normalised so it compares across tokenizers.',
+        'BPB = total negative log-likelihood in bits / scored UTF-8 bytes. Lower means higher likelihood '
+        'per byte on the scored text; compare matching documents, scored spans and context settings.',
         '',
-        f'- **Prose BPB: {fmt(s.get("prose_bpb"), 5)}**'
-        + (f'  (95% CI [{fmt(r.get("ci_low"), 5)}, {fmt(r.get("ci_high"), 5)}])' if r.get('ci_low') is not None else ''),
-        f'- Split A/B: {fmt(s.get("prose_bpb_split_a"), 4)} / {fmt(s.get("prose_bpb_split_b"), 4)} (stability diagnostic)',
-        f'- Early-context BPB {fmt(s.get("prose_bpb_early"), 4)} vs late-context {fmt(s.get("prose_bpb_late"), 4)} '
-        '(late >> early means long-range coherence is weaker)',
-    ]
-    if s.get('chat_bpb') is not None and not (isinstance(s.get('chat_bpb'), float) and math.isnan(s['chat_bpb'])):
-        L.append(
-            f'- Conditional chat-target BPB: {fmt(s.get("chat_bpb"), 5)} over {r.get("n_chat_docs", 0)} chat turns '
-            '(how cheap well-formed dialogue already is; predicts fine-tuning ease)'
+        f'- `prose_bpb`: {fmt(s.get("prose_bpb"), 5)}'
+        + (
+            f' ({_confidence(s.get("prose_bpb_ci_confidence"))} CI [{fmt(s.get("prose_bpb_ci_low"), 5)}, {fmt(s.get("prose_bpb_ci_high"), 5)}])'
+            if is_finite(s.get('prose_bpb_ci_low'))
+            else ''
+        ),
+        f'- `prose_docs_scored`: {s.get("prose_docs_scored", "unknown")}; '
+        f'`prose_docs_excluded`: {s.get("prose_docs_excluded", "unknown")}; '
+        f'`prose_truncated_docs`: {s.get("prose_truncated_docs", "not recorded")}.',
+        f'- `prose_bpb_split_a` / `prose_bpb_split_b`: {fmt(s.get("prose_bpb_split_a"))} / {fmt(s.get("prose_bpb_split_b"))}.',
+        f'- `prose_bpb_early` / `prose_bpb_late`: {fmt(s.get("prose_bpb_early"))} / {fmt(s.get("prose_bpb_late"))} '
+        f'over {s.get("prose_bpb_position_docs", "unknown")} documents holding both halves (`prose_bpb_position_docs`). '
+        'First 128 scored tokens versus the remainder; different text positions, not a controlled long-context test.',
+        f'- `chat_target_bpb`: {fmt(s.get("chat_target_bpb"), 5)}'
+        + (
+            f' ({_confidence(s.get("chat_target_bpb_ci_confidence"))} CI '
+            f'[{fmt(s.get("chat_target_bpb_ci_low"), 5)}, {fmt(s.get("chat_target_bpb_ci_high"), 5)}])'
+            if is_finite(s.get('chat_target_bpb_ci_low'))
+            else ''
         )
-    L.append('')
+        + f'; `chat_target_docs_scored`: {s.get("chat_target_docs_scored", "unknown")}. '
+        'Teacher-forced target likelihood given context, not generated chat quality or fine-tuning readiness.',
+        '',
+    ]
+    return L
+
+
+def render_logic_section(r: dict) -> list[str]:
+    s = r.get('summary') or {}
+    logic = r.get('logic') or {}
+    if not logic:
+        return []
+    L = [
+        '## Fixed-choice logic',
+        '',
+        f'`logic_accuracy`: {_percent(s.get("logic_accuracy"))}; '
+        f'`logic_items_correct`: {logic.get("items_correct", "unknown")} / '
+        f'`logic_items_scored`: {logic.get("items_scored", "unknown")}; '
+        f'`logic_items_skipped`: {logic.get("items_skipped", "unknown")}. '
+        f'`logic_margin_bpb`: {fmt(s.get("logic_margin_bpb"))} bits/byte.',
+        '',
+        f'{_confidence(s.get("logic_accuracy_ci_confidence"))} Wilson interval on the accuracy '
+        f'(`logic_accuracy_ci_low` / `logic_accuracy_ci_high`): '
+        f'[{_percent(s.get("logic_accuracy_ci_low"))}, {_percent(s.get("logic_accuracy_ci_high"))}]. '
+        'The set is small, so this interval is wide; a few items of difference between checkpoints is not a difference.',
+        '',
+        'Correct means the designated good continuation has lower BPB; ties are incorrect. '
+        'Margin is bad-minus-good BPB. Random two-choice accuracy is 50%; '
+        'these small fixed sets are not a general reasoning benchmark.',
+        '',
+    ]
+    categories = logic.get('categories') or {}
+    if categories:
+        L += [
+            '| category | accuracy | scored pairs | JSON accuracy key |',
+            '|---|---:|---:|---|',
+        ]
+        for category, row in sorted(categories.items()):
+            L.append(
+                f'| {_cell(category)} | {_percent(row.get("accuracy"))} | {row.get("items_scored", "unknown")} '
+                f'| `logic_category_{category}_accuracy` |'
+            )
+        L += ['']
+    return L
+
+
+def render_logic_examples(r: dict) -> list[str]:
+    items = (r.get('logic') or {}).get('items') or []
+    L = []
+    if items:
+        L += [
+            '### Logic choices and BPBs',
+            '',
+            'Up to two correct and two incorrect pairs, spread across saved order; one skipped pair if present. '
+            'These are scored alternatives, not generated answers. All pairs are in `logic.items`.',
+            '',
+        ]
+        for outcome, label, limit in ((True, 'Correct', 2), (False, 'Incorrect', 2), (None, 'Skipped', 1)):
+            for item in _spread([row for row in items if row.get('correct') is outcome], limit):
+                tie = ' (tie)' if outcome is False and item.get('good_bpb') == item.get('bad_bpb') else ''
+                L += [f'**{label}{tie} · {_literal(item["category"])}**', '', 'Context:', '', *_quote(item['context'])]
+                L += [
+                    '| designated choice | continuation | BPB |',
+                    '|---|---|---:|',
+                    f'| good | {_cell(item["good_continuation"])} | {fmt(item.get("good_bpb"))} |',
+                    f'| bad | {_cell(item["bad_continuation"])} | {fmt(item.get("bad_bpb"))} |',
+                    '',
+                    f'`margin_bpb`: {fmt(item.get("margin_bpb"))}.',
+                    '',
+                ]
+    return L
+
+
+def render_probe_section(r: dict) -> list[str]:
+    s = r.get('summary') or {}
+    L = ['## Sentence and phrase likelihood', '']
+    if 'trap_mean_delta_bpb' in s:
+        L += [
+            f'- `trap_mean_delta_bpb`: {fmt(s.get("trap_mean_delta_bpb"))} '
+            f'(standard error {fmt(s.get("trap_mean_delta_stderr_bpb"))}, `trap_mean_delta_stderr_bpb`); '
+            f'`trap_min_delta_bpb`: {fmt(s.get("trap_min_delta_bpb"))} bits/byte; '
+            f'`trap_nonpositive_pairs`: {s.get("trap_nonpositive_pairs", "unknown")} / {s.get("trap_pairs_scored", "unknown")}.',
+            f'  Smallest delta belongs to {_cell((r.get("traps") or {}).get("min_delta_phrase") or "—")} (`traps.min_delta_phrase`).',
+            '  Modern-minus-period phrase BPB on fixed pairs. A nonpositive value is a phrase preference, not evidence of training-data leakage.',
+        ]
+    probes = r.get('period_probes') or {}
+    if probes:
+        L += ['', '| measurement (JSON key) | value |', '|---|---:|']
+        for group in ('historical', 'modern', 'overall'):
+            for metric in ('bpb', 'ppl'):
+                key = f'probe_{group}_{metric}'
+                label = 'BPB' if metric == 'bpb' else 'token perplexity'
+                L.append(f'| {group.capitalize()} {label} (`{key}`) | {fmt(s.get(key))} |')
+        for label, key, format_value in (
+            ('Historical sentences', 'probe_historical_sentences_scored', lambda v: fmt(v, 0)),
+            ('Modern sentences', 'probe_modern_sentences_scored', lambda v: fmt(v, 0)),
+            ('Scored tokens', 'probe_overall_tokens_scored', lambda v: fmt(v, 0)),
+            ('Mean probability of observed token', 'probe_overall_mean_token_prob', fmt),
+            ('Observed tokens assigned <1% probability', 'probe_overall_token_prob_below_0_01_rate', _percent),
+            ('Mean next-token entropy (nats)', 'probe_overall_mean_entropy_nats', fmt),
+        ):
+            L.append(f'| {label} (`{key}`) | {format_value(s.get(key))} |')
+        ratio = s.get('probe_modern_historical_ppl_ratio')
+        comparison = (
+            f'The modern sentence set has {ratio:.2f} times the token perplexity of the historical set.'
+            if is_finite(ratio)
+            else 'The modern-to-historical token perplexity ratio is unavailable.'
+        )
+        L += [
+            '',
+            comparison + ' This is modern perplexity divided by historical perplexity '
+            '(`probe_modern_historical_ppl_ratio`), not evidence of a knowledge cutoff. '
+            'Token perplexity depends on tokenization.',
+            '',
+        ]
+    return L + [''] if len(L) > 2 else []
+
+
+def render_probe_examples(r: dict) -> list[str]:
+    sentences = (r.get('period_probes') or {}).get('per_sentence') or []
+    L = []
+    if sentences:
+        L += [
+            f'### All {len(sentences)} recorded probe sentences',
+            '',
+            'Highest token perplexity first (most surprising to the model); ties keep saved order, missing values last. '
+            'Lower BPB means higher text likelihood per scored byte, not factual correctness or understanding. '
+            'Values are from `period_probes.per_sentence`.',
+            '',
+            '| group | sentence | token perplexity | BPB | scored bytes |',
+            '|---|---|---:|---:|---:|',
+        ]
+        for row in sorted(sentences, key=lambda row: _descending(row.get('ppl'))):
+            L.append(
+                f'| {_cell(row.get("label", "unknown"))} | {_cell(row["sentence"])} '
+                f'| {fmt(row.get("ppl"), 2)} | {fmt(row.get("bpb"))} | {row.get("scored_bytes", "unknown")} |'
+            )
+        L += ['']
     return L
 
 
 def render_bake_section(r: dict) -> list[str]:
-    points = r.get('points') or {}
-    partial_note = []
-    if r.get('bake_is_partial'):
-        missing = ', '.join(r.get('bake_components_missing') or [])
-        covered = (r.get('summary') or {}).get('bake_weight_covered')
-        partial_note = [
-            '',
-            f'> **PARTIAL SCORE — NOT COMPARABLE.** This bake score is missing: **{missing}**. '
-            f'It was renormalised over the {fmt(100 * (covered or 0), 0)}% of the weight that WAS measured, '
-            'so it is inflated relative to any model scored on all four components. '
-            'Re-run without `--gen-mode none` for a comparable number.',
-        ]
-    score = r.get('bake_score')
-    verdict = r.get('verdict', {})
-    logic, traps = r.get('logic') or {}, r.get('traps') or {}
-    gen = (r.get('generation') or {}).get('greedy_summary') or {}
-    sampled_summary = (r.get('generation') or {}).get('sampled_summary') or {}
-    tier = verdict.get('tier')
+    s = r.get('summary') or {}
+    L = [
+        '## Experimental composite',
+        '',
+        f'`bake_score`: {fmt(s.get("bake_score"), 2)}/100; `bake_status`: {s.get("bake_status", "unknown")}; '
+        f'`bake_weight_covered`: {_percent(s.get("bake_weight_covered"))}.',
+        'Fixed hand-set transforms and weights, not a validated overall-quality scale or a recommendation to stop training. '
+        'Partial scores renormalize the available weights and are excluded from full-score rankings.',
+        '',
+        '| component (JSON points key) | measured input | points /100 | weight |',
+        '|---|---|---:|---:|',
+    ]
+    for key, label, raw in (
+        ('bpb', 'Prose loss', f'`prose_bpb`: {fmt(s.get("prose_bpb"))} bits/byte'),
+        ('logic', 'Fixed-choice logic', f'`logic_accuracy`: {_percent(s.get("logic_accuracy"))}'),
+        ('chat', 'Chat-target loss', f'`chat_target_bpb`: {fmt(s.get("chat_target_bpb"))} bits/byte'),
+        (
+            'hygiene',
+            'Generation surface checks',
+            f'`greedy_mean_loop_words`: {fmt(s.get("greedy_mean_loop_words"), 1)} words; '
+            f'`sampled_mean_punct_issues_p100`: {fmt(s.get("sampled_mean_punct_issues_p100"), 2)}/100 words',
+        ),
+    ):
+        L.append(f'| {label} (`points_{key}`) | {raw} | {fmt(s.get("points_" + key), 2)} | {WEIGHTS[key]} |')
+    return L + ['', *render_reference_section(r)]
 
-    header = f'## Bake score: {fmt(score, 0)}/100'
-    if r.get('bake_is_partial'):
-        header += ' (PARTIAL)'
-    L = [header + (f' — **{tier}**' if tier else ''), *partial_note, '']
-    if verdict.get('text'):
-        L += [verdict['text'], '']
 
-    if any(not math.isnan(v) for v in points.values() if isinstance(v, float)) or points:
+def render_reference_section(r: dict) -> list[str]:
+    """Reference points, kept in the same table only when the source file matches."""
+    s, settings = r.get('summary') or {}, r.get('evaluation_settings') or {}
+    matched = settings.get('heldout_sha256') == REFERENCE_PROSE_SHA256
+    source = 'matches this run' if matched else 'differs from or is unrecorded for this run'
+    L = [
+        '### Prose BPB reference points',
+        '',
+        'Highest BPB first; missing values last. Lower BPB means higher likelihood per byte, not better capabilities overall. '
+        'Named references are recorded scores on 200 documents; their source-file hash '
+        f'{source}. Exact scored spans and precision protocols are not verified as matched: reference context, not a validated ranking.',
+        '',
+        '| model / baseline | params (M) | prose BPB | measurement / notes |',
+        '|---|---:|---:|---|',
+    ]
+    rows = [
+        (s.get('prose_bpb'), f'| **This checkpoint** | {fmt(r.get("params_millions"), 2)} | **{fmt(s.get("prose_bpb"), 5)}** | this run |'),
+        (
+            s.get('prose_uniform_token_bpb'),
+            f'| Uniform-token baseline | — | {fmt(s.get("prose_uniform_token_bpb"), 5)} | calculated for this tokenizer and scored text |',
+        ),
+    ]
+    references = [(bpb, f'| {name} | {params:g} | {bpb:.5f} | recorded {notes} |') for name, params, bpb, notes in PROSE_REFERENCES]
+    # Scored on a different held-out file, so they are not one ranking. Keeping them
+    # in one sorted column reads as a scoreboard no matter what the caption says.
+    if matched:
+        rows += references
+    L.extend(line for _, line in sorted(rows, key=lambda row: _descending(row[0])))
+    if not matched:
         L += [
-            '| component | raw value | points /100 | weight | plain English |',
-            '|---|---|---:|---:|---|',
-        ]
-        if points.get('bpb') is not None:
-            L.append(
-                f'| Held-out loss | {fmt(r.get("summary", {}).get("prose_bpb"), 4)} bits/byte | {fmt(points["bpb"], 0)} '
-                f'| {WEIGHTS["bpb"]} | how cheaply it predicts period text it never saw — the best training signal |'
-            )
-        if points.get('logic') is not None:
-            L.append(
-                f'| Logic | {fmt(logic.get("acc"), 3)} acc, margin {fmt(logic.get("margin"), 3)} | {fmt(points["logic"], 0)} '
-                f'| {WEIGHTS["logic"]} | picks the *sensible* continuation over matched nonsense; 0.50 = coin-flip. '
-                f'{band_label(logic.get("acc", float("nan")))} |'
-            )
-        if points.get('chat') is not None:
-            L.append(
-                f'| Chat readiness | {fmt(r.get("summary", {}).get("chat_bpb"), 4)} bits/byte | {fmt(points["chat"], 0)} '
-                f'| {WEIGHTS["chat"]} | how cheap well-formed period dialogue already is |'
-            )
-        if points.get('hygiene') is not None:
-            L.append(
-                f'| Hygiene | loop {fmt(gen.get("mean_loop_words"), 1)}w avg, punct '
-                f'{fmt(sampled_summary.get("mean_punct_issues_p100"), 2)}/100w | {fmt(points["hygiene"], 0)} '
-                f'| {WEIGHTS["hygiene"]} | greedy-decoding loop length and broken punctuation |'
-            )
-        L.append('')
-
-    if r.get('summary', {}).get('prose_bpb') is not None:
-        L += [
-            'Where it sits (held-out bits/byte, lower = better):',
             '',
-            '```',
-            _ladder_figure(r['summary']['prose_bpb'], r.get('reference_name')),
-            '```',
+            '#### Recorded on other corpora — NOT comparable to the table above',
             '',
+            'These were scored on a different held-out file. No paired documents, no matched scored spans, '
+            'no shared protocol: the numbers are listed for context and must not be ranked against this run.',
+            '',
+            '| model | params (M) | prose BPB | measurement / notes |',
+            '|---|---:|---:|---|',
         ]
+        L.extend(line for _, line in sorted(references, key=lambda row: _descending(row[0])))
+    return L + [
+        '',
+        '`prose_uniform_token_bpb` = log2(model vocabulary size) × scored tokens / scored bytes; '
+        'equal token probabilities, not an evaluated untrained network. Reference points do not affect the composite.',
+        '',
+    ]
 
-    if traps:
-        leaked, n = traps.get('n_leaked', 0), traps.get('n', 0)
-        if n:
-            if leaked == 0:
-                L.append(
-                    f'Period boundary: clean. All {n} post-1900 trap words cost more than their period twins '
-                    f"(mean shock +{fmt(traps.get('mean_shock'), 2)}, weakest pair '{traps.get('worst_pair')}' "
-                    f'at +{fmt(traps.get("min_shock"), 2)} bits/byte). No sign of modern text in training.'
-                )
-            else:
-                L.append(
-                    f'**LEAKAGE WARNING:** {leaked}/{n} trap words are *cheaper* than their period twins '
-                    f"(worst: '{traps.get('worst_pair')}'). Modern text has probably contaminated the corpus."
-                )
-            L.append('')
+
+def _completion(sample: dict, label: str) -> list[str]:
+    status = sample.get('surface_failure')
+    state = 'flagged' if status is True else 'unflagged' if status is False else 'not assessed'
+    reasons = sample.get('surface_failure_reasons')
+    flags = ', '.join(reasons) if reasons else 'none' if reasons == [] else 'not recorded'
+    text = sample.get('continuation') or ''
+    L = [f'**{label} continuation — {state}**', '']
+    L += _quote(text[:1200]) if text else ['_(empty continuation)_', '']
+    if len(text) > 1200:
+        L += ['_Excerpt truncated at 1200 characters; the full continuation is in JSON._', '']
+    L += [
+        f'Flags: {_literal(flags)}; distinct-2: {fmt(sample.get("distinct_2"), 3)}; '
+        f'echo rate: {_percent(sample.get("echo_rate"))}; longest loop: {fmt(sample.get("longest_loop_words"), 0)} words.',
+        '',
+    ]
     return L
 
 
-def render_generation_section(r: dict, max_examples: int = 6) -> list[str]:
+def _generation_examples(gen: dict) -> list[str]:
+    greedy, sampled = gen.get('greedy_samples') or [], gen.get('sampled_samples') or []
+    if not greedy and not sampled:
+        return []
+    L = ['### Autocomplete examples', '']
+    paired_prompts = []
+    sampled_by_prompt = {row['prompt']: row for row in sampled}
+    paired = [row for row in greedy if row['prompt'] in sampled_by_prompt][:2]
+    if paired:
+        L += [
+            '#### Same prompts: greedy vs sampled',
+            '',
+            'First two shared prompts in saved order, selected independently of flags or scores. '
+            'The prompts stay fixed when the prompt set/order is unchanged.',
+            '',
+        ]
+        for row in paired:
+            prompt = row['prompt']
+            paired_prompts.append(prompt)
+            L += ['**Prompt**', '', *_quote(prompt)]
+            L += _completion(row, 'Greedy')
+            L += _completion(sampled_by_prompt[prompt], 'Sampled')
+
+    mode, samples = ('Sampled', sampled) if sampled else ('Greedy', greedy)
+    flagged = sum(row.get('surface_failure') is True for row in samples)
+    unflagged = sum(row.get('surface_failure') is False for row in samples)
+    unknown = len(samples) - flagged - unflagged
+    L += [
+        f'{mode}: {flagged} of {len(samples)} saved continuations flagged; '
+        f'{unflagged} unflagged; {unknown} not assessed. '
+        'Unflagged does not mean coherent or correct. The galleries are selected subsets, not an estimate of typical quality.',
+        '',
+    ]
+    for status, label, limit in ((False, 'Unflagged', 4), (True, 'Flagged', 2), (None, 'Not assessed', 2)):
+        candidates = [row for row in samples if row.get('surface_failure') is status and row['prompt'] not in paired_prompts]
+        shown = _spread(candidates, limit)
+        if not shown:
+            continue
+        L += [
+            f'#### {label} {mode.lower()} continuations ({len(shown)} examples)',
+            '',
+            'Evenly spaced through this group in saved order; prompts shown above are excluded. Not ranked by quality.',
+            '',
+        ]
+        for row in shown:
+            L += ['**Prompt**', '', *_quote(row['prompt']), *_completion(row, mode)]
+    return L
+
+
+def render_generation_section(r: dict) -> list[str]:
     gen = r.get('generation') or {}
     if not gen:
         return []
-    greedy_sum, sampled_sum = gen.get('greedy_summary') or {}, gen.get('sampled_summary') or {}
-    if not greedy_sum and not sampled_sum:
-        return []
+    modes = [mode for mode in ('greedy', 'sampled') if gen.get(mode + '_summary') or gen.get(mode + '_samples')]
+    settings = r.get('evaluation_settings') or {}
     L = [
-        '## Generation hygiene (all prompts generated once; metrics on those same texts)',
+        '## Autocomplete and generation',
         '',
+        f'Generation budget: {settings.get("generation_tokens", "not recorded")} new tokens; seed: {settings.get("seed", "not recorded")}.',
     ]
-    if greedy_sum:
-        L.append(
-            f'- Greedy: mean longest repeating block **{fmt(greedy_sum.get("mean_loop_words"), 1)} words**, '
-            f'worst single prompt {fmt(greedy_sum.get("worst_loop_words"), 0)} words '
-            '(an undertrained model falls into loops under greedy decoding)'
-        )
-    if sampled_sum:
+    if 'sampled' in modes:
         L += [
-            f'- Sampled (t={gen.get("temperature")}): distinct-2 {fmt(sampled_sum.get("mean_distinct_2"), 3)}, '
-            f'echo rate {fmt(sampled_sum.get("mean_echo_rate"), 3)}, degenerate prompts '
-            f'{fmt(100 * (sampled_sum.get("degenerate_rate") or 0), 1)}%, '
-            f'prompt-copy rate {fmt(sampled_sum.get("mean_prompt_copy_rate"), 3)}',
-            f'- Punctuation issues per 100 words (sampled): {fmt(sampled_sum.get("mean_punct_issues_p100"), 2)}',
-            f'- **Back matter** (index/catalogue/TOC text): {fmt(100 * (sampled_sum.get("back_matter_rate") or 0), 1)}% '
-            f'of completions, mean sentence {fmt(sampled_sum.get("mean_sentence_words"), 1)} words. '
-            'Lexically DIVERSE, so distinct-n, echo and loop detection are all blind to it.',
-            f'- **Self-BLEU-4** (mode collapse across completions): {fmt(sampled_sum.get("self_bleu_4"), 3)} '
-            "— fraction of each completion's 4-grams that also appear in another completion. "
-            '0 = every completion lexically unique; high = the model keeps writing the same thing.',
-            f'- **Unusable rate** (degenerate OR back matter — what a synth-data filter would drop): '
-            f'**{fmt(100 * (sampled_sum.get("unusable_rate") or 0), 1)}%**',
+            f'Sampling: temperature {fmt(gen.get("temperature"), 2)}, top-p {fmt(gen.get("top_p"), 2)}, top-k {fmt(gen.get("top_k"), 0)}.',
         ]
-    L.append('')
-
+    if modes:
+        L += [
+            '',
+            'Table keys are JSON suffixes: prepend the column mode (for example, `sampled_surface_failure_rate`). '
+            'Surface flags detect short text, repetition or formatting—not coherence; valid text can fail and nonsense can pass.',
+            '',
+            '| measurement (JSON suffix) | ' + ' | '.join(mode.capitalize() for mode in modes) + ' |',
+            '|---|' + '---:|' * len(modes),
+        ]
+        measurements = (
+            ('Completions', 'n_prompts', lambda v: fmt(v, 0)),
+            ('Flagged completions', 'surface_failure_rate', _percent),
+            ('Short-text or repetition flags', 'degenerate_rate', _percent),
+            ('Mean length (words)', 'mean_words', lambda v: fmt(v, 1)),
+            ('Distinct word bigrams (fraction)', 'mean_distinct_2', lambda v: fmt(v, 3)),
+            ('Local repetition', 'mean_echo_rate', _percent),
+            ('Mean longest loop (words)', 'mean_loop_words', lambda v: fmt(v, 1)),
+            ('Worst longest loop (words)', 'worst_loop_words', lambda v: fmt(v, 0)),
+            ('Shared word 4-grams (fraction)', 'shared_4gram_fraction', lambda v: fmt(v, 3)),
+            ('Prompt-word overlap', 'mean_prompt_word_overlap_rate', _percent),
+            ('Punctuation issues / 100 words', 'mean_punct_issues_p100', lambda v: fmt(v, 2)),
+            ('Mean sentence length (words)', 'mean_sentence_words', lambda v: fmt(v, 1)),
+        )
+        for label, key, format_value in measurements:
+            values = [format_value((gen.get(mode + '_summary') or {}).get(key)) for mode in modes]
+            L.append(f'| {label} (`{key}`) | ' + ' | '.join(values) + ' |')
+        L += [
+            '',
+            'Distinct-2 is unique/total word bigrams; echo counts words repeated within the previous four words. '
+            'Shared 4-grams measure overlap across completions, not coherence. '
+            'Compare matching prompts, sample counts, generation budgets and decoding settings.',
+            '',
+            '### Flag reasons',
+            '',
+            'Fraction of completions triggering each check. Reasons overlap; do not add their rates.',
+            '',
+            '| flag (JSON suffix) | ' + ' | '.join(mode.capitalize() for mode in modes) + ' |',
+            '|---|' + '---:|' * len(modes),
+        ]
+        for reason in SURFACE_REASONS:
+            values = [_percent((gen.get(mode + '_summary') or {}).get(reason + '_rate')) for mode in modes]
+            L.append(f'| `{reason}_rate` | ' + ' | '.join(values) + ' |')
+        L += ['']
     sweep = gen.get('temperature_sweep') or {}
     if sweep:
         L += [
-            '### Degeneracy vs sampling temperature',
+            '### Surface flags vs sampling temperature',
             '',
-            'Bulk generation runs hot. BPB measures the HEAD of the distribution; these measure the TAIL.',
+            'Flag rates describe these checks at each temperature; they do not measure coherence.',
             '',
-            '| temperature | unusable | degenerate | back matter | self-BLEU-4 | mean loop (w) |',
+            '| temperature | surface failure rate | degenerate | back-matter-like | shared 4-gram fraction | mean loop (w) |',
             '|---|---:|---:|---:|---:|---:|',
         ]
         for temp in sorted(sweep, key=float):
             row = sweep[temp] or {}
             L.append(
-                f'| t={temp} | {fmt(100 * (row.get("unusable_rate") or 0), 1)}% '
-                f'| {fmt(100 * (row.get("degenerate_rate") or 0), 1)}% '
-                f'| {fmt(100 * (row.get("back_matter_rate") or 0), 1)}% '
-                f'| {fmt(row.get("self_bleu_4"), 3)} | {fmt(row.get("mean_loop_words"), 1)} |'
+                f'| t={temp} | {_percent(row.get("surface_failure_rate"))} '
+                f'| {_percent(row.get("degenerate_rate"))} '
+                f'| {_percent(row.get("back_matter_rate"))} '
+                f'| {fmt(row.get("shared_4gram_fraction"), 3)} | {fmt(row.get("mean_loop_words"), 1)} |'
             )
         L.append('')
-    if sampled_sum.get('degenerate_rate', 0) > 0.34 or sampled_sum.get('mean_echo_rate', 0) > 0.30:
-        L += ['> High repetition/degeneracy across probes - typical of an undertrained checkpoint.', '']
-    elif sampled_sum.get('worst_echo_rate', 0) > 0.45:
-        L += ['> Average looks fine but at least one probe looped badly - read the flagged samples below.', '']
-
-    samples = gen.get('sampled_samples') or []
-    flags = [s for s in samples if s.get('degenerate')]
-    if flags:
-        L += [f'{len(flags)} of {len(samples)} sampled continuations are flagged as surface failures:', '']
-    shown = flags[:max_examples] or samples[:3]
-    for s in shown:
-        flag = ' **[SURFACE FAILURE]**' if s.get('degenerate') else ''
-        one = ' '.join((s.get('continuation') or '').split())[:400]
-        L += [
-            f'> **PROMPT{flag}:** {s["prompt"]}',
-            '> ',
-            f'> {s["prompt"]}{" " if one else ""}{one}',
-            '> ',
-            f'> _distinct-2 {fmt(s.get("distinct_2"), 3)}; echo {fmt(s.get("echo_rate"), 3)}; '
-            f'longest loop {s.get("longest_loop_words")} words_',
-            '',
-        ]
     return L
 
 
-def render_tokenizer_and_optim_section(r: dict) -> list[str]:
-    """Tokenizer efficiency and optimisation health -- neither needs the GPU."""
-    t = r.get('tokenizer_stats') or {}
-    c = r.get('training_curve') or {}
-    if not t and not c.get('eval_curve'):
-        return []
-    L = ['## Tokenizer efficiency and optimisation health', '']
-    if t:
-        L += [
-            f'- **Bytes per token: {t.get("bytes_per_token", float("nan")):.4f}** on the scored '
-            f'held-out set (vocab {t.get("vocab_size")}). HIGHER = the same token budget carries '
-            'more text, so a model trained with this tokenizer sees more data per step. '
-            'Compare this across tokenizers before blaming one for a quality difference.',
-        ]
-    if c.get('eval_curve'):
-        nf = c.get('grad_norm_nonfinite') or 0
-        L += [
-            f'- Final eval loss **{c.get("final_eval_loss"):.4f}** (ppl {c.get("final_eval_ppl"):.2f}) '
-            f'at step {c.get("final_eval_step")}; final train loss {fmt(c.get("final_train_loss"), 4)}.',
-            f'- Gradient norm: max {fmt(c.get("grad_norm_max"), 2)}, mean {fmt(c.get("grad_norm_mean"), 2)}, '
-            f'min {fmt(c.get("grad_norm_min"), 3)}, **non-finite {nf}**' + ('' if nf == 0 else '  <-- INSTABILITY') + '.',
-            f'- Eval curve retained ({len(c["eval_curve"])} points) for step-matched comparison. '
-            '`eval_steps` is in MINUTES, so runs of different speed evaluate at different steps; '
-            'raw endpoints are NOT comparable and must be interpolated onto a common grid.',
-        ]
-    L.append('')
-    return L
-
-
-def render_sense_section(r: dict) -> list[str]:
-    emb = r.get('embeddings') or {}
-    shifts = emb.get('semantic_shift') or {}
-    if not shifts:
-        return []
+def render_training_section(r: dict) -> list[str]:
+    curve = r.get('training_curve') or {}
+    series = [(key, curve.get(key) or []) for key in ('eval_curve', 'train_curve')]
     L = [
-        '## Diachronic word-sense separation',
+        '## Recorded training progress',
         '',
-        'Cosine similarity of the SAME shifted word (gay, awful, python...) in a period vs a modern sentence.',
-        'Lower = the two senses are represented differently (good); ~1.0 = treated identically.',
+        'Trainer-log loss in nats/token, not held-out BPB. Up to five evenly spaced entries per series, '
+        'including first/latest, without interpolation; unused slots are —. '
+        f'Retained entries: {len(series[0][1])} validation, {len(series[1][1])} training. These points do not establish convergence.',
         '',
-        f'Mean sense-shift similarity: **{fmt(emb.get("mean_shift_similarity"), 3)}**',
+        '| series (`training_curve`) | optimizer step | loss (nats/token) |',
+        '|---|---:|---:|',
+    ]
+    for key, rows in series:
+        selected = _spread(rows, 5)
+        for step, loss in selected + [(None, None)] * (5 - len(selected)):
+            L.append(f'| `{key}` | {fmt(step, 0)} | {fmt(loss, 4)} |')
+    return L + ['']
+
+
+def render_diagnostics_section(r: dict) -> list[str]:
+    s = r.get('summary') or {}
+    keys = [
+        'tokenizer_bytes_per_token',
+        'tokenizer_vocab_size',
+        'trainer_eval_loss_nats_per_token',
+        'trainer_eval_ppl',
+        'trainer_eval_step',
+        'trainer_train_loss_nats_per_token',
+        'grad_norm_max',
+        'grad_norm_mean',
+        'grad_norm_min',
+        'grad_norm_nonfinite',
+        'embedding_mean_norm',
+        'embedding_mean_cosine',
+        'sense_shift_mean_cosine',
+        'judge_reference_bpb',
+        'judge_generated_bpb',
+        'judge_absolute_bpb_difference',
+    ]
+    L = ['## Other recorded diagnostics', '', '| summary key | value |', '|---|---:|']
+    L.extend(f'| `{key}` | {fmt(s.get(key))} |' for key in keys)
+    L += [
+        '',
+        'Trainer losses come from training logs, not this held-out scorer. Cross-run loss comparisons require the same '
+        'validation data, tokenizer and reduction; matching optimizer steps alone is insufficient. '
+        'Embedding norms and cosine similarities describe these vectors, without an established good/bad direction. '
+        'Tokenizer bytes/token describes this text sample, not training throughput. '
+        'Judge BPB describes likelihood under the specified reference model, not a coherence rating.',
         '',
     ]
-    for w, s in sorted(shifts.items(), key=lambda kv: kv[1]):
-        flag = ' ← suspiciously identical' if s >= 0.999 else ''
-        L.append(f'- {w}: {s:+.3f}{flag}')
+    L += [
+        '### Paired-context word similarities',
+        '',
+        'The historical/modern cosine compares the same word across its two probe sentences; '
+        'lower means less similar vectors, not established better sense understanding. '
+        'Closest/farthest compare different words in their historical sentences, among these ten probes only—not vocabulary-wide synonyms/antonyms. '
+        'Rows are alphabetical; each list shows up to three recorded matches, nearest/farthest first, with pairwise cosines in parentheses.',
+        '',
+        '| word | historical/modern cosine | closest probe words | farthest probe words |',
+        '|---|---:|---|---|',
+    ]
+    pairwise = (r.get('embeddings') or {}).get('pairwise_historical') or {}
+    for word in sorted(HISTORICAL_WORDS):
+        key = f'sense_shift_{word}_cosine'
+        similarities = []
+        for other in HISTORICAL_WORDS:
+            if other == word:
+                continue
+            # The saved matrix stores each unordered pair once.
+            value = pairwise.get(f'{word}|{other}', pairwise.get(f'{other}|{word}'))
+            if is_finite(value):
+                similarities.append((other, value))
+        matches = []
+        for direction in (-1, 1):
+            ordered = sorted(similarities, key=lambda row: (direction * row[1], row[0]))[:3]
+            matches.append(', '.join(f'{_cell(other)} ({fmt(value, 3)})' for other, value in ordered) or '—')
+        L.append(f'| {_cell(word)} | {fmt(s.get(key))} | {matches[0]} | {matches[1]} |')
     L.append('')
     return L
 
 
-def render_checkpoint_detail(r: dict) -> list[str]:
+def render_checkpoint_measurements(r: dict) -> list[str]:
     L = []
     for section in (
         render_info_section,
-        render_period_probes_section,
-        render_heldout_section,
+        render_training_section,
         render_bake_section,
+        render_diagnostics_section,
+        render_heldout_section,
+        render_logic_section,
+        render_probe_section,
         render_generation_section,
-        render_sense_section,
-        render_tokenizer_and_optim_section,
     ):
         L += section(r)
     return L
 
 
-# ============================================================================
-# Whole-payload reports
-# ============================================================================
+def render_checkpoint_examples(r: dict) -> list[str]:
+    """Keep variable-length measured text out of the measurement layout."""
+    return render_logic_examples(r) + render_probe_examples(r) + _generation_examples(r.get('generation') or {})
 
 
-def _compare_table(results: list[dict]) -> list[str]:
+def _compare_table(results: list[dict], prose_rankings: list[dict]) -> list[str]:
+    comparisons = {row['label']: row for row in prose_rankings}
     L = [
-        '## All checkpoints',
+        '## Checkpoint measurements',
         '',
-        '| model | bake /100 | tier | prose BPB | chat BPB | logic acc | trap shock | loop (w) | echo | tokens seen | lineage |',
-        '|---|---:|---|---:|---:|---:|---:|---:|---:|---|---|',
+        '| model | prose_bpb | comparison group | prose vs group leader | chat_target_bpb | chat vs group leader | logic_accuracy | sampled_surface_failure_rate | bake_score | bake_status |',
+        '|---|---:|---|---|---:|---|---:|---:|---:|---|',
     ]
     for r in results:
-        s = r.get('summary', {})
-        gen = (r.get('generation') or {}).get('greedy_summary') or {}
-        sampled = (r.get('generation') or {}).get('sampled_summary') or {}
+        s, row = r.get('summary') or {}, comparisons.get(r['label'], {})
         L.append(
-            f'| `{r["label"]}` | {fmt(r.get("bake_score"), 0)} | {r.get("verdict", {}).get("tier", "—")} '
-            f'| {fmt(s.get("prose_bpb"), 4)} | {fmt(s.get("chat_bpb"), 4)} | {fmt(s.get("logic_acc"), 3)} '
-            f'| +{fmt(s.get("trap_mean_shock"), 2)} | {fmt(gen.get("mean_loop_words"), 0)} '
-            f'| {fmt(sampled.get("mean_echo_rate"), 2)} | {human_tokens(s.get("tokens_seen_estimate"))} '
-            f'| {r.get("lineage", {}).get("line", "")} |'
+            f'| `{r["label"]}` | {fmt(s.get("prose_bpb"), 5)} | {row.get("comparison_group", "unavailable")} '
+            f'| {row.get("comparison_to_leader", "unavailable")} | {fmt(s.get("chat_target_bpb"), 5)} '
+            f'| {s.get("chat_target_comparison_to_leader", "unavailable")} '
+            f'| {fmt(s.get("logic_accuracy"), 3)} | {_percent(s.get("sampled_surface_failure_rate"))} '
+            f'| {fmt(s.get("bake_score"), 2)} | {s.get("bake_status", "unknown")} |'
         )
-    L.append('')
-    return L
-
-
-def render_curve_comparison(payload: dict) -> list[str]:
-    """Eval loss for every collected run on ONE common step grid."""
-    cc = payload.get('curve_comparison') or {}
-    grid, series = cc.get('grid'), cc.get('series')
-    if not grid or not series:
-        return []
-    L = [
-        '## Eval loss at matched steps',
-        '',
-        'Interpolated onto a common grid because `eval_steps` is in MINUTES: runs of different '
-        "speed evaluate at different step numbers, and a faster run's raw endpoint flatters it.",
-        '',
-        '| model | ' + ' | '.join(str(g) for g in grid) + ' |',
-        '|---' * (len(grid) + 1) + '|',
-    ]
-    for label in sorted(series, key=lambda k: series[k][-1] if series[k][-1] == series[k][-1] else 9e9):
-        vals = series[label]
-        L.append(f'| `{label}` | ' + ' | '.join('—' if v != v else f'{v:.4f}' for v in vals) + ' |')
-    L.append('')
-    return L
+    return L + ['']
 
 
 def render_report(payload: dict) -> str:
+    """Format saved measurements without modifying the payload or recomputing scores."""
     results = payload.get('results', [])
-    settings = payload.get('settings', {})
-    env = payload.get('environment', {})
-    rankings = payload.get('rankings', {})
-
-    title_name = payload.get('target_label') or (results[0]['label'] if len(results) == 1 else f'{len(results)} checkpoints')
-    L = [f'# Evaluation: {title_name}', '']
-
-    # --- decision header for multi-checkpoint runs (eval3-style ranking) -----
-    if len(results) > 1:
-        ranked = rankings.get('prose') or []
-        scored = [r for r in results if r.get('bake_score') is not None and not math.isnan(r['bake_score'])]
-        if ranked:
-            lead = ranked[0]
-            tied = [row for row in ranked if row.get('equivalent_to_leader')]
-            if len(tied) > 1:
-                names = ', '.join(f'`{t["label"]}`' for t in tied)
-                L.append(
-                    f'**Leader: `{lead["label"]}` at {lead["bpb"]:.5f} BPB, statistically/practically tied with {names}** '
-                    f'(paired bootstrap, {payload.get("bootstrap_confidence", 0.95):.0%}).'
-                )
-            else:
-                L.append(f'**Best checkpoint by held-out loss: `{lead["label"]}` at {lead["bpb"]:.5f} BPB.**')
-        if scored:
-            best = max(scored, key=lambda r: r['bake_score'])
-            L.append(f'Best bake score: `{best["label"]}` at {best["bake_score"]:.0f}/100 ({best["verdict"].get("tier", "")})')
-        L.append('')
-        L += _compare_table(results)
-        L += render_curve_comparison(payload)
-
-    # --- per-checkpoint sections ---------------------------------------------
-    for r in results:
-        if len(results) > 1:
-            L.append(f'---\n\n# {r["label"]}\n')
-        L += render_checkpoint_detail(r)
-
-    # --- reproducibility ------------------------------------------------------
-    L += [
-        '## Reproducibility',
+    title = model_title(results[0]) if len(results) == 1 else f'Evaluation comparison: {len(results)} checkpoints'
+    L = [
+        f'# {title}',
         '',
-        f'- Seed: {settings.get("seed")}; generation modes: {", ".join(settings.get("generation_modes", []))}',
-        f'- Held-out data SHA-256: `{settings.get("heldout_sha256", "?")}` ({settings.get("docs")} docs)',
-        f'- Device/dtype: `{env.get("device")}` / `{env.get("dtype")}`; PyTorch {env.get("torch")}, Transformers {env.get("transformers")}',
-        '- Raw per-document bit/byte counts are retained in the JSON, so rankings can be audited without reloading models.',
+        'Flat measurements: `results[].summary` in the JSON report. '
+        'The JSON metric guide supplies units and comparison conditions; missing values are not zero.',
         '',
     ]
+    ranked = (payload.get('rankings') or {}).get('prose') or []
+    if len(results) > 1:
+        L += [
+            f'Comparisons use {_confidence(payload.get("bootstrap_confidence"))} paired confidence intervals. '
+            'Equivalent requires the entire candidate-minus-leader interval inside the recorded ±BPB margin; '
+            'better/worse requires it wholly beyond that margin. Otherwise the result is inconclusive (or unavailable). '
+            'Intervals describe document resampling, not variation across training seeds.',
+            '',
+            'Rankings are within matching protocol/coverage groups, not across them. '
+            'Groups require matching document IDs and exact scored-text hashes.',
+            '',
+        ]
+        for row in ranked:
+            if row.get('comparison_to_leader') == 'leader':
+                L.append(
+                    f'- Group `{row.get("comparison_group", "unavailable")}`: lowest measured prose BPB '
+                    f'`{row["label"]}` = {fmt(row.get("bpb"), 5)}; equivalence margin '
+                    f'±{fmt(row.get("equivalence_margin_bpb"), 5)} BPB.'
+                )
+        L += ['', *_compare_table(results, ranked)]
+    for r in results:
+        if len(results) > 1:
+            L += ['---', '', f'# {model_title(r)}', '']
+        L += render_checkpoint_measurements(r)
     if payload.get('failures'):
         L += ['## Failures', '']
-        for item in payload['failures']:
-            L.append(f'- `{item.get("path")}` — {item.get("reason")}')
+        L.extend(f'- `{item.get("path")}` — {item.get("reason")}' for item in payload['failures'])
         L.append('')
+    # All checkpoints' measurements precede any text examples, including in collections.
+    for r in results:
+        examples = render_checkpoint_examples(r)
+        if examples:
+            title = 'Text examples' if len(results) == 1 else f'Text examples: {_literal(r["label"])}'
+            L += [f'## {title}', '', *examples]
+    L += ['## Reproducibility', '']
+    for r in results:
+        settings, env = r.get('evaluation_settings') or {}, r.get('evaluation_environment') or {}
+        template = {True: 'yes', False: 'no'}.get(settings.get('chat_template_enabled'), '—')
+        if len(results) > 1:
+            L += [f'### {_literal(r["label"])}', '']
+        L += [
+            f'- Seed: {fmt(settings.get("seed"), 0)}; device/dtype: '
+            f'{_cell(env.get("device") or "—")} / {_cell(env.get("dtype") or "—")}; '
+            f'Python {_cell(env.get("python") or "—")}, PyTorch {_cell(env.get("torch") or "—")}, '
+            f'Transformers {_cell(env.get("transformers") or "—")}.',
+            f'- Prose source SHA-256: `{settings.get("heldout_sha256") or "—"}`; '
+            f'requested documents: {fmt(settings.get("docs"), 0)}; token limit: {fmt(settings.get("max_tokens"), 0)}.',
+            f'- Chat source SHA-256: `{settings.get("chat_sha256") or "—"}`; '
+            f'requested documents: {fmt(settings.get("chat_docs"), 0)}; token limit: {fmt(settings.get("chat_max_tokens"), 0)}.',
+            f'- Generation chat template applied: {template}.',
+            '',
+        ]
+    L += [
+        '- Scoring protocols are recorded per result in `evaluation_settings` and `evaluation_environment`. '
+        'Raw records allow recomputing aggregates and document bootstrap without reloading models.',
+        '',
+    ]
     return '\n'.join(L)

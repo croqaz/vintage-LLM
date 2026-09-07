@@ -163,6 +163,8 @@ knowledge/genStruct/TODO/
 knowledge/oldify/*.jsonl
 knowledge/oldify/*.txt
 knowledge/pre1900
+knowledge/pre-Victorian
+knowledge/clean-Victorian
 knowledge/synth-dialog/cards/
 knowledge/synth-fine/out/*.json*
 knowledge/synth-ft1/*.json*
@@ -174,6 +176,7 @@ training/*checkpoint*
 training/*results*
 training/autore777/
 training/autoresearc*
+training/llama-75/
 training/llama-77/
 training/MODELS/
 training/patina/

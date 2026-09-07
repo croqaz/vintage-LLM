@@ -1,343 +1,276 @@
-"""Machine-readable dictionary for every key in `result.summary`.
-
-WHY THIS EXISTS: an agent reading one of these JSONs cold, on another machine,
-with no access to this conversation, must be able to answer "which number do I
-quote, and which way is good?" without reading the source. Key names alone
-cannot carry direction AND unit AND comparability caveats without becoming
-unusable, so the names stay short and this table carries the semantics.
-
-Every entry:
-  desc              one line, plain English
-  unit              physical unit, or 'fraction' / 'count' / 'points'
-  direction         lower_is_better | higher_is_better | neutral
-  comparable_across what the number may be compared over. The critical field:
-                    several metrics here are NOT valid across models.
-  caveat            present only where a naive reading produces a WRONG answer
-  range             for bounded metrics
-
-Keep this in sync when adding a metric: a summary key with no entry is a bug,
-and `python -m eval --audit-guide` fails on one.
-"""
+"""Units and comparison conditions for every flat summary key; audit with --audit-guide."""
 
 from __future__ import annotations
 
-ANY = ['tokenizers', 'context_lengths', 'model_sizes', 'training_datasets']
-SAME_DATA = ['same_training_dataset_only']
-
 PRIMARY_METRIC = 'prose_bpb'
-
 HOW_TO_READ = (
-    'RANK MODELS ON `prose_bpb` (lower is better). It is byte-normalised and scored in a '
-    'fixed 1024-token window, so it is the only headline number valid across different '
-    'tokenizers, context lengths and model sizes. '
-    'NEVER rank models on `final_eval_loss` unless they trained on the SAME dataset - it is '
-    "computed on each run's own validation split. "
-    'BEFORE comparing `bake_score`, check `bake_is_partial`: a partial score was renormalised '
-    'over only the components that were measured and is inflated. '
-    'Every key below is described in `metric_guide`, which carries the unit and the direction '
-    '(higher/lower is better) for each one. `rankings.prose` in a --collect output already '
-    'contains PAIRED bootstrap comparisons, which are ~30x tighter than the per-model CIs.'
+    'prose_bpb is sum(bits)/sum(scored UTF-8 bytes), not token perplexity. '
+    'Compare matching documents, scored spans and context settings; rankings are within protocol groups. '
+    'Trainer loss needs matching validation data, tokenizer and reduction. '
+    'Surface flags, phrase preferences and embedding similarities are diagnostics, not usability/readiness/leakage tests. '
+    'bake_score is an experimental composite; only complete, protocol-matched scores are ranked. '
+    'Missing/non-finite measurements are null, never zero. See metric_guide for each key.'
 )
 
 
-def _m(desc, unit, direction, comparable=None, caveat=None, rng=None, primary=False):
-    entry = {'desc': desc, 'unit': unit, 'direction': direction, 'comparable_across': comparable or ANY}
+def _m(desc, unit, direction='neutral', compare='same measurement protocol', caveat=None):
+    entry = dict(desc=desc, unit=unit, direction=direction, comparable_across=[compare])
     if caveat:
         entry['caveat'] = caveat
-    if rng:
-        entry['range'] = rng
-    if primary:
-        entry['is_primary'] = True
     return entry
 
 
-GUIDE: dict[str, dict] = {
-    # ---- headline ----------------------------------------------------------
-    'prose_bpb': _m(
-        'Bits per UTF-8 byte on 200 held-out period documents. THE headline metric.',
+BPB_COMPARE = 'same documents, scored text spans and conditioning/window settings'
+GEN_COMPARE = 'same ordered prompts, sample count, length budget, seed, template and decoding settings'
+TRAIN_COMPARE = 'same validation/training data, tokenizer, loss reduction and logging convention'
+GUIDE = {
+    'prose_bpb': _m('Total finite scored bits / total scored UTF-8 bytes.', 'bits/byte', 'lower_is_better', BPB_COMPARE),
+    'prose_uniform_token_bpb': _m(
+        'log2(model config vocabulary size) * prose_scored_tokens / prose_scored_bytes, using the same finite document pool.',
         'bits/byte',
-        'lower_is_better',
-        primary=True,
+        compare=BPB_COMPARE,
+        caveat='Calculated equal-probability token baseline, not a measured untrained network or a tokenizer-independent constant.',
     ),
-    'prose_bpb_early': _m(
-        'prose_bpb over the FIRST part of each document (little context available).',
-        'bits/byte',
-        'lower_is_better',
-    ),
+    'prose_bpb_early': _m('BPB of the first 128 scored tokens per document.', 'bits/byte', compare=BPB_COMPARE),
     'prose_bpb_late': _m(
-        'prose_bpb over the LATER part of each document (full context available). '
-        'The early-minus-late gap measures how much the model exploits long context.',
+        'BPB after the first 128 scored tokens; different positions, not a controlled context-length test.',
+        'bits/byte',
+        compare=BPB_COMPARE,
+    ),
+    'chat_target_bpb': _m(
+        'Target token NLL / decoded target bytes, conditioned on context. Boundary-crossing tokens are included; long inputs drop tokens from the left.',
         'bits/byte',
         'lower_is_better',
+        BPB_COMPARE,
+        'Teacher-forced likelihood, not chat quality or fine-tuning readiness.',
     ),
-    'prose_bpb_split_a': _m(
-        'prose_bpb over a stable hash-based half of the documents. A DIAGNOSTIC only: '
-        'A and B should be close; a large gap means the estimate is unstable.',
-        'bits/byte',
-        'lower_is_better',
-        caveat='Not a train/test split. Do not report as a separate result.',
-    ),
-    'prose_bpb_split_b': _m(
-        'The other diagnostic half. See prose_bpb_split_a.',
-        'bits/byte',
-        'lower_is_better',
-        caveat='Not a train/test split. Do not report as a separate result.',
-    ),
-    'chat_bpb': _m(
-        'Bits per byte of assistant TARGETS only, conditioned on the dialogue context. '
-        'Predicts how cheaply the model can be fine-tuned for chat.',
-        'bits/byte',
-        'lower_is_better',
-    ),
-    'prose_nonfinite_docs': _m(
-        'Documents whose scoring produced NaN/Inf and were EXCLUDED from prose_bpb.',
-        'count',
-        'lower_is_better',
-        caveat='Non-zero means prose_bpb was computed over FEWER documents than n_prose_docs, '
-        'so it is not strictly comparable with a clean run. Re-run the checkpoint; this '
-        'has been observed to be transient.',
-    ),
-    'n_prose_docs': _m('Documents actually scored for prose_bpb.', 'count', 'neutral'),
-    'n_chat_docs': _m('Chat turns actually scored for chat_bpb.', 'count', 'neutral'),
-    # ---- composite ---------------------------------------------------------
-    'bake_score': _m(
-        'Weighted composite: prose_bpb 0.50, logic 0.25, chat 0.15, hygiene 0.10.',
-        'points',
-        'higher_is_better',
-        rng=[0, 100],
-        caveat='Check bake_is_partial FIRST. Weights were fitted to correlate with TRAINING '
-        'STEP on our own checkpoints, so it tracks pretraining progress well and is a '
-        'poor ranking for finished third-party models. Prefer prose_bpb.',
-    ),
-    'bake_is_partial': _m(
-        'True when a bake component could not be measured (e.g. --gen-mode none skips hygiene).',
-        'bool',
-        'neutral',
-        caveat='If true, bake_score is renormalised over the measured weight only and is '
-        'INFLATED. It cannot be compared with a full score.',
-    ),
-    'bake_components_missing': _m(
-        'Comma-separated bake components that were not measured, or null.',
-        'string',
-        'neutral',
-    ),
-    'bake_weight_covered': _m(
-        'Fraction of the total bake weight that was actually measured. 1.0 = complete.',
+    'logic_accuracy': _m(
+        'Fraction of scored pairs with good BPB < bad BPB; ties incorrect, random two-choice baseline 0.5.',
         'fraction',
         'higher_is_better',
-        rng=[0, 1],
+        'same fixed-choice items and span scoring',
+        'Small fixed set; report items_scored, not general reasoning ability.',
     ),
-    'verdict_tier': _m(
-        'Qualitative bucket derived from bake_score (DOUGH < HALF-BAKED < GOLDEN CRUST < BAKED).',
-        'string',
-        'neutral',
+    'logic_accuracy_ci_low': _m(
+        'Lower Wilson score bound on logic_accuracy.', 'fraction', compare='same fixed-choice items and span scoring'
     ),
-    'points_bpb': _m(
-        'prose_bpb mapped onto the 0-100 bake ladder.',
-        'points',
-        'higher_is_better',
-        rng=[0, 100],
-        caveat='NOT a bits/byte value. The raw measurement is prose_bpb.',
+    'logic_accuracy_ci_high': _m(
+        'Upper Wilson score bound on logic_accuracy.', 'fraction', compare='same fixed-choice items and span scoring'
     ),
-    'points_logic': _m('logic_acc mapped onto 0-100.', 'points', 'higher_is_better', rng=[0, 100]),
-    'points_chat': _m('chat_bpb mapped onto 0-100.', 'points', 'higher_is_better', rng=[0, 100]),
-    'points_hygiene': _m('Generation hygiene mapped onto 0-100.', 'points', 'higher_is_better', rng=[0, 100]),
-    # ---- reasoning / period boundary ---------------------------------------
-    'logic_acc': _m(
-        'Forced-choice accuracy: picks the sensible continuation over matched nonsense. 0.50 = chance.',
-        'fraction',
-        'higher_is_better',
-        rng=[0, 1],
-        caveat='Small item set: 1 s.d. is about 7.9 percentage points. Differences under ~15pp are not meaningful.',
+    'logic_accuracy_ci_confidence': _m('Confidence level of the Wilson interval on logic_accuracy; fixed at 0.95.', 'fraction'),
+    'logic_margin_bpb': _m(
+        'Mean bad-minus-good continuation BPB.', 'bits/byte', 'higher_is_better', 'same fixed-choice items and span scoring'
     ),
-    'logic_margin': _m(
-        'Mean log-probability margin between the sensible and nonsense continuation.',
-        'nats',
-        'higher_is_better',
+    'trap_mean_delta_bpb': _m(
+        'Mean modern-minus-period phrase BPB over the fixed pairs.', 'bits/byte', caveat='Phrase preference, not a leakage detector.'
     ),
-    'trap_mean_shock': _m(
-        'Mean extra cost of a POST-1900 word versus its period twin. A vintage model should find modern words expensive.',
+    'trap_mean_delta_stderr_bpb': _m(
+        'Standard error of trap_mean_delta_bpb over the scored pairs; null with fewer than two.',
         'bits/byte',
-        'higher_is_better',
+        caveat='These sets have single-digit sample sizes; read the mean with this beside it.',
     ),
-    'trap_min_shock': _m('The weakest trap pair - the period boundary is only as good as this.', 'bits/byte', 'higher_is_better'),
-    'trap_n_leaked': _m(
-        'Trap pairs where the POST-1900 word was NOT more expensive, i.e. modern text leaked into training. 0 is the expected value.',
-        'count',
-        'lower_is_better',
-    ),
-    'trap_n_pairs': _m('Trap pairs evaluated.', 'count', 'neutral'),
-    # ---- period fidelity probes --------------------------------------------
-    'probe_modern_over_historical_ratio': _m(
-        'Perplexity on modern probe sentences divided by perplexity on historical ones. >1 means period text is easier, which is the goal.',
+    'trap_min_delta_bpb': _m('Minimum modern-minus-period phrase BPB.', 'bits/byte'),
+    'trap_nonpositive_pairs': _m('Scored pairs with modern phrase BPB <= period phrase BPB (includes ties).', 'count'),
+    'probe_modern_historical_ppl_ratio': _m(
+        'Modern token perplexity / historical token perplexity.',
         'ratio',
-        'higher_is_better',
-        caveat='Only 20 fixed sentences. Read the RATIO; the absolute perplexities are noise-level.',
+        compare='same tokenizer and fixed sentence sets',
+        caveat='Not a knowledge-cutoff or contamination test.',
     ),
-    'probe_historical_ppl': _m(
-        'Perplexity on 10 fixed historical probe sentences.',
-        'perplexity',
-        'lower_is_better',
-        caveat='Tiny sample. Use the ratio, not this.',
-    ),
-    'probe_modern_ppl': _m(
-        'Perplexity on 10 fixed modern probe sentences.', 'perplexity', 'higher_is_better', caveat='Tiny sample. Use the ratio, not this.'
-    ),
-    'probe_mean_token_prob': _m(
-        'Mean probability assigned to the correct token over the probes.', 'probability', 'higher_is_better', rng=[0, 1]
-    ),
-    'probe_frac_low_confidence': _m(
-        'Fraction of probe tokens predicted with probability < 0.01.', 'fraction', 'lower_is_better', rng=[0, 1]
-    ),
-    'probe_mean_entropy_nats': _m('Mean predictive entropy over the probes; high = hedging.', 'nats', 'neutral'),
-    # ---- representation ----------------------------------------------------
+    'embedding_mean_norm': _m('Mean L2 norm of all input-token embedding vectors.', 'norm'),
+    'embedding_mean_cosine': _m('Mean off-diagonal pairwise cosine among up to 512 seed-selected input embeddings.', 'cosine'),
     'sense_shift_mean_cosine': _m(
-        'Cosine similarity of the SAME shifted word (gay, awful, python...) in a period versus '
-        'a modern sentence. LOW means the model represents the two senses differently, which is '
-        'what a period model should do.',
+        'Mean cosine of the same words in paired historical/modern contexts.',
         'cosine',
-        'lower_is_better',
-        rng=[-1, 1],
+        caveat='No established good/bad direction or proof of sense understanding.',
     ),
-    'embedding_mean_norm': _m('Mean L2 norm of input embeddings. Descriptive only.', 'norm', 'neutral'),
-    'embedding_mean_cosine': _m(
-        'Mean pairwise cosine between sampled embeddings; grows from ~0 at init.',
-        'cosine',
-        'neutral',
-        caveat='Near 0 does NOT mean healthy - an untrained model also scores ~0.',
-    ),
-    # ---- generation hygiene ------------------------------------------------
-    'sampled_temperature': _m('Temperature used for the `sampled_*` metrics below.', 'temperature', 'neutral'),
-    'sampled_unusable_rate': _m(
-        'Fraction of sampled completions that are degenerate OR back matter - the closest '
-        'proxy here for what a synth-data filter would DROP.',
-        'fraction',
-        'lower_is_better',
-        rng=[0, 1],
-    ),
-    'sampled_degenerate_rate': _m(
-        'Fraction of sampled completions failing a surface-collapse gate (too short, low distinct-2, high echo, or a long repeat loop).',
-        'fraction',
-        'lower_is_better',
-        rng=[0, 1],
-    ),
-    'sampled_back_matter_rate': _m(
-        'Fraction of completions that are index / catalogue / table-of-contents text rather '
-        'than prose. Such text is lexically DIVERSE, so distinct-n, echo and loop detection are '
-        'all blind to it.',
-        'fraction',
-        'lower_is_better',
-        rng=[0, 1],
-        caveat='Precise but not exhaustive: 0.00 means "none detected", not "none present". '
-        'Calibrated at 48.7% recall with 0.00% false positives on 17,085 real completions.',
-    ),
-    'sampled_self_bleu_4': _m(
-        "Fraction of each completion's 4-grams that also occur in ANOTHER completion. "
-        'Mode-collapse detector: distinct-n only looks INSIDE one completion, so many '
-        'near-identical completions each still score as diverse.',
-        'fraction',
-        'lower_is_better',
-        rng=[0, 1],
-    ),
-    'sampled_mean_distinct_1': _m('Mean unique-word fraction within a completion.', 'fraction', 'higher_is_better', rng=[0, 1]),
-    'sampled_mean_distinct_2': _m('Mean unique-bigram fraction within a completion.', 'fraction', 'higher_is_better', rng=[0, 1]),
-    'sampled_mean_echo_rate': _m('Mean fraction of words repeated within the previous 4 words.', 'fraction', 'lower_is_better', rng=[0, 1]),
-    'sampled_prompt_copy_rate': _m('Mean fraction of content words copied from the prompt.', 'fraction', 'lower_is_better', rng=[0, 1]),
-    'sampled_punct_issues_p100': _m('Mechanical punctuation breakage per 100 words.', 'count/100 words', 'lower_is_better'),
-    'sampled_mean_sentence_words': _m(
-        'Mean sentence length in generated text. Very low values indicate list/catalogue output.',
-        'words',
-        'neutral',
-    ),
-    'sampled_mean_loop_words': _m(
-        'Mean longest immediately-repeating word block under SAMPLED decoding. The temperature sweep reports this per temperature.',
-        'words',
-        'lower_is_better',
-    ),
-    'greedy_mean_loop_words': _m(
-        'Mean longest immediately-repeating word block under GREEDY decoding. Greedy is the '
-        'harshest loop test; an undertrained model loops badly here.',
-        'words',
-        'lower_is_better',
-    ),
-    'greedy_worst_loop_words': _m('Worst single prompt loop length under greedy decoding.', 'words', 'lower_is_better'),
-    'greedy_self_bleu_4': _m('self_bleu_4 over greedy completions.', 'fraction', 'lower_is_better', rng=[0, 1]),
-    'greedy_back_matter_rate': _m('back_matter_rate over greedy completions.', 'fraction', 'lower_is_better', rng=[0, 1]),
-    # ---- tokenizer ---------------------------------------------------------
+    'sense_historical_pairwise_mean_cosine': _m('Mean cosine between different probe words in historical contexts.', 'cosine'),
+    'sense_historical_pairwise_std_cosine': _m('Population standard deviation of those pairwise cosines.', 'cosine'),
     'tokenizer_bytes_per_token': _m(
-        'Mean UTF-8 bytes per token on the held-out text. HIGHER = more text per token budget '
-        '= better compression. Check this before blaming a tokenizer for a quality gap.',
+        'Total decoded UTF-8 bytes / tokens in sampled document prefixes, before model-context clipping.',
         'bytes/token',
-        'higher_is_better',
+        compare='same input documents and token budget',
+        caveat='Not training throughput or model quality. May differ from prose-scored spans.',
     ),
-    'tokenizer_vocab_size': _m('Tokenizer vocabulary size.', 'count', 'neutral'),
-    # ---- training lineage --------------------------------------------------
-    'final_eval_loss': _m(
-        'Final eval loss recorded in trainer_state.json.',
-        'nats/token',
-        'lower_is_better',
-        comparable=SAME_DATA,
-        caveat="COMPUTED ON EACH RUN'S OWN VALIDATION SPLIT. Comparing this across models "
-        'trained on different datasets is MEANINGLESS. Use prose_bpb instead. Also note '
-        'eval cadence is in MINUTES, so runs of different speed evaluate at different '
-        'step numbers.',
-    ),
-    'final_eval_ppl': _m(
-        'exp(final_eval_loss).',
-        'perplexity',
-        'lower_is_better',
-        comparable=SAME_DATA,
-        caveat='Same own-validation-split caveat as final_eval_loss.',
-    ),
-    'final_eval_step': _m('Optimizer step of the last recorded eval.', 'count', 'neutral'),
-    'final_train_loss': _m('Last recorded training loss.', 'nats/token', 'lower_is_better', comparable=SAME_DATA),
-    'grad_norm_max': _m('Largest gradient norm seen in training. A stability signal.', 'norm', 'lower_is_better', comparable=SAME_DATA),
-    'grad_norm_mean': _m('Mean gradient norm over training.', 'norm', 'neutral', comparable=SAME_DATA),
-    'grad_norm_min': _m('Smallest gradient norm over training.', 'norm', 'neutral', comparable=SAME_DATA),
-    'grad_norm_nonfinite': _m(
-        'Count of NaN/Inf gradient norms. ANY non-zero value means the run was unstable.',
-        'count',
-        'lower_is_better',
-    ),
+    'tokenizer_vocab_size': _m('Tokenizer vocabulary size including added tokens.', 'count'),
+    'tokenizer_tokens_scored': _m('Tokens counted in tokenizer prefix diagnostic.', 'tokens'),
+    'tokenizer_bytes_scored': _m('Decoded bytes counted in tokenizer prefix diagnostic.', 'bytes'),
     'tokens_seen_estimate': _m(
-        'Training tokens, derived from total_flos / (6 * non-embedding params).',
+        'Training-token estimate from FLOPs / (6 * non-embedding params), or recorded fallback.',
         'tokens',
-        'neutral',
-        caveat='An ESTIMATE. If total_flos is absent it falls back to a lower bound and the lineage records tokens_lower_bound=true.',
+        caveat='See lineage for method and lower-bound flags.',
     ),
-    'tokens_per_param': _m(
-        'tokens_seen_estimate divided by parameter count. The compute-optimal rule of thumb is '
-        'about 20; well below that means undertrained by construction.',
-        'tokens/param',
-        'higher_is_better',
+    'tokens_per_param': _m('Estimated training tokens / total parameters; not a sufficiency threshold.', 'tokens/param'),
+    'trainer_eval_loss_nats_per_token': _m('Last logged trainer validation cross-entropy.', 'nats/token', 'lower_is_better', TRAIN_COMPARE),
+    'trainer_train_loss_nats_per_token': _m('Last logged trainer training loss.', 'nats/token', 'lower_is_better', TRAIN_COMPARE),
+    'trainer_eval_ppl': _m('exp(trainer_eval_loss_nats_per_token).', 'perplexity', 'lower_is_better', TRAIN_COMPARE),
+    'trainer_eval_step': _m('Optimizer step of the last logged validation loss.', 'count'),
+    'grad_norm_nonfinite': _m('Count of logged non-finite gradient norms; null if no gradient norms were recorded.', 'count'),
+    'grad_norm_count': _m('Number of logged gradient norms, including non-finite values.', 'count'),
+    'bake_score': _m(
+        'Experimental weighted component score: BPB .50, logic .25, chat-target .15, generation .10; renormalized over finite components.',
+        'points',
+        caveat='Fixed hand-set transforms; not a validated quality scale. Partial and full scores are not comparable.',
+    ),
+    'bake_is_partial': _m('At least one composite component is missing/non-finite.', 'bool'),
+    'bake_components_missing': _m('Comma-separated missing composite components, or null when complete.', 'string'),
+    'bake_weight_covered': _m('Sum of weights with finite component scores.', 'fraction'),
+    'bake_status': _m('complete (all four finite), partial (some), or unscored (none).', 'string'),
+    'sampled_temperature': _m('Temperature for the primary sampled pass.', 'temperature'),
+    'judge_reference_bpb': _m('Reference-model BPB on up to 100 reference documents, prefix budget 320 tokens.', 'bits/byte'),
+    'judge_generated_bpb': _m(
+        'Reference-model BPB on sampled continuations with at least 20 whitespace-separated words, prefix budget 320 tokens.', 'bits/byte'
+    ),
+    'judge_absolute_bpb_difference': _m(
+        'Absolute generated-minus-reference BPB difference under the judge.',
+        'bits/byte',
+        caveat='Neither a coherence score nor a semantic similarity measurement.',
     ),
 }
+GUIDE['prose_bpb']['is_primary'] = True
+GUIDE['prose_bpb_position_docs'] = _m(
+    'Documents contributing to BOTH prose_bpb_early and prose_bpb_late; documents with no second half are in neither.',
+    'count',
+)
+for split in ('a', 'b'):
+    GUIDE['prose_bpb_split_' + split] = _m(
+        'BPB on content-hash diagnostic split ' + split.upper() + '; not a train/test split.', 'bits/byte', compare=BPB_COMPARE
+    )
+for prefix in ('prose', 'chat_target'):
+    for suffix, desc, unit in (
+        ('docs_requested', 'Loaded inputs requested for scoring.', 'count'),
+        ('docs_scored', 'Positive-byte records with finite bit counts included in aggregate.', 'count'),
+        (
+            'docs_excluded',
+            'Retained records excluded for invalid bits/bytes or zero bytes; does not include inputs skipped before recording.',
+            'count',
+        ),
+        ('nonfinite_docs', 'Retained records with missing/NaN/Inf bit counts.', 'count'),
+        ('scored_bytes', 'Total bytes included in aggregate.', 'bytes'),
+        ('scored_tokens', 'Total predicted tokens in included records.', 'tokens'),
+        ('truncated_docs', 'Retained records whose input was clipped to the effective context budget.', 'count'),
+        (
+            'docs_skipped',
+            'Inputs dropped before any record existed: prose shorter than the scoring minimum, or chat items with no scoreable target token.',
+            'count',
+        ),
+    ):
+        GUIDE[prefix + '_' + suffix] = _m(desc, unit)
+GUIDE['chat_input_truncated_docs'] = _m('Retained chat inputs clipped from the left to fit the context budget.', 'count')
+GUIDE['chat_target_truncated_docs'] = _m('Retained chat records that lost target tokens through left truncation.', 'count')
+for key in ('items_scored', 'items_correct', 'items_skipped'):
+    GUIDE['logic_' + key] = _m('Fixed-choice ' + key.replace('_', ' ') + '.', 'count')
+for key in ('pairs_scored', 'pairs_skipped'):
+    GUIDE['trap_' + key] = _m('Fixed trap ' + key.replace('_', ' ') + '.', 'count')
+for key in ('max', 'mean', 'min'):
+    GUIDE['grad_norm_' + key] = _m(key.capitalize() + ' of finite logged gradient norms.', 'norm', compare=TRAIN_COMPARE)
+for key in ('bpb', 'logic', 'chat', 'hygiene'):
+    GUIDE['points_' + key] = _m('Fixed 0–100 transform for composite component ' + key + '; not a raw likelihood.', 'points')
+for suffix, desc, unit in (
+    ('bpb_ci_low', 'Lower document-bootstrap percentile bound on prose BPB.', 'bits/byte'),
+    ('bpb_ci_high', 'Upper document-bootstrap percentile bound on prose BPB.', 'bits/byte'),
+    ('bpb_ci_confidence', 'Confidence level used for prose and paired-delta intervals.', 'fraction'),
+    ('delta_vs_leader_bpb', 'Candidate-minus-group-leader BPB.', 'bits/byte'),
+    ('delta_ci_low_bpb', 'Lower paired-bootstrap percentile bound on candidate-minus-leader BPB.', 'bits/byte'),
+    ('delta_ci_high_bpb', 'Upper paired-bootstrap percentile bound on candidate-minus-leader BPB.', 'bits/byte'),
+    ('equivalence_margin_bpb', 'Absolute practical tolerance applied to the entire paired CI.', 'bits/byte'),
+    ('paired_docs', 'Number of matching finite documents in paired bootstrap.', 'count'),
+    (
+        'bootstrap_fraction_lower_than_leader',
+        'Fraction of paired bootstrap replicates with candidate BPB < leader BPB; NOT a posterior probability or p-value.',
+        'fraction',
+    ),
+    ('comparison_group', 'Identity of matched scoring protocol and document coverage.', 'string'),
+    ('comparison_leader', 'Lowest measured BPB model within this comparison group.', 'string'),
+    (
+        'comparison_to_leader',
+        'leader, equivalent, better, worse, inconclusive, or unavailable, based on the whole paired interval and tolerance.',
+        'string',
+    ),
+    ('comparison_unavailable_reason', 'Why this result could not be placed in a comparison group; null when it was.', 'string'),
+):
+    for prefix in ('prose', 'chat_target'):
+        GUIDE[prefix + '_' + suffix] = _m(desc, unit, compare=BPB_COMPARE)
+
+GENERATION = {
+    'n_prompts': ('Number of continuations in this aggregate.', 'count'),
+    'surface_failure_rate': ('Fraction with any short-text, repetition or back-matter-like flag.', 'fraction'),
+    'degenerate_rate': ('Fraction with any short-text/repetition gate, excluding formatting-only flags.', 'fraction'),
+    'back_matter_rate': ('Fraction flagged by back-matter-like formatting heuristics; valid short prose can trigger this.', 'fraction'),
+    'shared_4gram_fraction': (
+        'Mean fraction of each eligible completion’s unique lowercased word 4-grams also in another completion; first 120 completions, at least 4 words each, at least 2 eligible required.',
+        'fraction',
+    ),
+    'mean_echo_rate': ('Mean fraction of words occurring among their previous 4 words.', 'fraction'),
+    'worst_echo_rate': ('Maximum within-completion echo fraction.', 'fraction'),
+    'worst_distinct_2': ('Minimum within-completion unique/total bigram fraction.', 'fraction'),
+    'mean_loop_words': ('Mean longest contiguous periodic word run; periods 1–12, at least 2 repeats.', 'words'),
+    'worst_loop_words': ('Maximum such periodic run over completions.', 'words'),
+    'mean_punct_issues_p100': (
+        'Mean per-completion punctuation-pattern count per 100 regex words (equal completion weight).',
+        'count/100 words',
+    ),
+    'total_punct_issues': ('Total regex punctuation-pattern matches.', 'count'),
+    'mean_prompt_word_overlap_rate': (
+        'Mean fraction of continuation regex words longer than 3 letters found in the prompt (case-insensitive); overlap, not proof of copying.',
+        'fraction',
+    ),
+    'mean_words': ('Mean count of regex English words per completion.', 'words'),
+    'mean_digit_frac': ('Mean fraction of all characters (including whitespace) that are digits.', 'fraction'),
+    'mean_caps_frac': ('Mean fraction of regex words that are all-uppercase and longer than 1 letter.', 'fraction'),
+    'mean_sentence_words': ('Mean whitespace-separated words per punctuation-delimited sentence, averaged over completions.', 'words'),
+}
+for n in (1, 2, 3):
+    GENERATION[f'mean_distinct_{n}'] = (f'Mean unique/total within-completion word {n}-gram fraction.', 'fraction')
+for reason, desc in {
+    'short_text': '<8 regex words',
+    'low_bigram_diversity': 'distinct-2 <0.55',
+    'local_repetition': 'echo fraction >0.30',
+    'repeat_loop': 'periodic run >=12 words',
+    'back_matter_like': 'back-matter formatting heuristic',
+}.items():
+    GENERATION[reason + '_rate'] = ('Fraction flagged for ' + desc + '; reasons may overlap.', 'fraction')
+for mode in ('greedy', 'sampled'):
+    for metric, (desc, unit) in GENERATION.items():
+        GUIDE[f'{mode}_{metric}'] = _m(desc, unit, compare=GEN_COMPARE, caveat='Surface statistics can flag valid text and miss nonsense.')
+PROBE = {
+    'ppl': ('exp(mean token NLL in nats).', 'perplexity'),
+    'bpb': ('Total predicted bits / decoded scored UTF-8 bytes.', 'bits/byte'),
+    'tokens_scored': ('Number of predicted tokens.', 'tokens'),
+    'sentences_scored': ('Number of fixed sentences.', 'count'),
+    'mean_token_prob': ('Mean probability assigned to the observed target token.', 'probability'),
+    'median_token_prob': ('Median target-token probability.', 'probability'),
+    'p10_token_prob': ('10th percentile target-token probability.', 'probability'),
+    'min_token_prob': ('Minimum target-token probability.', 'probability'),
+    'token_prob_below_0_01_rate': ('Fraction of target tokens assigned probability <0.01.', 'fraction'),
+    'mean_entropy_nats': ('Mean entropy of the next-token distribution.', 'nats'),
+}
+for group in ('historical', 'modern', 'overall'):
+    for metric, (desc, unit) in PROBE.items():
+        GUIDE[f'probe_{group}_{metric}'] = _m(desc, unit, compare='same fixed sentences, tokenizer and special-token handling')
 
 
-def sweep_entry(key: str) -> dict | None:
-    """Describe a `sweep_t<T>_<metric>` key by delegating to its base metric."""
-    if not key.startswith('sweep_t'):
-        return None
-    rest = key[len('sweep_t') :]
-    temp, _, metric = rest.partition('_')
-    base = GUIDE.get(f'sampled_{metric}')
-    if base is None:
-        return None
-    out = dict(base)
-    out['desc'] = f'[temperature {temp}] {base["desc"]}'
-    return out
+def entry_for(key: str) -> dict | None:
+    if key in GUIDE:
+        return GUIDE[key]
+    if key.startswith('sweep_t'):
+        temp, _, metric = key[7:].partition('_')
+        base = GUIDE.get('sampled_' + metric)
+        if base:
+            return {**base, 'desc': f'[temperature {temp}] {base["desc"]}'}
+    if key.startswith('logic_category_'):
+        if key.endswith('_accuracy'):
+            return _m('Forced-choice accuracy for this category.', 'fraction')
+        if key.endswith('_items_scored'):
+            return _m('Scored fixed-choice items in this category.', 'count')
+    if key.startswith('sense_shift_') and key.endswith('_cosine'):
+        return _m('Cosine for this word in paired historical/modern contexts; no established quality direction.', 'cosine')
+    return None
 
 
 def describe(keys) -> dict[str, dict]:
-    """Guide entries for exactly the keys present in a summary."""
-    out = {}
-    for key in keys:
-        entry = GUIDE.get(key) or sweep_entry(key)
-        if entry is not None:
-            out[key] = entry
-    return out
+    return {key: entry for key in keys if (entry := entry_for(key)) is not None}
 
 
 def undocumented(keys) -> list[str]:
-    """Summary keys with no guide entry - a bug, not a warning."""
-    return sorted(k for k in keys if k not in GUIDE and sweep_entry(k) is None)
+    return sorted(key for key in keys if entry_for(key) is None)

@@ -80,11 +80,22 @@ def human_tokens(n: float | None) -> str:
     return f'{n:.0f}'
 
 
+def json_safe(obj):
+    """Represent unavailable non-finite numbers as standard JSON null."""
+    if isinstance(obj, float) and not math.isfinite(obj):
+        return None
+    if isinstance(obj, dict):
+        return {k: json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [json_safe(v) for v in obj]
+    return obj
+
+
 def atomic_json(path: Path, obj) -> None:
     """Write JSON atomically so an interrupted run never leaves a torn file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + '.tmp')
-    tmp.write_text(json.dumps(obj, indent=2, allow_nan=True), encoding='utf-8')
+    tmp.write_text(json.dumps(json_safe(obj), indent=2, allow_nan=False), encoding='utf-8')
     os.replace(tmp, path)
 
 
@@ -150,7 +161,7 @@ class Targets:
 def resolve_targets(targets: list[Path], include_checkpoints: bool = False) -> Targets:
     """Resolve a checkpoint dir, a folder of checkpoints, or a recursive tree.
 
-    Accepts everything the three old scripts accepted:
+    Accepted targets:
       * a checkpoint directory (contains config.json)
       * a folder of checkpoint-* directories (sorted by step)
       * an experiment tree (evaluates `final/` exports, skips stray configs)
@@ -171,9 +182,13 @@ def resolve_targets(targets: list[Path], include_checkpoints: bool = False) -> T
         else:
             candidates = sorted({p.parent for p in target.rglob('config.json')})
 
+        filtered = 0
         for path in candidates:
             if not include_checkpoints and any(re.fullmatch(r'checkpoint-\d+', part) for part in path.parts):
-                continue
+                # Explicit targets bypass the recursive checkpoint filter.
+                if path != target:
+                    filtered += 1
+                    continue
             # In experiment trees prefer the final export over stray configs.
             if path.name != 'final' and target not in (path, path.parent) and (path.parent / 'final').is_dir():
                 continue
@@ -183,7 +198,21 @@ def resolve_targets(targets: list[Path], include_checkpoints: bool = False) -> T
                 continue
             found[str(path)] = path
 
-    checkpoints = sorted(found.values(), key=lambda p: (str(p), step_of(p)))
+        # Discovered-but-filtered checkpoints are reported once per target
+        # rather than one line per save, so a tree with 200 checkpoints stays
+        # readable -- but never disappears silently.
+        if filtered:
+            skipped.append(
+                {
+                    'path': str(target),
+                    'reason': f'{filtered} checkpoint-* dir(s) under this target were not '
+                    f'evaluated; pass --include-checkpoints to score them',
+                }
+            )
+
+    # Group by containing directory, then by STEP: str() alone would order
+    # checkpoint-100 before checkpoint-2 and scramble a training sweep.
+    checkpoints = sorted(found.values(), key=lambda p: (str(p.parent), step_of(p), p.name))
     return Targets(checkpoints=checkpoints, skipped=skipped)
 
 
@@ -204,7 +233,26 @@ def resolve_tokenizer(ckpt: Path, explicit: Path | None = None, checkpoints_dir:
 def model_fingerprint(checkpoint: Path, tok_path: Path) -> str:
     """Cheap cache identity: hashes of small semantic files + weight file stats."""
     h = hashlib.sha256()
-    for path in sorted([checkpoint / 'config.json', tok_path / 'tokenizer.json']):
+    semantic_files = {checkpoint / 'config.json', checkpoint / 'generation_config.json'}
+    semantic_files.update(
+        tok_path / name
+        for name in (
+            'tokenizer.json',
+            'tokenizer_config.json',
+            'special_tokens_map.json',
+            'added_tokens.json',
+            'vocab.json',
+            'chat_template.json',
+        )
+    )
+    semantic_files.update(tok_path.glob('*.model'))
+    semantic_files.update(tok_path.glob('*.txt'))
+    semantic_files.update(tok_path.glob('*.jinja'))
+    semantic_files.update(checkpoint.glob('*.py'))
+    semantic_files.update(tok_path.glob('*.py'))
+    # Training summaries are cached too; a newly saved trainer state invalidates them.
+    semantic_files.update((checkpoint / 'trainer_state.json', checkpoint.parent / 'trainer_state.json'))
+    for path in sorted(semantic_files):
         if path.is_file():
             h.update(str(path.resolve()).encode())
             h.update(file_hash(path).encode())
@@ -350,9 +398,7 @@ def model_context_limit(model, requested: int) -> int:
 
 
 # ============================================================================
-# Training lineage - merged from all three scripts
-# (evaluate.py checkpoint_provenance, evaluate2.py training_provenance,
-#  evaluate3.py training_metadata)
+# Training lineage from checkpoint metadata and training logs
 # ============================================================================
 
 
@@ -389,10 +435,7 @@ def checkpoint_lineage(ckpt_dir: Path, n_params: int | None = None, n_params_no_
         'runtime_segments_minutes': [],
         'budget': 'unknown',
         'note': '',
-        # --- recipe, read from training_config.toml for BASE runs ---------
-        # Previously only fine_tune_config.toml was parsed, so every base run
-        # reported learning_rate=None and no optimiser/schedule at all -- the
-        # single most-grepped field had to be pulled by hand every time.
+        # Recipe fields from the training configuration.
         'optim': None,
         'lr_scheduler': None,
         'warmup_steps': None,
@@ -503,7 +546,7 @@ def checkpoint_lineage(ckpt_dir: Path, n_params: int | None = None, n_params_no_
         if flops and denom:
             tokens = flops / (6.0 * denom)
             info['tokens_seen'] = tokens
-            # tokens_per_param keeps TOTAL params: the Chinchilla ~20 rule is stated that way.
+            # Report token budget relative to the total parameter count.
             if n_params:
                 info['tokens_per_param'] = tokens / n_params
             if not n_params_no_embed:
@@ -562,28 +605,25 @@ def checkpoint_lineage(ckpt_dir: Path, n_params: int | None = None, n_params_no_
 
 
 def training_curve(ckpt_dir: Path) -> dict:
-    """Optimisation-health series from trainer_state.json.
-
-    Everything here was previously only reachable by hand-parsing trainer_state:
-    the eval-loss curve (needed for step-matched comparison -- `eval_steps` is in
-    MINUTES, so arms of different speed evaluate at different steps and raw
-    endpoints are not comparable), plus gradient-norm behaviour and any
-    non-finite gradients, which is how instability shows up.
-    """
+    """Logged trainer losses and gradient norms; validation protocol is run-specific."""
     out: dict = {
         'eval_curve': [],
         'train_curve': [],
-        'final_eval_loss': None,
-        'final_eval_step': None,
-        'final_eval_ppl': None,
-        'final_train_loss': None,
+        'eval_loss_nats_per_token': None,
+        'eval_step': None,
+        'eval_ppl': None,
+        'train_loss_nats_per_token': None,
         'grad_norm_max': None,
         'grad_norm_min': None,
         'grad_norm_mean': None,
-        'grad_norm_nonfinite': 0,
+        'grad_norm_nonfinite': None,
+        'grad_norm_count': 0,
     }
     state_file = None
-    for cand in (ckpt_dir / 'trainer_state.json', ckpt_dir.parent / 'trainer_state.json'):
+    candidates = [ckpt_dir / 'trainer_state.json']
+    if ckpt_dir.name == 'final' or ckpt_dir.name.startswith('checkpoint-'):
+        candidates.append(ckpt_dir.parent / 'trainer_state.json')
+    for cand in candidates:
         if cand.is_file():
             state_file = cand
             break
@@ -597,12 +637,13 @@ def training_curve(ckpt_dir: Path) -> dict:
     out['eval_curve'] = [[h['step'], h['eval_loss']] for h in hist if 'eval_loss' in h]
     out['train_curve'] = [[h['step'], h['loss']] for h in hist if 'loss' in h]
     gn = [h['grad_norm'] for h in hist if isinstance(h.get('grad_norm'), (int, float))]
+    out['grad_norm_count'] = len(gn)
     if out['eval_curve']:
-        out['final_eval_step'], out['final_eval_loss'] = out['eval_curve'][-1]
+        out['eval_step'], out['eval_loss_nats_per_token'] = out['eval_curve'][-1]
         with contextlib.suppress(OverflowError):
-            out['final_eval_ppl'] = math.exp(out['final_eval_loss'])
+            out['eval_ppl'] = math.exp(out['eval_loss_nats_per_token'])
     if out['train_curve']:
-        out['final_train_loss'] = out['train_curve'][-1][1]
+        out['train_loss_nats_per_token'] = out['train_curve'][-1][1]
     if gn:
         finite = [g for g in gn if g == g and abs(g) != float('inf')]
         out['grad_norm_nonfinite'] = len(gn) - len(finite)
@@ -611,25 +652,6 @@ def training_curve(ckpt_dir: Path) -> dict:
             out['grad_norm_min'] = min(finite)
             out['grad_norm_mean'] = sum(finite) / len(finite)
     return out
-
-
-def interp_curve(curve, step: float) -> float:
-    """Linear interpolation of a [[step, value], ...] curve at `step`.
-
-    MANDATORY before comparing two runs' eval loss: `eval_steps` is in minutes, so
-    a faster arm evaluates at higher step numbers and its raw endpoint flatters it.
-    """
-    if not curve:
-        return float('nan')
-    if step <= curve[0][0]:
-        return float('nan')
-    for i in range(1, len(curve)):
-        if curve[i][0] >= step:
-            (s0, v0), (s1, v1) = curve[i - 1], curve[i]
-            if s1 == s0:
-                return v1
-            return v0 + (v1 - v0) * (step - s0) / (s1 - s0)
-    return curve[-1][1]
 
 
 def budget_label(minutes: float | None) -> str:
@@ -656,7 +678,7 @@ def model_slug(model_type: str | None, n_params: int) -> str:
 
 def peek_model_identity(checkpoint: Path) -> tuple[str | None, int]:
     """(model_type, parameter count) read from config.json WITHOUT loading
-    weights - used to build output filenames before evaluation starts."""
+    weights, for output filenames."""
     try:
         from transformers import AutoConfig, AutoModelForCausalLM
 

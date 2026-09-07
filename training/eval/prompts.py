@@ -1,9 +1,7 @@
-"""All evaluation prompts and probe sentences in one place.
+"""Fixed sentence probes, choice pairs and generation prompt sets.
 
-This is the SINGLE source of prompts for the merged evaluator. Every prompt in
-PROMPTS is generated exactly once per checkpoint and every metric that needs
-generated text reads from those same generations - we never load a model twice
-to re-run prompts. New prompts go here and nowhere else.
+Each generation prompt runs once per decoding mode; surface statistics share
+those continuations.
 """
 
 # --- Fixed probe sentences: historical vs modern -----------------------------
@@ -59,13 +57,28 @@ PROBE_LABELS = ['historical'] * len(HISTORICAL_CONTEXTS) + ['modern'] * len(MODE
 
 # --- Logic items (forced choice) ---
 # (category, context, coherent continuation, incoherent continuation)
-
+#
+# Rules the set is built to, so later additions stay comparable:
+#
+#   1. LENGTH-MATCHED. Scoring is bits per BYTE, so a longer wrong option dilutes
+#      its own error over more text. Options differ by at most 2 bytes.
+#   2. MINIMAL EDIT. The two options differ by one swapped word, or by swapping
+#      two names, and are otherwise identical. The BPB gap is then attributable
+#      to the swap and to nothing else.
+#   3. BOTH OPTIONS FLUENT. Only the sense differs, never the grammar, or the
+#      item measures grammaticality instead.
+#   4. MATCHED FAMILIARITY. The swapped words should be of comparable frequency
+#      in period prose; antonyms are ideal. A rare wrong word is answerable from
+#      unigram statistics without reading the context at all.
+#   5. NO ARITHMETIC. A model this size cannot subtract. Magnitude and unit
+#      plausibility are fair game; sums are not.
 LOGIC_ITEMS = [
+    # ---- physical: matter, heat, water, growth ------------------------------
     (
         'physical',
         'He set the kettle upon the fire, and after some minutes the water',
-        ' began to boil, and steam issued from the spout.',
-        ' began to freeze, and ice issued from the spout.',
+        ' began to boil, and steam rose from the spout.',
+        ' began to freeze, and ice rose from the spout.',
     ),
     (
         'physical',
@@ -76,8 +89,8 @@ LOGIC_ITEMS = [
     (
         'physical',
         'She left the milk standing in the sun for two days, and when she returned it',
-        ' had turned sour and was fit only to be thrown away.',
-        ' had turned fresh and was sweeter than when she left it.',
+        ' had turned sour and was thrown away.',
+        ' had turned sweet and was thrown away.',
     ),
     (
         'physical',
@@ -87,209 +100,343 @@ LOGIC_ITEMS = [
     ),
     (
         'physical',
-        'He held the candle to the paper, and the paper',
-        ' caught fire and was quickly consumed.',
-        ' grew damp and was quickly frozen.',
+        'He held the lighted candle to the paper, and the paper',
+        ' caught fire and burned to a grey ash.',
+        ' caught damp and burned to a grey ash.',
     ),
     (
         'physical',
         'The ship sprang a leak below the water-line, and the hold',
-        ' began to fill with water, so the men worked the pumps.',
-        ' began to fill with air, so the men worked the pumps.',
+        ' began to fill with water, and the men worked the pumps.',
+        ' began to fill with straw, and the men worked the pumps.',
     ),
     (
         'physical',
         'A heavy frost fell in the night, and in the morning the pond',
         ' was covered with ice, and the children slid upon it.',
-        ' was covered with dust, and the children swam in it.',
+        ' was covered with mud, and the children slid upon it.',
     ),
     (
         'physical',
-        'He carried the lamp into the cellar, for without it the cellar was',
+        'He carried the lamp down into the cellar, for without it the cellar was',
         ' too dark for him to see the steps.',
-        ' too bright for him to see the steps.',
-    ),
-    (
-        'causal',
-        'The harvest failed for the second year together, and consequently the price of bread',
-        ' rose so high that the poor could scarcely buy it.',
-        ' fell so low that the poor bought more than they wished.',
-    ),
-    (
-        'causal',
-        'He had not slept for two nights, and therefore at the meeting he',
-        ' could scarcely keep his eyes open.',
-        ' was livelier than any man in the room.',
-    ),
-    (
-        'causal',
-        'The bridge had been carried away by the flood, so the travellers',
-        ' were obliged to seek a ford some miles upstream.',
-        ' crossed it without difficulty and continued their journey.',
-    ),
-    (
-        'causal',
-        'Since the letter was never posted, his brother',
-        ' remained wholly ignorant of the matter.',
-        ' replied to it by the following morning.',
-    ),
-    (
-        'causal',
-        'The physician found the wound to be badly inflamed, and he therefore',
-        ' ordered it to be cleansed and dressed afresh.',
-        ' pronounced the man in perfect health and dismissed him.',
-    ),
-    (
-        'causal',
-        'A long drought had parched the fields, and the farmers',
-        ' looked anxiously for rain.',
-        ' looked anxiously for a further want of rain.',
-    ),
-    (
-        'causal',
-        'He staked his whole fortune upon the venture, and when the ship was lost he',
-        ' was reduced to absolute poverty.',
-        ' found himself richer than he had ever been.',
-    ),
-    (
-        'causal',
-        'The window had been left open all night in December, and in the morning the room',
-        ' was bitterly cold.',
-        ' was uncommonly warm.',
-    ),
-    (
-        'social',
-        'Being invited to dine at a house of higher station, he was careful to',
-        ' arrive punctually and dressed with propriety.',
-        ' arrive some hours late and in his working clothes.',
-    ),
-    (
-        'social',
-        'A letter to a bishop should properly be addressed',
-        ' to His Lordship, with the respect due to his office.',
-        ' to my dear old fellow, with the familiarity due to a schoolmate.',
-    ),
-    (
-        'social',
-        'His neighbour having lost her husband that week, he thought it right to',
-        ' send a letter of condolence and offer what help he could.',
-        ' send a letter of congratulation and invite her to a ball.',
-    ),
-    (
-        'social',
-        'The young man wished to marry, and as a matter of duty he first',
-        " sought the consent of the lady's father.",
-        " sought the consent of the lady's coachman.",
-    ),
-    (
-        'social',
-        'Having given his word before witnesses, he held himself',
-        ' bound in honour to perform it.',
-        ' at perfect liberty to forget it entirely.',
-    ),
-    (
-        'social',
-        'The servant announced a visitor at an hour past midnight, which the household thought',
-        ' a most inconvenient and irregular time to call.',
-        ' the usual and proper hour for paying calls.',
-    ),
-    (
-        'social',
-        'He was called as a witness, and being sworn upon the book he was bound to',
-        ' speak nothing but the truth.',
-        ' say whatever best served his own interest.',
-    ),
-    (
-        'quantity',
-        'The infant was but three weeks old, and therefore he',
-        ' could neither walk nor speak.',
-        ' walked to the village and argued upon politics.',
-    ),
-    (
-        'quantity',
-        'The distance was upwards of two hundred miles, and travelling by coach it occupied',
-        ' the better part of three days.',
-        ' rather less than four minutes.',
-    ),
-    (
-        'quantity',
-        'He earned eighteen shillings in the week, out of which the rent alone was twelve; so there remained',
-        ' but six shillings for all else.',
-        ' but nine pounds for all else.',
-    ),
-    (
-        'quantity',
-        'The room measured twelve feet by ten, so it was',
-        ' too small to seat a hundred persons.',
-        ' large enough to seat a hundred persons with ease.',
-    ),
-    (
-        'quantity',
-        'The child was of ordinary growth for seven years, and stood',
-        ' something under four feet in height.',
-        ' something above nine feet in height.',
-    ),
-    (
-        'quantity',
-        'A gallon of the liquid was required, but he had brought only a pint, which was',
-        ' far short of what was wanted.',
-        ' a good deal more than was wanted.',
-    ),
-    (
-        'coref',
-        'The master struck the dog with his stick, and the poor creature',
-        ' ran howling from the yard.',
-        ' laid down the stick and apologised.',
-    ),
-    (
-        'coref',
-        'When the doctor came to the sick woman, he found that she',
-        ' had grown much weaker since his last visit.',
-        ' had grown much weaker since her last visit to himself.',
-    ),
-    (
-        'coref',
-        'The mother gave the child a shilling, and he ran at once to the shop and',
-        ' spent it upon sweets.',
-        ' received it from the shopkeeper as wages.',
-    ),
-    (
-        'coref',
-        'John lent his umbrella to Thomas, and it rained; so Thomas',
-        ' was kept dry and John was drenched.',
-        ' was drenched and John was kept dry by the umbrella he had lent away.',
-    ),
-    (
-        'coref',
-        'The clerk handed the ledger to his employer, who opened it and',
-        ' began to examine the accounts.',
-        " began to examine the clerk's handwriting upon his own hand.",
+        ' too light for him to see the steps.',
     ),
     (
         'physical',
         'The seed was sown in April, and by the end of the summer it',
         ' had grown into a tall plant bearing grain.',
-        ' had grown into a tall plant bearing coal.',
+        ' had grown into a tall plant bearing nails.',
+    ),
+    (
+        'physical',
+        'It had rained heavily all the morning, and the road',
+        ' was deep in mud.',
+        ' was deep in dust.',
+    ),
+    (
+        'physical',
+        'He threw the heavy stone into the pond, and it',
+        ' sank at once out of sight.',
+        ' rose at once out of sight.',
+    ),
+    (
+        'physical',
+        'The snow lay thick upon the ground, and when the sun came out at noon it',
+        ' began to melt into water.',
+        ' began to melt into stone.',
+    ),
+    (
+        'physical',
+        'He plunged the red-hot horseshoe into the trough, and the water',
+        ' hissed and gave off steam.',
+        ' hissed and gave off frost.',
+    ),
+    (
+        'physical',
+        'The lamp had no oil left in it, and so when he set a match to the wick it',
+        ' gave no light at all.',
+        ' gave a light at once.',
+    ),
+    # ---- causal: one event making another follow ----------------------------
+    (
+        'causal',
+        'The harvest failed for the second year together, and the price of bread',
+        ' rose so high that the poor could scarcely buy it.',
+        ' fell so low that the poor could scarcely buy it.',
+    ),
+    (
+        'causal',
+        'He had not slept for two nights, and therefore at the meeting he',
+        ' could scarcely keep his eyes open.',
+        ' could scarcely keep his eyes shut.',
+    ),
+    (
+        'causal',
+        'The bridge had been carried away by the flood, so the travellers',
+        ' could not cross the river that day.',
+        ' could still cross the river that day.',
+    ),
+    (
+        'causal',
+        'Since the letter was never posted, his brother',
+        ' remained wholly ignorant of the matter.',
+        ' remained wholly informed of the matter.',
+    ),
+    (
+        'causal',
+        'The physician found the wound to be badly inflamed, and he therefore',
+        ' ordered the wound to be dressed.',
+        ' ordered the wound to be ignored.',
+    ),
+    (
+        'causal',
+        'A long drought had parched the fields, and the farmers',
+        ' looked anxiously for rain.',
+        ' looked anxiously for sun.',
+    ),
+    (
+        'causal',
+        'He staked his whole fortune upon the venture, and when the ship was lost he',
+        ' was reduced to absolute poverty.',
+        ' was raised to enormous riches.',
+    ),
+    (
+        'causal',
+        'The window had been left open all night in December, and in the morning the room',
+        ' was extremely cold.',
+        ' was extremely warm.',
     ),
     (
         'causal',
         'The fire had been left unguarded, and the sparks falling upon the thatch',
-        ' set the roof alight.',
-        ' extinguished the roof entirely.',
+        ' set the roof in a blaze.',
+        ' set the roof in a flood.',
+    ),
+    (
+        'causal',
+        'The candle had burnt down to the socket, and at midnight the room',
+        ' was left in complete darkness.',
+        ' was left in complete daylight.',
+    ),
+    (
+        'causal',
+        'He forgot to wind the clock before going to bed, and in the morning it',
+        ' had stopped in the night.',
+        ' had gained in the night.',
+    ),
+    (
+        'causal',
+        'The road had lately been mended, and so the coach',
+        ' travelled the smoother for it.',
+        ' travelled the rougher for it.',
+    ),
+    (
+        'causal',
+        'She had eaten nothing since the morning before, and by evening she was',
+        ' faint with hunger.',
+        ' heavy with dinner.',
+    ),
+    (
+        'causal',
+        "The letter brought news of his brother's death, and upon reading it he",
+        ' wept bitterly for an hour.',
+        ' sang merrily for an hour.',
+    ),
+    # ---- social: period manners and obligation ------------------------------
+    (
+        'social',
+        'Being invited to dine at a house of higher station, he was careful to',
+        ' arrive punctually and properly dressed.',
+        ' arrive carelessly and poorly dressed.',
+    ),
+    (
+        'social',
+        'A letter to a bishop should properly begin',
+        ' My Lord, with all due respect.',
+        ' Old chap, with all due respect.',
+    ),
+    (
+        'social',
+        'His neighbour having lost her husband that week, he thought it right to',
+        ' send her a letter of condolence.',
+        ' send her a letter of invitation.',
+    ),
+    (
+        'social',
+        'The young man wished to marry, and as a matter of duty he first',
+        " sought the consent of the lady's father.",
+        " sought the consent of the lady's servant.",
+    ),
+    (
+        'social',
+        'Having given his word before witnesses, he held himself',
+        ' bound in honour to keep it.',
+        ' free in honour to break it.',
+    ),
+    (
+        'social',
+        'The servant announced a visitor at an hour past midnight, which the household thought',
+        ' a very improper time to call.',
+        ' a very agreeable time to call.',
+    ),
+    (
+        'social',
+        'He was called as a witness, and being sworn upon the book he was bound to',
+        ' answer every question with truth.',
+        ' answer every question with lies.',
     ),
     (
         'social',
         'A gentleman in mourning for his father would properly appear',
-        ' in black, and decline all gaiety for a season.',
-        ' in bright colours, and open the dancing himself.',
+        ' in black, and decline all gaiety.',
+        ' in white, and decline all gaiety.',
     ),
-    ('quantity', 'The tide rises and falls twice in the course of', ' a single day.', ' a single century.'),
-    ('physical', 'He poured the water upon the quicklime, and it', ' grew hot and hissed.', ' grew cool and silent as before.'),
     (
-        'causal',
-        'The horse had cast a shoe upon the stony road, and so the rider',
-        ' led him slowly to the nearest smith.',
-        ' galloped him the faster for the remaining twenty miles.',
+        'social',
+        "He was but a shopkeeper's son, and to address a duchess as his equal would be thought",
+        ' most impertinent.',
+        ' most respectful.',
+    ),
+    (
+        'social',
+        'He met the lady in the street, and being a gentleman he',
+        ' raised his hat to her.',
+        ' raised his fist to her.',
+    ),
+    (
+        'social',
+        'The two men had never been introduced, and so to address him in the street was',
+        ' a liberty he could not take.',
+        ' a liberty he might well take.',
+    ),
+    (
+        'social',
+        'She was in her own drawing-room receiving morning callers, and therefore she',
+        ' was dressed with some care.',
+        ' was dressed with no care.',
+    ),
+    # ---- quantity: magnitude and unit plausibility, never arithmetic --------
+    (
+        'quantity',
+        'The infant was but three weeks old, and therefore he',
+        ' could neither walk nor speak.',
+        ' could already walk and speak.',
+    ),
+    (
+        'quantity',
+        'The journey by coach occupied the better part of three days, for the distance was',
+        ' upwards of two hundred miles.',
+        ' upwards of two hundred yards.',
+    ),
+    (
+        'quantity',
+        'The room measured but twelve feet by ten, and so it was',
+        ' too small for a hundred guests.',
+        ' too large for a hundred guests.',
+    ),
+    (
+        'quantity',
+        'The child was of ordinary growth for seven years, and stood',
+        ' something under four feet high.',
+        ' something under nine feet high.',
+    ),
+    (
+        'quantity',
+        'A gallon of the liquid was required, but he had brought only a pint, which was',
+        ' much less than was wanted.',
+        ' much more than was wanted.',
+    ),
+    (
+        'quantity',
+        'The tide rises and falls twice in the course of',
+        ' a single day.',
+        ' a single year.',
+    ),
+    (
+        'quantity',
+        'The loaf cost but three-halfpence, and the labourer thought the price',
+        ' a very small one.',
+        ' a very great one.',
+    ),
+    (
+        'quantity',
+        'The whole company numbered but seven persons, and so the great hall was',
+        ' very nearly empty.',
+        ' very nearly full.',
+    ),
+    (
+        'quantity',
+        'The letter had been written above fifty years before, and the paper was therefore',
+        ' yellow with great age.',
+        ' white with great age.',
+    ),
+    (
+        'quantity',
+        'He walked his four miles in the hour, which for a man of his years was',
+        ' a very fair pace.',
+        ' a very wild pace.',
+    ),
+    # ---- coref: which of two named things the sentence is about -------------
+    (
+        'coref',
+        'John lent his umbrella to Thomas, and the rain came on; so',
+        ' Thomas was kept dry and John was drenched.',
+        ' John was kept dry and Thomas was drenched.',
+    ),
+    (
+        'coref',
+        'The mother gave the child a shilling, and so',
+        ' the child had a shilling more.',
+        ' the mother had a shilling more.',
+    ),
+    (
+        'coref',
+        'The clerk handed the ledger to his employer, and',
+        ' the employer opened it at once.',
+        ' the ledger opened it at once.',
+    ),
+    (
+        'coref',
+        'When the doctor came to the sick woman, he found that she',
+        ' had grown much weaker since his last visit.',
+        ' had grown much weaker since her last visit.',
+    ),
+    (
+        'coref',
+        'The girl gave her sister the doll, and afterwards',
+        ' the sister played with it.',
+        ' the doll played with her.',
+    ),
+    (
+        'coref',
+        'The dog followed the boy into the garden, and there',
+        ' the boy threw a stick for the dog.',
+        ' the dog threw a stick for the boy.',
+    ),
+    (
+        'coref',
+        'The cat sprang upon the mouse, and in a moment',
+        ' the mouse was quite dead.',
+        ' the cat was quite dead.',
+    ),
+    (
+        'coref',
+        'The old man leaned upon the boy, for',
+        ' the man was very weak.',
+        ' the boy was very weak.',
+    ),
+    (
+        'coref',
+        'Sarah handed the parcel to Emily, and',
+        ' Emily carried it home.',
+        ' Sarah carried it home.',
+    ),
+    (
+        'coref',
+        'The farmer sold the horse to the squire, and afterwards',
+        ' the squire rode it every day.',
+        ' the horse rode it every day.',
     ),
 ]
 
