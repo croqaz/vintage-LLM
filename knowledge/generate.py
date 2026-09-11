@@ -14,7 +14,7 @@ from medieval_qa import MEDIEVAL
 from memory import MEMORY
 from quotes import QUOTES
 
-TOK_VERSION = 't-v3'
+TOK_VERSION = 't-v5'
 DEFAULT_SEED = 42
 
 

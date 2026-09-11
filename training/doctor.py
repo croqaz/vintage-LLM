@@ -11,16 +11,20 @@ things that a green "config loads fine" cannot catch:
     (eager vs compiled trained side-by-side from identical weights)
   - How long will the run actually take?
   - Is the dataset healthy? (token ranges, EOS structure, vocab coverage, ...)
+  - Will the finished model actually decode? (KV cache, stop tokens, tok/s)
 
-Checks are grouped into four categories: config, model, training, dataset.
+Checks are grouped into five categories: config, model, training, dataset,
+decode. Every category runs by default; the probes that cost more than a few
+seconds sit behind --deep.
 
 Usage:
     python doctor.py                          # base training (config.toml)
     python doctor.py fine_tune_config.toml    # fine-tuning (auto-detected)
     python doctor.py --skip dataset           # skip the slow dataset scans
     python doctor.py --only config,model      # run only some categories
-    python doctor.py --deep                   # full dataset scan (reads everything)
+    python doctor.py --deep                   # full dataset scan + slow decode probes
     python doctor.py --check-compile          # force the compile probe even if torch_compile=false
+    python doctor.py --only decode            # inference-side checks alone (~10s)
 """
 
 import argparse
@@ -40,6 +44,10 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import transformers
+from torch.utils.data import DataLoader
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, default_data_collator
+from transformers.trainer_utils import get_last_checkpoint
 
 sys.path.insert(0, str(Path(__file__).parent))
 from base_train import BF16_SUPPORTED, load_binary_files, load_config, make_model_id
@@ -47,7 +55,7 @@ from base_train import BF16_SUPPORTED, load_binary_files, load_config, make_mode
 GB = 1024**3
 MB = 1024**2
 IS_ROCM = torch.version.hip is not None
-CATEGORIES = ('config', 'model', 'training', 'dataset')
+CATEGORIES = ('config', 'model', 'training', 'dataset', 'decode')
 
 # Dataset scan budgets (tokens) when not running with --deep
 TRAIN_SCAN_BUDGET = 400_000_000
@@ -147,8 +155,6 @@ def gb(nbytes):
 
 
 def build_model_config(cfg):
-    from transformers import AutoConfig
-
     model_kwargs = dict(cfg['model'])
     model_type = model_kwargs.pop('model_type')
     attn_implementation = model_kwargs.pop('attn_implementation', None)
@@ -295,14 +301,10 @@ def config_checks(cfg, mode, R, ctx, args):
         else:
             R.ok(f'disk space: {gb(free_disk)} free, ~{gb(need)} needed for checkpoints')
 
-        from transformers.trainer_utils import get_last_checkpoint
-
         last_ckpt = get_last_checkpoint(output_dir) if os.path.isdir(output_dir) else None
         if last_ckpt:
             R.warn(f'output_dir contains {Path(last_ckpt).name} — training will RESUME from it, not start fresh')
             if mode == 'base' and ctx.get('model_config') is not None:
-                from transformers import AutoConfig
-
                 try:
                     ck = AutoConfig.from_pretrained(last_ckpt)
                     keys = ('model_type', 'vocab_size', 'hidden_size', 'num_hidden_layers', 'num_attention_heads', 'intermediate_size')
@@ -328,8 +330,6 @@ def config_checks(cfg, mode, R, ctx, args):
 
 
 def _config_checks_base(cfg, R, ctx):
-    from transformers import AutoTokenizer
-
     mcfg = cfg.get('model', {})
     dcfg = cfg.get('data', {})
     tcfg = cfg.get('training', {})
@@ -487,8 +487,6 @@ def _config_checks_base(cfg, R, ctx):
 
 
 def _config_checks_sft(cfg, R, ctx):
-    from transformers import AutoConfig, AutoTokenizer
-
     mcfg = cfg.get('model', {})
     dcfg = cfg.get('data', {})
     tcfg = cfg.get('training', {})
@@ -634,8 +632,6 @@ def model_checks(cfg, mode, R, ctx, args):
 
 
 def _model_checks_base(cfg, R, ctx):
-    from transformers import AutoModelForCausalLM
-
     if ctx.get('model_config') is None:
         try:
             ctx['model_config'], ctx['attn_implementation'] = build_model_config(cfg)
@@ -701,8 +697,6 @@ def _model_checks_base(cfg, R, ctx):
 
 
 def _model_checks_sft(cfg, R, ctx):
-    from transformers import AutoModelForCausalLM
-
     base_model = ctx.get('base_model')
     tokenizer = ctx.get('tokenizer')
     if not base_model:
@@ -822,8 +816,6 @@ def _populate_ctx_quietly(cfg, mode, ctx):
     tcfg = cfg.get('training', {})
     if mode == 'base':
         if 'tokenizer' not in ctx and cfg.get('data', {}).get('tokenizer'):
-            from transformers import AutoTokenizer
-
             try:
                 tok = AutoTokenizer.from_pretrained(cfg['data']['tokenizer'], use_fast=True)
                 if tok.pad_token is None:
@@ -859,8 +851,6 @@ def _populate_ctx_quietly(cfg, mode, ctx):
             bm = cfg['model']['base_model']
             if Path(bm, 'config.json').exists():
                 ctx['base_model'] = bm
-                from transformers import AutoTokenizer
-
                 try:
                     tok = AutoTokenizer.from_pretrained(bm, use_fast=True)
                     if tok.pad_token is None:
@@ -1062,8 +1052,6 @@ def training_checks(cfg, mode, R, ctx, args):
 
 
 def _base_gpu_model_builder(cfg, ctx):
-    from transformers import AutoModelForCausalLM
-
     def build():
         model_config, attn = build_model_config(cfg)
         kw = {'dtype': torch.float32}
@@ -1104,8 +1092,6 @@ def _base_batch_maker(ctx, cfg, seq):
 
 
 def _sft_gpu_model_builder(cfg, ctx):
-    from transformers import AutoModelForCausalLM
-
     base_model = ctx.get('base_model')
     if not base_model:
         return None
@@ -1164,9 +1150,6 @@ def _sft_batch_maker(ctx, cfg, seq):
 
 
 def _dataloader_probe(cfg, R, ctx, micro_s):
-    from torch.utils.data import DataLoader
-    from transformers import default_data_collator
-
     tcfg = cfg['training']
     workers = tcfg.get('dataloader_num_workers', 4)
     try:
@@ -1577,6 +1560,209 @@ def _dataset_checks_sft(cfg, R, ctx, args):
 
 
 # ============================================================================
+# DECODE checks (inference-side dry-run)
+# ============================================================================
+#
+# Everything above this point measures TRAINING. None of it touches
+# generate(), so a checkpoint can pass every other category and still be
+# unusable at inference.
+#
+# Kept cheap by default: prefill 64 + 128 forced new tokens, cache on, batch 1.
+# The expensive comparisons (cache off, which is quadratic, and the batch
+# sweep) only run under --deep.
+
+DECODE_PREFILL = 64
+DECODE_NEW_TOKENS = 128
+DECODE_DEEP_BATCHES = (1, 4, 16)
+
+
+def _decode_model(cfg, mode):
+    """Load the checkpoint the way INFERENCE would: eval mode, cache enabled."""
+    dtype = torch.bfloat16 if BF16_SUPPORTED else torch.float16
+    if mode == 'sft':
+        src = cfg['model'].get('base_model')
+        if not src:
+            return None, None
+        model = AutoModelForCausalLM.from_pretrained(src, dtype=dtype)
+        return model.cuda().eval(), src
+    # Base mode: no trained weights yet. Throughput is an architecture
+    # property, so a from_config model gives the right number; the loss-bearing
+    # checks below are skipped because random weights say nothing about them.
+    src = cfg['training'].get('from_pretrained')
+    if src:
+        model = AutoModelForCausalLM.from_pretrained(src, dtype=dtype)
+        return model.cuda().eval(), src
+    model_config, _ = build_model_config(cfg)
+    model = AutoModelForCausalLM.from_config(model_config, dtype=dtype)
+    return model.cuda().eval(), None
+
+
+def _time_decode(model, bsz, new_tokens, use_cache, vocab):
+    """tok/s over `new_tokens` FORCED new tokens, warmed up first.
+
+    min_new_tokens is not optional. A model that hits EOS after three tokens
+    but is credited with the full requested length once measured 54x faster
+    than it really was.
+    """
+    ids = torch.randint(0, min(vocab, 1000), (bsz, DECODE_PREFILL), device='cuda')
+    gen = dict(do_sample=False, use_cache=use_cache, pad_token_id=0)
+    with torch.no_grad():
+        model.generate(ids, max_new_tokens=8, min_new_tokens=8, **gen)
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
+        t0 = time.perf_counter()
+        out = model.generate(ids, max_new_tokens=new_tokens, min_new_tokens=new_tokens, **gen)
+        torch.cuda.synchronize()
+        dt = time.perf_counter() - t0
+    produced = (out.shape[1] - DECODE_PREFILL) * bsz
+    return produced / dt, dt, torch.cuda.max_memory_allocated()
+
+
+def _check_generation_config(model, tokenizer, R):
+    """Stop-token and sampling sanity on the config that ships with the model."""
+    gc_obj = getattr(model, 'generation_config', None)
+    if gc_obj is None:
+        R.warn('model has no generation_config — generate() will fall back to library defaults')
+        return
+    vocab = model.config.vocab_size
+
+    eos = gc_obj.eos_token_id
+    eos_list = [eos] if isinstance(eos, int) else list(eos or [])
+    if not eos_list:
+        R.fail('generation_config has no eos_token_id — generate() can only stop at max_length')
+    else:
+        # Duplicates are a provable no-op: EosTokenCriteria does
+        # torch.isin(input_ids, eos_tensor), so a repeated id changes nothing.
+        # Reported as info, not a warning — it only tells you the list was
+        # hand-edited at some point.
+        if len(eos_list) != len(set(eos_list)):
+            dupes = sorted({t for t in eos_list if eos_list.count(t) > 1})
+            R.info(f'eos_token_id {eos_list} repeats {dupes}; torch.isin ignores duplicates, so behaviour is unchanged')
+        oob = [t for t in eos_list if not 0 <= t < vocab]
+        if oob:
+            R.fail(f'eos_token_id {oob} outside vocab_size {vocab}')
+        if tokenizer is not None:
+            named = {t: tokenizer.convert_ids_to_tokens(t) for t in set(eos_list) if 0 <= t < vocab}
+            R.info(f'stop tokens: {", ".join(f"{t}={n!r}" for t, n in sorted(named.items()))}')
+            tok_eos = getattr(tokenizer, 'eos_token_id', None)
+            if tok_eos is not None and tok_eos not in eos_list:
+                R.warn(f"tokenizer eos_token_id {tok_eos} ({tokenizer.eos_token!r}) is NOT in generation_config's {eos_list}")
+            # A stop token the model never emits is inert, and if it ever DID
+            # emit one, stopping is the behaviour you want. Worth surfacing so
+            # nobody mistakes the list for something the model relies on, but
+            # it is not a defect.
+            inert = [(t, n) for t, n in named.items() if n and ('mask' in n.lower() or 'pad' in n.lower() or 'unk' in n.lower())]
+            for t, n in inert:
+                R.info(f'stop token {t} is {n!r}, a token the model is not trained to emit; inert, kept as a safety net')
+        else:
+            R.info(f'stop tokens: {eos_list}')
+
+    if gc_obj.pad_token_id is None:
+        R.warn('generation_config has no pad_token_id — batched generate() warns and falls back to eos')
+    if getattr(gc_obj, 'max_length', None) == 20 and getattr(gc_obj, 'max_new_tokens', None) is None:
+        R.warn('generation_config keeps the library default max_length = 20 — callers must pass max_new_tokens or output is cut off')
+    if not gc_obj.do_sample:
+        for k in ('temperature', 'top_p', 'top_k'):
+            v = getattr(gc_obj, k, None)
+            if v is not None and v not in (1.0, 1, 0, 50):
+                R.warn(f'do_sample = false but {k} = {v} is set — transformers warns and ignores it')
+
+
+def decode_checks(cfg, mode, R, ctx, args):
+    R.section('5. DECODE CHECKS (inference dry-run)')
+    if not torch.cuda.is_available():
+        R.fail('CUDA not available — cannot dry-run decoding')
+        return
+    try:
+        model, src = _decode_model(cfg, mode)
+    except Exception as e:
+        R.fail(f'could not load a model for decoding: {type(e).__name__}: {e}')
+        return
+    if model is None:
+        R.info('no trained checkpoint to decode from (base run from scratch) — skipped')
+        return
+    # ctx['tokenizer'] is filled by config_checks. Load it here too so
+    # `--only decode` still names its stop tokens instead of printing bare ids.
+    tokenizer = ctx.get('tokenizer')
+    if tokenizer is None and src:
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(src)
+        except Exception:
+            tokenizer = None
+    vocab = model.config.vocab_size
+    R.info(f'decoding from {src or "a from_config model (random weights)"}')
+
+    try:
+        _check_generation_config(model, tokenizer, R)
+
+        # ── The use_cache trap ───────────────────────────────────────────────
+        # config.use_cache is what a plain from_pretrained().generate() honours.
+        # It is false in every final/ in this repo, inherited from training.
+        shipped = getattr(model.config, 'use_cache', True)
+        if shipped is False:
+            R.warn(
+                'config.json ships "use_cache": false, inherited from the training config. '
+                'A plain from_pretrained(...).generate() runs with no KV cache and recomputes the '
+                'whole prefix every token. Affects speed only, never output, and the eval harness '
+                'already overrides it (eval/helpers.py sets use_cache = True). Whether it costs '
+                'anything is model-specific: run --deep to measure it instead of assuming.'
+            )
+        else:
+            R.ok('config.json has use_cache enabled — generate() will use the KV cache')
+
+        # ── Throughput, cache ON (the number that matters for serving) ───────
+        tps, dt, peak = _time_decode(model, 1, DECODE_NEW_TOKENS, True, vocab)
+        R.ok(
+            f'decode throughput: {tps:,.0f} tok/s ({1000 / tps:.1f} ms/token) '
+            f'at batch 1, greedy, {DECODE_NEW_TOKENS} forced new tokens, cache on ({dt:.1f}s)'
+        )
+        R.info(f'peak VRAM during decode: {gb(peak)}')
+
+        # ── KV cache size at full context ────────────────────────────────────
+        c = model.config
+        n_kv = getattr(c, 'num_key_value_heads', None) or c.num_attention_heads
+        head_dim = getattr(c, 'head_dim', None) or c.hidden_size // c.num_attention_heads
+        bytes_per = 2  # bf16/fp16
+        kv_full = 2 * c.num_hidden_layers * n_kv * head_dim * c.max_position_embeddings * bytes_per
+        R.info(
+            f'KV cache at full context ({c.max_position_embeddings} tokens): {kv_full / MB:.0f} MB per sequence '
+            f'({n_kv} KV heads x {head_dim} head_dim x {c.num_hidden_layers} layers)'
+        )
+
+        if not args.deep:
+            R.info('cache-off comparison and batch sweep skipped — rerun with --deep (adds ~30-60s)')
+        else:
+            # ── Cache OFF: quadratic, so this is the slow one ────────────────
+            tps_off, dt_off, _ = _time_decode(model, 1, DECODE_NEW_TOKENS, False, vocab)
+            speedup = tps / tps_off
+            R.info(f'cache off: {tps_off:,.0f} tok/s ({dt_off:.1f}s) - the KV cache is worth {speedup:.2f}x here')
+            if speedup < 1.2:
+                # Measured on Llama-75M: 1.00x at 128 new tokens, still only
+                # 1.08x at 900. Throughput sits at ~330 tok/s whatever the
+                # length, which is kernel-launch latency, not attention math.
+                # A cache saves recomputation the model was never spending
+                # time on. Do not assume the textbook multiple at this size.
+                R.info(
+                    'under 1.2x: decoding is launch-latency bound at this size, not compute bound, '
+                    'so the KV cache buys almost nothing and "use_cache": false is nearly free here'
+                )
+            # ── Batch scaling: where decode stops being memory-bound ─────────
+            for b in DECODE_DEEP_BATCHES:
+                try:
+                    tps_b, _, peak_b = _time_decode(model, b, DECODE_NEW_TOKENS, True, vocab)
+                    R.info(f'batch {b:>2}: {tps_b:>7,.0f} tok/s aggregate, {tps_b / b:>6,.0f} tok/s per sequence, peak {gb(peak_b)}')
+                except torch.cuda.OutOfMemoryError:
+                    torch.cuda.empty_cache()
+                    R.warn(f'batch {b} OOMs during decode')
+                    break
+    except Exception as e:
+        R.fail(f'decode probe crashed: {type(e).__name__}: {e}')
+    finally:
+        del model
+        torch.cuda.empty_cache()
+
+
+# ============================================================================
 # Main
 # ============================================================================
 
@@ -1588,7 +1774,11 @@ def main():
     )
     parser.add_argument('--skip', default='', help=f'comma-separated categories to skip {CATEGORIES}')
     parser.add_argument('--only', default='', help='comma-separated categories to run (overrides --skip)')
-    parser.add_argument('--deep', action='store_true', help='scan the ENTIRE dataset instead of a sample')
+    parser.add_argument(
+        '--deep',
+        action='store_true',
+        help='slow probes: scan the ENTIRE dataset, and add the decode cache-off comparison + batch sweep',
+    )
     parser.add_argument('--steps', type=int, default=3, help='timed live training steps (default 3)')
     parser.add_argument('--compile-steps', type=int, default=8, help='steps for the eager-vs-compiled comparison (default 8)')
     parser.add_argument('--check-compile', action='store_true', help='run the compile probe even if torch_compile = false')
@@ -1610,8 +1800,6 @@ def main():
     cfg = load_config(args.config)
     mode = 'sft' if cfg.get('model', {}).get('base_model') else 'base'
 
-    import transformers
-
     transformers.utils.logging.disable_progress_bar()
     transformers.utils.logging.set_verbosity_error()
 
@@ -1630,7 +1818,13 @@ def main():
     t_start = time.time()
     R = Reporter()
     ctx = {}
-    runners = {'config': config_checks, 'model': model_checks, 'training': training_checks, 'dataset': dataset_checks}
+    runners = {
+        'config': config_checks,
+        'model': model_checks,
+        'training': training_checks,
+        'dataset': dataset_checks,
+        'decode': decode_checks,
+    }
     for cat in CATEGORIES:
         if cat not in cats:
             continue

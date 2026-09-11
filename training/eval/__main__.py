@@ -20,8 +20,10 @@ from . import metrics as M
 from . import report as R
 from .comparison import chat_comparison_key, composite_comparison_key, identity, prose_comparison_key
 from .helpers import (
+    DEFAULT_HELDOUT,
     DEFAULT_RESULTS_DIR,
     EVAL_DATA,
+    LADDER_CALIBRATION_HELDOUT,
     atomic_json,
     banner,
     checkpoint_lineage,
@@ -41,8 +43,10 @@ from .helpers import (
     select_device,
     select_dtype,
     training_curve,
+    weight_bytes,
 )
 from .measurements import summarize_result
+from .nanochat_models import is_nanochat_checkpoint
 from .metric_guide import HOW_TO_READ, PRIMARY_METRIC, describe, undocumented
 from .prompts import (
     HISTORICAL_CONTEXTS,
@@ -141,6 +145,14 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
 
     print(f'  loading model ({tok_dir}) ...', flush=True)
     model, tokenizer = load_model_and_tokenizer(checkpoint, tok_dir, device, dtype, load_8bit=args.load_8bit)
+    # nanochat attends over the whole row with no padding mask, so a left-padded
+    # batch would score pad tokens as content. One row at a time is the only
+    # correct setting; the wrapper raises rather than let it slide.
+    gen_batch_size = args.generation_batch_size
+    if is_nanochat_checkpoint(checkpoint):
+        if gen_batch_size != 1:
+            print(f'  nanochat: generation batch {gen_batch_size} -> 1 (no padding-mask support)')
+        gen_batch_size = 1
     n_params = sum(p.numel() for p in model.parameters())
     # HF measures total_flos against non-embedding params, so the tokens-seen estimate
     # must divide by the SAME count (see checkpoint_lineage). num_parameters() is the
@@ -164,8 +176,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
     try:
         # ---- info -----------------------------------------------------------
         banner('SUITE: MODEL INFO AND TRAINING LINEAGE')
-        weight_files = list(checkpoint.glob('*.safetensors'))
-        disk_mb = sum(f.stat().st_size for f in weight_files) / 1e6
+        disk_mb = weight_bytes(checkpoint) / 1e6
         lineage = checkpoint_lineage(checkpoint, n_params, n_params_no_embed)
         cfg = model.config
         emb = model.get_input_embeddings().weight
@@ -290,7 +301,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                 top_p=args.top_p,
                 top_k=args.top_k,
                 seed=args.seed,
-                batch_size=args.generation_batch_size,
+                batch_size=gen_batch_size,
                 chat=args.chat,
                 on_batch=save_generation_batch,
             )
@@ -329,7 +340,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                         top_p=args.top_p,
                         top_k=args.top_k,
                         seed=args.seed,
-                        batch_size=args.generation_batch_size,
+                        batch_size=gen_batch_size,
                         chat=args.chat,
                         on_batch=save_sweep_batch,
                     )
@@ -573,7 +584,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     )
     p.add_argument('targets', nargs='*', type=Path, help='Checkpoint dir, folder of checkpoints, or experiment tree.')
     p.add_argument('--tokenizer', type=Path, default=None, help='Force one tokenizer for every checkpoint.')
-    p.add_argument('--heldout', type=Path, default=EVAL_DATA / 'heldout-Sprocket-n-Say.jsonl')
+    p.add_argument('--heldout', type=Path, default=DEFAULT_HELDOUT)
     p.add_argument('--chat-data', type=Path, default=EVAL_DATA / 'chat_sample.jsonl')
     p.add_argument('--docs', type=int, default=200, help='Held-out docs to score.')
     p.add_argument('--chat-docs', type=int, default=200)
@@ -801,8 +812,10 @@ def main(argv=None) -> None:
     chat_path = args.chat_data.resolve()
     if heldout_path.exists():
         heldout = load_text_items(heldout_path, args.docs) if args.docs else []
-        if heldout_path != (EVAL_DATA / 'heldout-Sprocket-n-Say.jsonl').resolve():
-            extra_notes.append('Custom held-out set: composite anchors are fixed, not calibrated for this dataset.')
+        if heldout_path != LADDER_CALIBRATION_HELDOUT.resolve():
+            extra_notes.append(
+                'Composite anchors were calibrated on heldout-Sprocket-n-Say.jsonl and are fixed; bake_score is not calibrated for this held-out set. bpb itself is unaffected.'
+            )
     else:
         heldout = []
         extra_notes.append('NO HELD-OUT DATA FOUND - the strongest metric was skipped. Pass --heldout FILE.jsonl.')

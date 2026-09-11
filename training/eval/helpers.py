@@ -21,6 +21,8 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from . import nanochat_models as nanochat
+
 LOG2E = math.log2(math.e)
 
 # ---------------------------------------------------------------------------
@@ -48,6 +50,20 @@ def _first_existing(name: str, default_parent: Path) -> Path:
 
 
 EVAL_DATA = _first_existing('eval_data', PROJECT_DIR)
+
+# The default held-out prose set. Piston-n-Prose since 2026-09-10: every model
+# we still train comes from the Piston corpus and the v5 tokenizer, and 152 of
+# the 153 Sprocket held-out documents turned up inside the Piston training data,
+# so scoring a current model on Sprocket is contaminated as well as off-corpus.
+# Sprocket-n-Say stays on disk to re-score the retired Sprocket-era models.
+DEFAULT_HELDOUT = EVAL_DATA / 'heldout-Piston-n-Prose.jsonl'
+
+# Kept SEPARATE from DEFAULT_HELDOUT on purpose. BPB_LADDER in metrics.py was
+# hand-anchored against Sprocket scores, so the composite is uncalibrated for
+# any other set - including the new default. Tying the warning to the default
+# would have silently switched off a note that is still true.
+LADDER_CALIBRATION_HELDOUT = EVAL_DATA / 'heldout-Sprocket-n-Say.jsonl'
+
 # Results are WRITTEN, so an existing directory is preferred but a missing one
 # is created next to the package rather than in some unrelated parent.
 DEFAULT_RESULTS_DIR = _first_existing('eval_results', PROJECT_DIR)
@@ -175,12 +191,17 @@ def resolve_targets(targets: list[Path], include_checkpoints: bool = False) -> T
             skipped.append({'path': str(target), 'reason': 'path does not exist'})
             continue
 
-        if (target / 'config.json').is_file():
+        # nanochat checkpoints carry no config.json, so they are discovered by
+        # their own (model_N.pt, meta_N.json) pair instead.
+        if nanochat.is_nanochat_checkpoint(target):
+            candidates = [target]
+        elif (target / 'config.json').is_file():
             candidates = [target]
         elif (target / 'final' / 'config.json').is_file():
             candidates = [target / 'final']
         else:
             candidates = sorted({p.parent for p in target.rglob('config.json')})
+            candidates += sorted({p.parent for p in target.glob('*/meta_*.json') if nanochat.is_nanochat_checkpoint(p.parent)})
 
         filtered = 0
         for path in candidates:
@@ -192,7 +213,7 @@ def resolve_targets(targets: list[Path], include_checkpoints: bool = False) -> T
             # In experiment trees prefer the final export over stray configs.
             if path.name != 'final' and target not in (path, path.parent) and (path.parent / 'final').is_dir():
                 continue
-            if not has_hf_weights(path):
+            if not has_hf_weights(path) and not nanochat.is_nanochat_checkpoint(path):
                 if (path / 'model.pt').exists():
                     skipped.append({'path': str(path), 'reason': 'custom model.pt format is not loadable by AutoModelForCausalLM'})
                 continue
@@ -217,6 +238,8 @@ def resolve_targets(targets: list[Path], include_checkpoints: bool = False) -> T
 
 
 def resolve_tokenizer(ckpt: Path, explicit: Path | None = None, checkpoints_dir: Path | None = None) -> Path:
+    if nanochat.is_nanochat_checkpoint(ckpt):
+        return nanochat.resolve_nanochat_tokenizer(ckpt, explicit)
     if explicit is not None:
         return explicit.resolve()
     candidates = [ckpt]
@@ -224,10 +247,16 @@ def resolve_tokenizer(ckpt: Path, explicit: Path | None = None, checkpoints_dir:
         candidates += [checkpoints_dir / 'tokenizers', checkpoints_dir, checkpoints_dir.parent / 'tokenizers', checkpoints_dir.parent]
     else:
         candidates += [ckpt.parent / 'tokenizers', ckpt.parent, ckpt.parent.parent / 'tokenizers', ckpt.parent.parent]
+    # A fast tokenizer.json is the common case, but a SentencePiece model with
+    # only tokenizer.model and tokenizer_config.json is still loadable (MonadGPT
+    # ships one), so accept any directory AutoTokenizer can actually open.
+    marker_files = ('tokenizer.json', 'tokenizer.model', 'vocab.json', 'spiece.model')
     for candidate in candidates:
-        if (candidate / 'tokenizer.json').is_file():
+        if any((candidate / name).is_file() for name in marker_files):
             return candidate
-    raise FileNotFoundError(f'no tokenizer.json found near {ckpt}; pass --tokenizer DIR')
+    raise FileNotFoundError(
+        f'no tokenizer files ({", ".join(marker_files)}) found near {ckpt}; pass --tokenizer DIR'
+    )
 
 
 def model_fingerprint(checkpoint: Path, tok_path: Path) -> str:
@@ -256,7 +285,12 @@ def model_fingerprint(checkpoint: Path, tok_path: Path) -> str:
         if path.is_file():
             h.update(str(path.resolve()).encode())
             h.update(file_hash(path).encode())
-    weight_files = sorted(checkpoint.glob('*.safetensors')) + sorted(checkpoint.glob('pytorch_model*.bin'))
+    for path in sorted(tok_path.glob('tokenizer.pkl')) + sorted(checkpoint.glob('meta_*.json')):
+        h.update(str(path.resolve()).encode())
+        h.update(file_hash(path).encode())
+    weight_files = (
+        sorted(checkpoint.glob('*.safetensors')) + sorted(checkpoint.glob('pytorch_model*.bin')) + sorted(checkpoint.glob('model_*.pt'))
+    )
     for path in weight_files:
         stat = path.stat()
         h.update(path.name.encode())
@@ -289,7 +323,7 @@ def needs_remote_code(checkpoint: Path) -> bool:
 def weight_bytes(checkpoint: Path) -> int:
     """On-disk size of the weight shards - a good proxy for resident size when
     loading at the checkpoint's own dtype."""
-    files = list(checkpoint.glob('*.safetensors')) + list(checkpoint.glob('pytorch_model*.bin'))
+    files = list(checkpoint.glob('*.safetensors')) + list(checkpoint.glob('pytorch_model*.bin')) + list(checkpoint.glob('model_*.pt'))
     return sum(f.stat().st_size for f in files)
 
 
@@ -325,6 +359,17 @@ def plan_placement(checkpoint: Path, device: torch.device, headroom: float = 0.9
 
 
 def load_model_and_tokenizer(checkpoint: Path, tok_dir: Path, device: torch.device, dtype: torch.dtype, load_8bit: bool = False):
+    if nanochat.is_nanochat_checkpoint(Path(checkpoint)):
+        if load_8bit:
+            raise SystemExit('--load-8bit is bitsandbytes over transformers layers; nanochat models do not go through it')
+        if dtype == torch.float32 and device.type == 'cuda':
+            # These are published in fp32 and are 2.8B-3.3B parameters, which
+            # is 11-13 GiB before activations. bf16 is what they were trained
+            # and served in.
+            print('  nanochat: --dtype auto/float32 on GPU would not fit; loading bfloat16')
+            dtype = torch.bfloat16
+        return nanochat.load_nanochat(Path(checkpoint), Path(tok_dir), device, dtype)
+
     remote = needs_remote_code(Path(checkpoint))
     if remote:
         print(f'  trust_remote_code=True — executing custom modeling code from {checkpoint}')
@@ -412,6 +457,9 @@ def checkpoint_lineage(ckpt_dir: Path, n_params: int | None = None, n_params_no_
     `n_params_no_embed` MUST be passed for an accurate tokens-seen estimate --
     see the total_flos note below. Without it the estimate is a lower bound.
     """
+
+    if nanochat.is_nanochat_checkpoint(Path(ckpt_dir)):
+        return nanochat.nanochat_lineage(Path(ckpt_dir))
 
     def flatten(d, out):
         for k, v in d.items():
@@ -679,6 +727,8 @@ def model_slug(model_type: str | None, n_params: int) -> str:
 def peek_model_identity(checkpoint: Path) -> tuple[str | None, int]:
     """(model_type, parameter count) read from config.json WITHOUT loading
     weights, for output filenames."""
+    if nanochat.is_nanochat_checkpoint(Path(checkpoint)):
+        return nanochat.nanochat_identity(Path(checkpoint))
     try:
         from transformers import AutoConfig, AutoModelForCausalLM
 

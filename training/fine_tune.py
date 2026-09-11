@@ -38,6 +38,7 @@ from transformers import (
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    BitsAndBytesConfig,
     ProgressCallback,
     set_seed,
 )
@@ -54,7 +55,7 @@ from base_train import (
     load_config,
 )
 
-os.environ['PYTORCH_ALLOC_CONF'] = 'expandable_segments:True'
+os.environ.setdefault('PYTORCH_ALLOC_CONF', 'expandable_segments:True')
 
 
 # =============================================================================
@@ -157,6 +158,35 @@ def load_base_model(cfg: Dict, accelerator: Accelerator) -> tuple:
         load_kwargs['attn_implementation'] = attn_impl
         accelerator.print(f'  Attention implementation: {attn_impl}')
 
+    # ── Quantised base weights (QLoRA) ───────────────────────────────────────
+    # load_in_4bit / load_in_8bit freeze the base in low precision and train
+    # only the adapter on top. Verified working on ROCm with bitsandbytes
+    # 0.50.0; measured NF4 cost on Llama-75M is +0.046 nats (+1.5%) on real
+    # held-out text BEFORE any training, so a QLoRA run starts behind a bf16
+    # one and that gap is not the adapter's fault.
+    # Only meaningful with method = "lora": quantised weights cannot be
+    # trained directly, so full fine-tuning is refused rather than silently
+    # producing a model that does not learn.
+    quant_bits = model_cfg.get('load_in_bits')
+    if quant_bits:
+        if cfg['training'].get('method', 'full').lower() != 'lora':
+            raise ValueError(
+                f'load_in_bits = {quant_bits} requires [training] method = "lora"; quantised base weights cannot be full-fine-tuned.'
+            )
+        if quant_bits == 4:
+            load_kwargs['quantization_config'] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type=model_cfg.get('bnb_4bit_quant_type', 'nf4'),
+                bnb_4bit_compute_dtype=load_kwargs['dtype'],
+                bnb_4bit_use_double_quant=model_cfg.get('bnb_4bit_use_double_quant', True),
+            )
+        elif quant_bits == 8:
+            load_kwargs['quantization_config'] = BitsAndBytesConfig(load_in_8bit=True)
+        else:
+            raise ValueError(f'load_in_bits must be 4 or 8, got {quant_bits}')
+        load_kwargs['device_map'] = {'': accelerator.local_process_index}
+        accelerator.print(f'  Quantisation: {quant_bits}-bit base weights (QLoRA)')
+
     model = AutoModelForCausalLM.from_pretrained(base_model, **load_kwargs)
     model.config.use_cache = False  # Must be off during training
 
@@ -165,6 +195,8 @@ def load_base_model(cfg: Dict, accelerator: Accelerator) -> tuple:
     accelerator.print(f'  Parameters:     {num_params:,} ({num_params / 1e6:.2f}M)')
     accelerator.print(f'  Vocab size:     {len(tokenizer):,}')
     accelerator.print(f'  Dtype:          {load_kwargs["dtype"]}')
+    if quant_bits:
+        accelerator.print(f'  Quantised:      {quant_bits}-bit (adapter trains in {load_kwargs["dtype"]})')
     return model, tokenizer
 
 
@@ -404,6 +436,8 @@ def main():
         )
         lr_sched_kwargs.pop('min_lr_rate')
 
+    dl_workers = int(train_cfg.get('dataloader_num_workers', 4))
+
     sft_args = SFTConfig(
         # ── Output ───────────────────────────────────────────────────────────
         output_dir=output_dir,
@@ -412,6 +446,11 @@ def main():
         dataset_text_field=dataset_text_field,  # None → auto-detect "messages"
         packing=train_cfg.get('packing', False),
         packing_strategy=train_cfg.get('packing_strategy', 'bfd_split'),
+        # Pad every batch up to a multiple of this. Set it equal to
+        # max_seq_length to get ONE constant tensor shape for the whole run
+        # without packing, which avoids packing's cross-document attention
+        # contamination on non-Flash backends. Costs compute on padding.
+        pad_to_multiple_of=train_cfg.get('pad_to_multiple_of', None),
         neftune_noise_alpha=neftune,
         # ── Training duration ────────────────────────────────────────────────
         num_train_epochs=train_cfg['num_train_epochs'],
@@ -457,8 +496,12 @@ def main():
         logging_first_step=train_cfg.get('logging_first_step', True),
         report_to=train_cfg.get('report_to', ['tensorboard']),
         # ── Data loading ─────────────────────────────────────────────────────
-        dataloader_num_workers=train_cfg.get('dataloader_num_workers', 4),
-        dataloader_prefetch_factor=train_cfg.get('dataloader_prefetch_factor', 2),
+        dataloader_num_workers=dl_workers,
+        # prefetch_factor is only legal with worker PROCESSES. Passing it at
+        # num_workers = 0 is a hard ValueError out of TrainingArguments, and
+        # deleting the key from the TOML does not help because .get() puts the
+        # default back. None is the only way to actually unset it.
+        dataloader_prefetch_factor=(train_cfg.get('dataloader_prefetch_factor', 2) if dl_workers > 0 else None),
         dataloader_pin_memory=train_cfg.get('dataloader_pin_memory', True),
         # ── Reproducibility ───────────────────────────────────────────────────
         seed=seed,
@@ -473,6 +516,7 @@ def main():
     accelerator.print(f'  Warmup ratio:         {sft_args.warmup_ratio}')
     accelerator.print(f'  Max sequence length:  {sft_args.max_length}')
     accelerator.print(f'  Packing:              {sft_args.packing}')
+    accelerator.print(f'  Pad to multiple of:   {sft_args.pad_to_multiple_of}')
     accelerator.print(f'  NEFTune alpha:        {sft_args.neftune_noise_alpha}')
     accelerator.print(f'  Load best at end:     {sft_args.load_best_model_at_end}')
     accelerator.print()
@@ -492,6 +536,31 @@ def main():
         ],
     )
     trainer.remove_callback(ProgressCallback)
+
+    # ── Opt-in module tracer, for hunting hard GPU faults ────────────────────
+    # A ROCm "Memory access fault" is a process abort with no Python traceback,
+    # so the usual tools show nothing. Set FT_TRACE_MODULES=<path> together with
+    # HIP_LAUNCH_BLOCKING=1 and every submodule writes its name, fsynced, before
+    # it runs. After the abort the last line of that file names the op that did
+    # it. Slow: only use it on a run that faults early.
+    # See research/REPORT-sft01-gpu-fault-investigation.md.
+    trace_path = os.environ.get('FT_TRACE_MODULES')
+    if trace_path:
+        _tf = open(trace_path, 'w')
+
+        def _mark(tag):
+            _tf.write(tag + '\n')
+            _tf.flush()
+            os.fsync(_tf.fileno())
+
+        traced = trainer.model
+        for _name, _mod in traced.named_modules():
+            if _name and not list(_mod.children()):  # leaves only
+                _mod.register_forward_pre_hook(
+                    lambda m, i, n=_name: _mark(f'fwd  {n}  in={[tuple(x.shape) for x in i if hasattr(x, "shape")]}')
+                )
+                _mod.register_full_backward_pre_hook(lambda m, go, n=_name: _mark(f'bwd  {n}'))
+        accelerator.print(f'  module tracer ON -> {trace_path} (this run will be slow)')
 
     # Print LoRA trainable-param ratio after SFTTrainer applies the adapter.
     if peft_config is not None:
@@ -616,14 +685,7 @@ def main():
                 tokenizer.save_pretrained(merged_dir)
                 accelerator.print(f'✓ Merged model saved to {merged_dir}')
         else:
-            accelerator.print(
-                '\nNote: LoRA adapter saved separately (merge_after_training=false).\n'
-                'To merge manually:\n'
-                '    from peft import PeftModel\n'
-                f'    model = PeftModel.from_pretrained(base_model, "{final_model_dir}")\n'
-                '    model = model.merge_and_unload()\n'
-                f'    model.save_pretrained("{final_model_dir}_merged")'
-            )
+            accelerator.print('\nNote: LoRA adapter saved separately (merge_after_training=false).\n')
 
     accelerator.wait_for_everyone()
 

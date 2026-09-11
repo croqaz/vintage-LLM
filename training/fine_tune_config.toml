@@ -76,6 +76,11 @@ gradient_checkpointing = false  # set true only if OOM; adds ~30% compute overhe
 #   "wrapped"   — concatenate-then-split (fast but breaks documents at boundaries).
 packing          = false
 packing_strategy = "bfd_split"
+# Constant-shape padding. Unset by default. Set equal to max_seq_length for one
+# tensor shape across the whole run — the packing=true benefit without packing's
+# cross-document attention contamination on non-Flash backends.
+#pad_to_multiple_of = 1024
+
 
 # ── NEFTune ──────────────────────────────────────────────────────────────────
 # Adds uniform noise to embeddings during the forward pass.

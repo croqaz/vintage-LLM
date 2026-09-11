@@ -1,0 +1,69 @@
+{"id": "len_one_word", "prompt": "Answer with a single word only. What is the capital city of France?", "checks": [{"type": "max_words", "value": 3}], "tag": "length"}
+{"id": "len_brief", "prompt": "Answer in no more than ten words. What is a steam engine?", "checks": [{"type": "max_words", "value": 14}], "tag": "length"}
+{"id": "len_one_sentence", "prompt": "Reply with exactly one sentence. Describe the month of April.", "checks": [{"type": "max_sentences", "value": 1}], "tag": "length"}
+{"id": "len_two_sentences", "prompt": "Reply with exactly two sentences. Describe a country inn.", "checks": [{"type": "max_sentences", "value": 2}, {"type": "min_sentences", "value": 2}], "tag": "length"}
+{"id": "len_long", "prompt": "Write at least sixty words upon the subject of railways.", "checks": [{"type": "min_words", "value": 45}], "tag": "length"}
+{"id": "yn_yes", "prompt": "Answer only yes or no. Is the sun a star?", "checks": [{"type": "starts_with_any", "value": ["yes", "no"]}, {"type": "max_words", "value": 4}], "tag": "closed"}
+{"id": "yn_no", "prompt": "Answer only yes or no. Is the moon larger than the earth?", "checks": [{"type": "starts_with_any", "value": ["yes", "no"]}, {"type": "max_words", "value": 4}], "tag": "closed"}
+{"id": "pick_one", "prompt": "Reply with one word, either \"summer\" or \"winter\". In which season does snow commonly fall in England?", "checks": [{"type": "contains_word_any", "value": ["winter"]}, {"type": "max_words", "value": 4}], "tag": "closed"}
+{"id": "list_three", "prompt": "Name three domestic animals. Give the list only, nothing further.", "checks": [{"type": "min_list_items", "value": 3}], "tag": "list"}
+{"id": "list_two", "prompt": "Name two cities of England, separated by a comma.", "checks": [{"type": "min_list_items", "value": 2}], "tag": "list"}
+{"id": "echo_word", "prompt": "Repeat the following word back to me exactly, and write nothing else: lantern", "checks": [{"type": "contains_word_any", "value": ["lantern"]}, {"type": "max_words", "value": 5}], "tag": "transform"}
+{"id": "count_letters", "prompt": "Answer with a number only. How many letters are in the word \"horse\"?", "checks": [{"type": "contains_word_any", "value": ["5", "five"]}, {"type": "max_words", "value": 4}], "tag": "transform"}
+{"id": "open_0", "prompt": "What is your opinion of the modern railway?", "checks": [], "tag": "open"}
+{"id": "open_1", "prompt": "Tell me of the customs at a Christmas dinner.", "checks": [], "tag": "open"}
+{"id": "open_2", "prompt": "How ought a letter of introduction to be written?", "checks": [], "tag": "open"}
+{"id": "open_3", "prompt": "Describe the duties of a governess.", "checks": [], "tag": "open"}
+{"id": "open_4", "prompt": "What remedies are used against a common cold?", "checks": [], "tag": "open"}
+{"id": "open_5", "prompt": "Speak to me of the sea.", "checks": [], "tag": "open"}
+{"id": "open_6", "prompt": "What is the proper manner of addressing a bishop?", "checks": [], "tag": "open"}
+{"id": "open_7", "prompt": "Explain the working of the electric telegraph.", "checks": [], "tag": "open"}
+{"id": "len_three_words", "prompt": "Answer in exactly three words. What is a candle used for?", "checks": [{"type": "max_words", "value": 4}, {"type": "min_words", "value": 2}], "tag": "length"}
+{"id": "len_no_more_than_five", "prompt": "In five words or fewer, what is a harbour?", "checks": [{"type": "max_words", "value": 7}], "tag": "length"}
+{"id": "len_three_sentences", "prompt": "Reply with exactly three sentences about the winter season.", "checks": [{"type": "min_sentences", "value": 3}, {"type": "max_sentences", "value": 3}], "tag": "length"}
+{"id": "len_single_line", "prompt": "Answer on one line only, with no line breaks. What is a bridge?", "checks": [{"type": "max_lines", "value": 1}], "tag": "length"}
+{"id": "yn_yes_2", "prompt": "Answer only yes or no. Is water wet?", "checks": [{"type": "starts_with_any", "value": ["yes", "no"]}, {"type": "max_words", "value": 4}], "tag": "closed"}
+{"id": "yn_no_2", "prompt": "Answer only yes or no. Do fish live in trees?", "checks": [{"type": "starts_with_any", "value": ["yes", "no"]}, {"type": "max_words", "value": 4}], "tag": "closed"}
+{"id": "yn_yes_3", "prompt": "Answer only yes or no. Is London a city?", "checks": [{"type": "starts_with_any", "value": ["yes", "no"]}, {"type": "max_words", "value": 4}], "tag": "closed"}
+{"id": "pick_one_2", "prompt": "Reply with one word, either \"day\" or \"night\". When is the sun in the sky?", "checks": [{"type": "contains_word_any", "value": ["day", "daytime"]}, {"type": "max_words", "value": 4}], "tag": "closed"}
+{"id": "pick_one_3", "prompt": "Answer with one word only, either \"hot\" or \"cold\". What is ice?", "checks": [{"type": "contains_word_any", "value": ["cold"]}, {"type": "max_words", "value": 4}], "tag": "closed"}
+{"id": "exact_capital", "prompt": "Reply with the name of the city and nothing else. What is the capital of England?", "checks": [{"type": "equals_any", "value": ["london"]}], "tag": "closed"}
+{"id": "exact_colour", "prompt": "Reply with one word and nothing else. What colour is fresh snow?", "checks": [{"type": "equals_any", "value": ["white"]}], "tag": "closed"}
+{"id": "list_four_numbered", "prompt": "Give me a numbered list of four trees. Write the list only.", "checks": [{"type": "min_lines", "value": 4}, {"type": "every_line_starts_with_digit", "value": 1}], "tag": "list"}
+{"id": "list_exactly_two", "prompt": "Name exactly two rivers, separated by a comma, and nothing more.", "checks": [{"type": "min_list_items", "value": 2}, {"type": "max_list_items", "value": 3}], "tag": "list"}
+{"id": "list_five", "prompt": "Name five articles of clothing. Give the list only.", "checks": [{"type": "min_list_items", "value": 5}], "tag": "list"}
+{"id": "echo_sentence", "prompt": "Repeat this sentence back to me exactly and write nothing else: The kettle is on the fire.", "checks": [{"type": "contains_any", "value": ["kettle is on the fire"]}, {"type": "max_words", "value": 12}], "tag": "transform"}
+{"id": "upper_case", "prompt": "Write the word \"thunder\" in capital letters, and nothing else.", "checks": [{"type": "contains_cased_any", "value": ["THUNDER"]}, {"type": "max_words", "value": 4}], "tag": "transform"}
+{"id": "count_letters_2", "prompt": "Answer with a number only. How many letters are in the word \"ship\"?", "checks": [{"type": "contains_word_any", "value": ["4", "four"]}, {"type": "max_words", "value": 4}], "tag": "transform"}
+{"id": "count_words", "prompt": "Answer with a number only. How many words are in this sentence: the dog barks", "checks": [{"type": "contains_word_any", "value": ["3", "three"]}, {"type": "max_words", "value": 4}], "tag": "transform"}
+{"id": "first_letter", "prompt": "Answer with a single letter and nothing else. What is the first letter of the word \"garden\"?", "checks": [{"type": "equals_any", "value": ["g"]}], "tag": "transform"}
+{"id": "avoid_word", "prompt": "Describe a horse in one sentence without using the word \"horse\".", "checks": [{"type": "contains_word_none", "value": ["horse", "horses"]}, {"type": "max_sentences", "value": 2}], "tag": "instruct"}
+{"id": "avoid_word_2", "prompt": "Tell me about rain in two sentences, and do not use the word \"rain\".", "checks": [{"type": "contains_word_none", "value": ["rain", "rains", "raining"]}, {"type": "max_sentences", "value": 3}], "tag": "instruct"}
+{"id": "start_with", "prompt": "Begin your reply with the word \"Indeed\" and then tell me about candles in one sentence.", "checks": [{"type": "starts_with_any", "value": ["indeed"]}, {"type": "max_sentences", "value": 2}], "tag": "instruct"}
+{"id": "two_constraints", "prompt": "In no more than twenty words, and beginning with the word \"Well\", tell me about the post.", "checks": [{"type": "starts_with_any", "value": ["well"]}, {"type": "max_words", "value": 25}], "tag": "instruct"}
+{"id": "question_back", "prompt": "Ask me one question about my journey, and write nothing else.", "checks": [{"type": "contains_any", "value": ["?"]}, {"type": "max_sentences", "value": 2}, {"type": "min_words", "value": 4}], "tag": "instruct"}
+{"id": "no_list", "prompt": "Explain what a market is, in prose, without using a list or bullet points.", "checks": [{"type": "max_lines", "value": 2}], "tag": "instruct"}
+{"id": "mt_railway", "prompt": "Tell me briefly about the railway.", "followup": "And what of its dangers?", "checks": [{"type": "contains_any", "value": ["danger", "accident", "peril", "risk", "injur", "collision", "derail", "unsafe"]}, {"type": "max_words", "value": 120}], "tag": "multiturn"}
+{"id": "mt_tea", "prompt": "What is taken at afternoon tea?", "followup": "Name just one of those, in a single word.", "checks": [{"type": "contains_word_any", "value": ["tea", "cake", "cakes", "bread", "butter", "scone", "scones", "muffin", "muffins", "toast", "sandwich", "sandwiches", "biscuit", "biscuits", "cream", "jam", "crumpet", "crumpets", "coffee", "milk", "sugar", "wafer"]}, {"type": "max_words", "value": 5}], "tag": "multiturn"}
+{"id": "mt_name", "prompt": "My name is Arthur. Please greet me.", "followup": "What is my name?", "checks": [{"type": "contains_word_any", "value": ["arthur"]}, {"type": "max_words", "value": 30}], "tag": "multiturn"}
+{"id": "mt_count", "prompt": "Name three colours.", "followup": "Now name two more, and only those two.", "checks": [{"type": "contains_word_any", "value": ["red", "blue", "green", "yellow", "black", "white", "brown", "grey", "gray", "purple", "violet", "orange", "pink", "scarlet", "crimson", "azure", "gold", "silver"]}, {"type": "max_words", "value": 20}], "tag": "multiturn"}
+{"id": "mt_letter", "prompt": "How ought one to begin a letter to a stranger?", "followup": "Give me one example line, and nothing else.", "checks": [{"type": "contains_word_any", "value": ["dear", "sir", "madam", "esteemed", "honoured", "honored"]}, {"type": "max_sentences", "value": 2}], "tag": "multiturn"}
+{"id": "mt_shorter", "prompt": "Describe a village fair.", "followup": "Now say that again in one sentence.", "checks": [{"type": "max_sentences", "value": 2}, {"type": "min_words", "value": 6}], "tag": "multiturn"}
+{"id": "open_8", "prompt": "What is to be done about a smoking chimney?", "checks": [], "tag": "open"}
+{"id": "open_9", "prompt": "Tell me how a household ought to be managed.", "checks": [], "tag": "open"}
+{"id": "open_10", "prompt": "What entertainments are to be had of an evening?", "checks": [], "tag": "open"}
+{"id": "open_11", "prompt": "Give me your advice on choosing a horse.", "checks": [], "tag": "open"}
+{"id": "fact_capital_france", "prompt": "What is the capital of France?", "checks": [{"type": "contains_word_any", "value": ["paris"]}], "tag": "fact"}
+{"id": "fact_capital_italy", "prompt": "What is the capital of Italy?", "checks": [{"type": "contains_word_any", "value": ["rome", "roma"]}], "tag": "fact"}
+{"id": "fact_capital_england", "prompt": "What is the capital of England?", "checks": [{"type": "contains_word_any", "value": ["london"]}], "tag": "fact"}
+{"id": "fact_capital_spain", "prompt": "What is the capital of Spain?", "checks": [{"type": "contains_word_any", "value": ["madrid"]}], "tag": "fact"}
+{"id": "fact_capital_russia", "prompt": "What is the capital of Russia?", "checks": [{"type": "contains_word_any", "value": ["moscow", "petersburg", "petersburgh"]}], "tag": "fact"}
+{"id": "fact_thames", "prompt": "Through which city does the river Thames flow?", "checks": [{"type": "contains_word_any", "value": ["london"]}], "tag": "fact"}
+{"id": "fact_days_week", "prompt": "How many days are there in a week?", "checks": [{"type": "contains_word_any", "value": ["seven", "7"]}], "tag": "fact"}
+{"id": "fact_months_year", "prompt": "How many months are there in a year?", "checks": [{"type": "contains_word_any", "value": ["twelve", "12"]}], "tag": "fact"}
+{"id": "fact_water_freeze", "prompt": "What happens to water when it becomes very cold?", "checks": [{"type": "contains_word_any", "value": ["ice", "frozen", "freeze", "freezes", "solid", "congeal", "congeals"]}], "tag": "fact"}
+{"id": "fact_sun_rise", "prompt": "In which direction does the sun rise?", "checks": [{"type": "contains_word_any", "value": ["east", "eastward", "eastwards", "eastern"]}], "tag": "fact"}
+{"id": "fact_gold_symbol", "prompt": "What is the chemical symbol for gold?", "checks": [{"type": "contains_cased_any", "value": ["Au"]}], "tag": "fact"}
+{"id": "fact_shakespeare", "prompt": "Who wrote the play Hamlet?", "checks": [{"type": "contains_word_any", "value": ["shakespeare"]}], "tag": "fact"}
+{"id": "fact_legs_horse", "prompt": "How many legs has a horse?", "checks": [{"type": "contains_word_any", "value": ["four", "4"]}], "tag": "fact"}
+{"id": "fact_queen", "prompt": "Who reigns over the British Empire?", "checks": [{"type": "contains_word_any", "value": ["victoria", "queen", "king", "edward", "george", "empress"]}], "tag": "fact"}
