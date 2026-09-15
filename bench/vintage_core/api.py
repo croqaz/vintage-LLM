@@ -182,6 +182,10 @@ def evaluate(
         'num_tasks': len(selected),
         'max_per_task': max_per_task,
     }
+    if hasattr(client, 'fingerprint'):
+        # Local checkpoints: MD5/SHA-256 of the weight and config files, plus
+        # max_context/device/dtype, so a result can be tied to exact bytes.
+        out['local_checkpoint'] = client.fingerprint()
     if scores_vintage_qa:
         # 'prefix-fallback-DEGRADED' here means rouge_score was missing and the
         # vintage_qa number is not comparable to a ROUGE-L run.

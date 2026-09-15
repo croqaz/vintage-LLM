@@ -16,6 +16,7 @@ from pathlib import Path
 import torch
 
 from . import SCHEMA_VERSION
+from . import leaderboard as L
 from . import metrics as M
 from . import report as R
 from .comparison import chat_comparison_key, composite_comparison_key, identity, prose_comparison_key
@@ -46,8 +47,8 @@ from .helpers import (
     weight_bytes,
 )
 from .measurements import summarize_result
-from .nanochat_models import is_nanochat_checkpoint
 from .metric_guide import HOW_TO_READ, PRIMARY_METRIC, describe, undocumented
+from .nanochat_models import is_nanochat_checkpoint
 from .prompts import (
     HISTORICAL_CONTEXTS,
     HISTORICAL_WORDS,
@@ -105,6 +106,7 @@ def settings_fingerprint(args, heldout_hash: str, chat_hash: str | None) -> dict
         'generation_modes': args.generation_modes,
         'generation_tokens': args.gen_tokens,
         'generation_batch_size': args.generation_batch_size,
+        'repetition_penalty': args.repetition_penalty,
         'seed_set': args.seed_set,
         'temp_sweep': args.temp_sweep,
         'temperature': args.temperature,
@@ -180,17 +182,13 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
         lineage = checkpoint_lineage(checkpoint, n_params, n_params_no_embed)
         cfg = model.config
         emb = model.get_input_embeddings().weight
-        with torch.no_grad():
-            emb_norm = float(emb.float().norm(dim=-1).mean())
-            gen = torch.Generator(device='cpu').manual_seed(args.seed)
-            pick = torch.randperm(emb.shape[0], generator=gen)[:512].to(emb.device)
-            sample = emb[pick].float()
-            sample = sample / sample.norm(dim=-1, keepdim=True)
-            sims = sample @ sample.T
-            off_diag = sims[~torch.eye(len(sample), dtype=bool, device=sample.device)]
-            emb_cos = float(off_diag.mean())
-        result['embedding_stats'] = {'mean_norm': emb_norm, 'mean_cosine': emb_cos}
-        print(f'  embedding mean norm {emb_norm:.3f} | mean cosine {emb_cos:.3f}')
+        geometry = M.embedding_geometry(emb, seed=args.seed)
+        result['embedding_stats'] = geometry
+        print(
+            f'  embedding mean norm {geometry["mean_norm"]:.3f} | mean cosine {geometry["mean_cosine"]:.3f} '
+            f'| effective dims {geometry["effective_dims"]:.1f}/{geometry["width"]} '
+            f'({geometry["effective_dims_fraction"]:.1%})'
+        )
         result['info'] = {
             'model_type': cfg.model_type,
             'architecture': type(model).__name__,
@@ -302,6 +300,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                 top_k=args.top_k,
                 seed=args.seed,
                 batch_size=gen_batch_size,
+                repetition_penalty=args.repetition_penalty,
                 chat=args.chat,
                 on_batch=save_generation_batch,
             )
@@ -341,6 +340,7 @@ def evaluate_checkpoint(checkpoint: Path, tok_dir: Path, device, dtype, args, pr
                         top_k=args.top_k,
                         seed=args.seed,
                         batch_size=gen_batch_size,
+                        repetition_penalty=args.repetition_penalty,
                         chat=args.chat,
                         on_batch=save_sweep_batch,
                     )
@@ -618,6 +618,13 @@ def parse_args(argv=None) -> argparse.Namespace:
         help='Also summarise sampled generation at these temperatures, e.g. 0.8,1.0,1.2. '
         'Each extra temperature costs one more full sampled pass. Off by default.',
     )
+    p.add_argument(
+        '--repetition-penalty',
+        type=float,
+        default=1.0,
+        help='Generation only. 1.0 (default) leaves looping visible, which is the point of the '
+        'loop metrics. 1.1 is the llama.cpp/ollama default and measures the deployment condition.',
+    )
     p.add_argument('--temperature', type=float, default=0.8)
     p.add_argument('--top-p', type=float, default=0.9)
     p.add_argument('--top-k', type=int, default=25)
@@ -667,6 +674,15 @@ def parse_args(argv=None) -> argparse.Namespace:
     )
     p.add_argument('--force', action='store_true', help='Ignore matching cached checkpoint results.')
     p.add_argument('--render-report', type=Path, default=None, help='Only re-render Markdown from an existing results JSON.')
+    p.add_argument(
+        '--update-leaderboard',
+        nargs='+',
+        type=Path,
+        default=None,
+        metavar='PATH',
+        help='Refresh eval_data/leaderboard.json from existing eval JSONs (dirs are searched). '
+        'No models are loaded. Curated fields in the file are preserved.',
+    )
     p.add_argument(
         '--collect',
         nargs='+',
@@ -720,6 +736,18 @@ def main(argv=None) -> None:
         out_md = args.out or src.with_suffix('.md')
         out_md.write_text(R.render_report(payload), encoding='utf-8')
         print(f'report: {out_md}')
+        return
+
+    # ---- leaderboard refresh: no models, no scoring, just bookkeeping --------
+    if args.update_leaderboard:
+        results = collect_results(args.update_leaderboard)
+        if not results:
+            die(f'no eval-*.json found under {", ".join(map(str, args.update_leaderboard))}')
+        added, updated = L.register(results)
+        peers, hidden = L.entries_for(None)
+        total = len(peers) + hidden
+        print(f'leaderboard: {added} added, {updated} updated, {total} entries in {L.LEADERBOARD}')
+        print('Set "display", "kind", "origin" or "note" by hand in that file; a refresh keeps them.')
         return
 
     # ---- collect-only mode: compare models evaluated in separate runs ---------

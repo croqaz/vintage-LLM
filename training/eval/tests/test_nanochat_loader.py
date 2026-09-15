@@ -5,7 +5,6 @@ a checkpoint that is not recognised, a character offset that is off by a byte,
 and a chat rendering that does not match what the model was trained on.
 """
 
-import json
 import pickle
 import tempfile
 import unittest

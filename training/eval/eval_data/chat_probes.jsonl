@@ -54,7 +54,7 @@
 {"id": "open_10", "prompt": "What entertainments are to be had of an evening?", "checks": [], "tag": "open"}
 {"id": "open_11", "prompt": "Give me your advice on choosing a horse.", "checks": [], "tag": "open"}
 {"id": "fact_capital_france", "prompt": "What is the capital of France?", "checks": [{"type": "contains_word_any", "value": ["paris"]}], "tag": "fact"}
-{"id": "fact_capital_italy", "prompt": "What is the capital of Italy?", "checks": [{"type": "contains_word_any", "value": ["rome", "roma"]}], "tag": "fact"}
+{"id": "fact_capital_italy", "prompt": "What is the capital of Italy?", "checks": [{"type": "contains_word_any", "value": ["rome", "roma", "turin", "torino", "florence", "firenze"]}], "tag": "fact", "note": "Period-aware. The Kingdom of Italy moved its capital twice inside our corpus period: Turin 1861, Florence 1865, Rome 1871. A pre-1900 model answering Turin or Florence is correct for its own era, so all three are accepted. Changed 2026-09-15; runs before that date accepted only Rome."}
 {"id": "fact_capital_england", "prompt": "What is the capital of England?", "checks": [{"type": "contains_word_any", "value": ["london"]}], "tag": "fact"}
 {"id": "fact_capital_spain", "prompt": "What is the capital of Spain?", "checks": [{"type": "contains_word_any", "value": ["madrid"]}], "tag": "fact"}
 {"id": "fact_capital_russia", "prompt": "What is the capital of Russia?", "checks": [{"type": "contains_word_any", "value": ["moscow", "petersburg", "petersburgh"]}], "tag": "fact"}

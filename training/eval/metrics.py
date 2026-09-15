@@ -424,6 +424,74 @@ def span_bpb(tokenizer, model, prefix_plus_span: str, prefix: str) -> float:
     return nll[start:].sum().item() * LOG2E / len(span.encode('utf-8'))
 
 
+@torch.no_grad()
+def embedding_geometry(emb: torch.Tensor, sample: int = 8192, seed: int = 1337) -> dict:
+    """How much of the embedding space the model actually uses.
+
+    `mean_cosine` on raw embeddings is a poor summary: almost every model has a
+    large shared offset vector that every token carries, and subtracting it
+    sends the cosine to zero. That offset is benign, since the model can cancel
+    it trivially. What matters is how many INDEPENDENT directions carry the
+    per-token signal.
+
+    `effective_dims` is the participation ratio of the centred covariance
+    spectrum, (sum L)^2 / sum(L^2). For an isotropic cloud it approaches the
+    full width; a Llama at initialisation measures ~750 of 768. A model that
+    ends training far below that has squeezed its whole vocabulary into a
+    subspace, so tokens are forced to be near-duplicates of one another.
+
+    `shared_vector_norm` is the length of the mean embedding, and
+    `residual_norm` the mean length after removing it. Comparing the residual
+    against the initialisation scale (0.02 * sqrt(width) for a stock Llama)
+    says whether training grew the per-token part or let it shrink.
+    """
+    emb = emb.detach().float()
+    rows, width = emb.shape
+    generator = torch.Generator(device='cpu').manual_seed(seed)
+    pick = torch.randperm(rows, generator=generator)[: min(sample, rows)].to(emb.device)
+    X = emb[pick]
+
+    mean_vector = emb.mean(0)
+    centred = (X - X.mean(0, keepdim=True)).double()
+    spectrum = torch.linalg.svdvals(centred) ** 2
+
+    def participation(ev):
+        return float((ev.sum() ** 2 / (ev**2).sum()).item())
+
+    # NEVER read effective_dims on its own. It is (sum L)^2 / sum(L^2), which a
+    # single dominant direction pins near 1 / share^2 regardless of how the
+    # remaining variance is spread. Llama-141M measures 30 of 768 and looks
+    # collapsed; drop its top direction and it measures 641, healthier than
+    # Llama-75M's 563. The 30 is one fat axis, not a narrow space. Report the
+    # three together or the number misleads.
+    effective = participation(spectrum)
+    effective_excl_top = participation(spectrum[1:]) if len(spectrum) > 1 else float('nan')
+    top_share = float((spectrum[0] / spectrum.sum()).item())
+
+    normalised = X / X.norm(dim=-1, keepdim=True).clamp_min(1e-9)
+    sims = normalised @ normalised.T
+    off = sims[~torch.eye(len(X), dtype=bool, device=X.device)]
+
+    centred_unit = X - emb.mean(0, keepdim=True)
+    centred_unit = centred_unit / centred_unit.norm(dim=-1, keepdim=True).clamp_min(1e-9)
+    csims = centred_unit @ centred_unit.T
+    coff = csims[~torch.eye(len(X), dtype=bool, device=X.device)]
+
+    return {
+        'mean_norm': float(emb.norm(dim=-1).mean()),
+        'mean_cosine': float(off.mean()),
+        'mean_cosine_centered': float(coff.mean()),
+        'shared_vector_norm': float(mean_vector.norm()),
+        'residual_norm': float((emb - mean_vector).norm(dim=-1).mean()),
+        'effective_dims': effective,
+        'effective_dims_fraction': effective / width,
+        'effective_dims_excl_top1': effective_excl_top,
+        'top_direction_share': top_share,
+        'width': width,
+        'rows_sampled': int(len(X)),
+    }
+
+
 def wilson_interval(successes: int, trials: int, confidence: float = 0.95) -> tuple[float, float]:
     """Wilson score interval for a binomial proportion; exact, no resampling.
 
@@ -716,6 +784,7 @@ def generate_continuations(
     batch_size: int = 4,
     chat: bool = False,
     on_batch: Callable[[str, list[dict]], None] | None = None,
+    repetition_penalty: float = 1.0,
 ) -> dict[str, list[dict]]:
     """Generate each prompt once per decoding mode, batched, left-padded.
 
@@ -764,7 +833,7 @@ def generate_continuations(
                     temperature=temperature if sampled else None,
                     top_p=top_p if sampled else None,
                     top_k=top_k if sampled else None,
-                    repetition_penalty=1.0,  # deliberately OFF: we are MEASURING loops
+                    repetition_penalty=repetition_penalty,  # 1.0 by default: we are MEASURING loops
                     pad_token_id=tokenizer.pad_token_id,
                     eos_token_id=tokenizer.eos_token_id,
                     use_cache=True,

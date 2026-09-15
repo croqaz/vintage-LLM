@@ -151,6 +151,19 @@ def load_base_model(cfg: Dict, accelerator: Accelerator) -> tuple:
     if tokenizer.chat_template is None:
         raise ValueError('Tokenizer is missing chat_template!')
 
+    # A chat_template_file overrides whatever the base checkpoint shipped. The
+    # reason this exists is assistant_only_loss below: TRL can only mask user
+    # turns if the template marks assistant spans with a {% generation %}
+    # block, and none of our base checkpoints were saved with one.
+    if template_file := model_cfg.get('chat_template_file'):
+        # Relative paths resolve against the working directory, the same as
+        # base_model does, because runs are launched from their config dir.
+        path = Path(template_file)
+        if not path.is_file():
+            raise FileNotFoundError(f'chat_template_file not found: {path}')
+        tokenizer.chat_template = path.read_text(encoding='utf-8')
+        accelerator.print(f'  Chat template: {path}')
+
     load_kwargs: Dict = {
         'dtype': torch.bfloat16 if BF16_SUPPORTED else torch.float16,
     }
@@ -438,12 +451,45 @@ def main():
 
     dl_workers = int(train_cfg.get('dataloader_num_workers', 4))
 
+    # ── Assistant-only loss ──────────────────────────────────────────────────
+    # Default on. TRL raises a fairly opaque error if the template lacks the
+    # marker, so check it here and say what to do about it.
+    assistant_only = train_cfg.get('assistant_only_loss', True)
+    if assistant_only:
+        template = tokenizer.chat_template or ''
+        if 'generation' not in template.replace('add_generation_prompt', ''):
+            raise ValueError(
+                'assistant_only_loss = true needs a chat template whose assistant\n'
+                'content is wrapped in {% generation %} ... {% endgeneration %}.\n'
+                f'The template from {cfg["model"]["base_model"]} has no such block.\n'
+                'Point [model] chat_template_file at tokenizers/t-v5/chat_template.jinja,\n'
+                'or set [training] assistant_only_loss = false to train on user turns too.'
+            )
+        accelerator.print('  Loss: assistant turns only (user turns are context, not targets)')
+    else:
+        accelerator.print('  Loss: ALL tokens, including user turns')
+
     sft_args = SFTConfig(
         # ── Output ───────────────────────────────────────────────────────────
         output_dir=output_dir,
         # ── SFT-specific ─────────────────────────────────────────────────────
         max_length=cfg['data'].get('max_seq_length', 2048),
         dataset_text_field=dataset_text_field,  # None → auto-detect "messages"
+        # Compute loss on assistant turns only. User turns stay in the context
+        # window, so the model still learns to READ them; they just stop being
+        # prediction targets.
+        #
+        # This matters more than it sounds. 41.5% of the gpt1900 user turns are
+        # modern casual English ("hey, i was reading this old story"), which is
+        # deliberate: real users write that way and the model has to understand
+        # it. With this False, which was TRL's default and what every run up to
+        # ft08 used, roughly 6.8% of the gradient budget went into teaching a
+        # pre-1900 model to WRITE modern chat English. Measured in
+        # research/NOTES-sft-register-asymmetry-2026-09-15.md.
+        #
+        # Requires a chat template with a {% generation %} block; see
+        # chat_template_file above and the check in main().
+        assistant_only_loss=assistant_only,
         packing=train_cfg.get('packing', False),
         packing_strategy=train_cfg.get('packing_strategy', 'bfd_split'),
         # Pad every batch up to a multiple of this. Set it equal to

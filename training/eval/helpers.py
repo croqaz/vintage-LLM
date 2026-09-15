@@ -193,9 +193,7 @@ def resolve_targets(targets: list[Path], include_checkpoints: bool = False) -> T
 
         # nanochat checkpoints carry no config.json, so they are discovered by
         # their own (model_N.pt, meta_N.json) pair instead.
-        if nanochat.is_nanochat_checkpoint(target):
-            candidates = [target]
-        elif (target / 'config.json').is_file():
+        if nanochat.is_nanochat_checkpoint(target) or (target / 'config.json').is_file():
             candidates = [target]
         elif (target / 'final' / 'config.json').is_file():
             candidates = [target / 'final']
@@ -254,9 +252,7 @@ def resolve_tokenizer(ckpt: Path, explicit: Path | None = None, checkpoints_dir:
     for candidate in candidates:
         if any((candidate / name).is_file() for name in marker_files):
             return candidate
-    raise FileNotFoundError(
-        f'no tokenizer files ({", ".join(marker_files)}) found near {ckpt}; pass --tokenizer DIR'
-    )
+    raise FileNotFoundError(f'no tokenizer files ({", ".join(marker_files)}) found near {ckpt}; pass --tokenizer DIR')
 
 
 def model_fingerprint(checkpoint: Path, tok_path: Path) -> str:

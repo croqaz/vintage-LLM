@@ -349,6 +349,30 @@ def test_hist_llm_end_to_end_with_stub():
     assert biased['unparsed_rate']['hist_llm'] == 0.0
 
 
+def test_checkpoint_fingerprint_hashes_weights_and_config():
+    """Weight and config files are hashed with both digests; other files are skipped."""
+    import hashlib
+    import tempfile
+
+    from vintage_core.local import checkpoint_fingerprint
+
+    with tempfile.TemporaryDirectory() as d:
+        blob = b'vintage' * 1000
+        with open(os.path.join(d, 'model.safetensors'), 'wb') as f:
+            f.write(blob)
+        with open(os.path.join(d, 'config.json'), 'w') as f:
+            f.write('{}')
+        with open(os.path.join(d, 'train.log'), 'w') as f:
+            f.write('noise')
+        fp = checkpoint_fingerprint(d, chunk_size=1000)
+        assert fp['path'] == os.path.abspath(d)
+        assert sorted(fp['files']) == ['config.json', 'model.safetensors']
+        w = fp['files']['model.safetensors']
+        assert w['bytes'] == len(blob)
+        assert w['md5'] == hashlib.md5(blob).hexdigest()
+        assert w['sha256'] == hashlib.sha256(blob).hexdigest()
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     for fn in fns:

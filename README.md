@@ -24,6 +24,7 @@ The models themselves are deliberately tiny, which keeps the whole project appro
 
 ## Articles
 
+- https://crlf.link/log/entries/260911-1 -- Making a vintage LLM from scratch; Take #2
 - https://crlf.link/log/entries/260525-1 -- Making a vintage LLM from scratch
 - https://crlf.link/log/entries/260428-1 -- A full list of Vintage LLM models
 

@@ -63,6 +63,14 @@ probe carries a `followup`, and the model's OWN first reply becomes the
 context; feeding it a scripted reply would test something easier than what a
 person does. Greedy by default so runs compare.
 
+Probes get corrected when a flaw is found, so every run records the probe
+file's path and sha256. `fact_capital_italy` accepted only Rome until
+2026-09-15, which marked a period-correct Turin as wrong: the Kingdom of Italy
+moved its capital from Turin (1861) to Florence (1865) to Rome (1871), all
+inside the period our corpus covers. It now accepts all three. Numbers
+published before that date used the strict version; compare `probes_sha256`
+before comparing scores.
+
 `--only-tags` and `--exclude-tags` select a subset. `fact` is separated from
 the rest on purpose: knowing the capital of Spain is a size and corpus
 question, not an instruction-following one, so a capability run passes
@@ -110,6 +118,27 @@ average: **always right** is the model you can rely on, **never right** is
 genuine inability, and **sometimes right** is the band where one unlucky seed
 misrepresents the model. `retry_premium` is how much better the model looks to
 someone who asks twice than to someone who asks once.
+
+### Repetition penalty
+
+`--repetition-penalty` defaults to **1.0**, meaning off, in both the main
+evaluator and `chat_eval`. Looping is a property of the model, and a penalty
+hides it: at 1.1 the `looping_rate` column collapses toward zero for
+everything and stops telling you anything.
+
+But 1.1 is the llama.cpp and ollama default, so it is the condition a person
+deploying the model is actually in. Neither number answers the question
+alone. Run both and read the gap:
+
+- 8% looping at 1.0 falling to 1% at 1.1 is a model that was fine already.
+- 45% falling to 3% is a model that is only usable because of the sampler.
+  That is a training result, not a sampler setting, and the 1.1-only view
+  hides it completely.
+
+For small models there is a cost on the other side. A penalty applies to every
+repeated token, including the ones period prose legitimately repeats, so
+expect some loss of register alongside the smoother output. Whether that trade
+is worth making should be a decision, not an inherited default.
 
 ### Models that need help
 
@@ -179,6 +208,44 @@ the vocabulary. A wrong dialect does not raise; it feeds the model a prompt it
 was never trained on and quietly lowers the score, which is why this is
 detected rather than assumed.
 
+## The leaderboard
+
+Every report opens with `### Prose BPB leaderboard`, because the first thing
+anyone wants is a rough sense of where a checkpoint sits. It is one table, and
+it only works if it stays one table.
+
+It used to be two. The reference points were hard coded in `report.py` from a
+2026-08-23 run scored on `heldout-Sprocket-n-Say.jsonl`; when the default
+held-out moved to `heldout-Piston-n-Prose.jsonl` the renderer noticed the
+mismatch and split them into a comparable half and an incomparable half.
+Correct, and impossible to read.
+
+Now the rows are measured rather than recorded. `leaderboard.py` owns
+`eval_data/leaderboard.json`, each entry carries the held-out hash it was
+scored against, and the report shows only the entries matching the current run
+and says how many it hid. A row that cannot be ranked is counted in the
+caption, never printed beside one that can.
+
+```bash
+python -m eval --update-leaderboard MODELS Llama-141M/final-anneal-3h
+```
+
+That reads existing `eval-*.json` files, loads no models and touches no GPU.
+Measurements are overwritten every refresh; the curated fields `display`,
+`kind`, `origin` and `note` are written by hand and survive.
+
+The table carries `modern/hist`, the modern-probe BPB over the historical one.
+Above 1 means the model finds period text easier than modern text, which is
+what a vintage model should do. At or below 1 it is more at home in modern
+English whatever its prose BPB says. That column is the reason it is worth
+having: MonadGPT has the best prose BPB in the current table at 0.83172 and a
+ratio of 0.82, which is its OpenHermes-Mistral base showing through. Prose BPB
+alone would have ranked it first.
+
+The retired pre-v1 figures are in `eval_data/leaderboard-legacy.json`. They
+were produced by a different evaluator on a different corpus and are kept for
+provenance only. Re-run those models to put them back on the live table.
+
 ## Names and units
 
 | Key or family | What it measures |
@@ -200,6 +267,27 @@ detected rather than assumed.
 Fractions are 0–1 in JSON; Markdown may display percentages. Missing/non-finite
 numbers serialize as `null`, never as zero. Per-document totals, all generation
 aggregates, comparison intervals and probe BPBs are also in the flat summaries.
+
+## Embedding geometry
+
+The evaluator records how much of its embedding space a model actually uses.
+`embedding_mean_cosine` alone is misleading: nearly every transformer carries a
+large shared offset vector that every token includes, and subtracting it sends
+the cosine to zero, so a high raw value mostly measures that benign offset.
+`embedding_mean_cosine_centered` is reported beside it for exactly that reason.
+
+`embedding_effective_dims` is the participation ratio of the centred covariance
+spectrum, meaning the number of independent directions carrying per-token
+signal. A stock Llama at initialisation measures about 750 of 768. Well below
+that means the vocabulary has been squeezed into a narrow subspace and tokens
+are forced to resemble one another.
+
+`embedding_residual_norm` is the mean length after removing the shared offset.
+Compare it against the initialisation scale, `0.02 * sqrt(width)` for a stock
+Llama, to see whether training grew the per-token part or let it shrink.
+
+Measured on our own models, same tokenizer and corpus, different recipes:
+Llama-75M ends at 467 of 768, Llama-141M at 30. Both start at 750.
 
 ## Surface flags
 

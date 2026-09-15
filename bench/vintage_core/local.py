@@ -31,6 +31,41 @@ from .client import Capabilities
 _LSM_CHUNK = 512
 
 
+WEIGHT_SUFFIXES = ('.safetensors', '.bin', '.pt', '.pth', '.gguf')
+FINGERPRINT_EXTRA = ('config.json', 'generation_config.json', 'tokenizer.json', 'tokenizer_config.json')
+
+
+def checkpoint_fingerprint(model_path, chunk_size=8 * 1024 * 1024):
+    """MD5 and SHA-256 of a checkpoint directory's weight and config files.
+
+    Records which bytes were scored, so two runs can be matched to the same
+    model even after the folder is moved or renamed. One streaming pass per
+    file feeds both digests; a 1 GB checkpoint takes a few seconds.
+    """
+    import hashlib
+
+    root = os.path.abspath(model_path)
+    files = {}
+    if os.path.isdir(root):
+        names = sorted(n for n in os.listdir(root) if n.endswith(WEIGHT_SUFFIXES) or n in FINGERPRINT_EXTRA)
+    else:
+        root, name = os.path.split(root)
+        names = [name]
+    for name in names:
+        full = os.path.join(root, name)
+        if not os.path.isfile(full):
+            continue
+        md5, sha = hashlib.md5(), hashlib.sha256()
+        size = 0
+        with open(full, 'rb') as fh:
+            for chunk in iter(lambda: fh.read(chunk_size), b''):
+                md5.update(chunk)
+                sha.update(chunk)
+                size += len(chunk)
+        files[name] = {'bytes': size, 'md5': md5.hexdigest(), 'sha256': sha.hexdigest()}
+    return {'path': root, 'files': files}
+
+
 class LocalClient:
     """Drop-in local replacement for APIClient, backed by transformers."""
 
@@ -68,6 +103,17 @@ class LocalClient:
         # One-entry prefix cache shared by consecutive prompt_logprobs calls:
         # {'ids': [...], 'entries': [...], 'past': DynamicCache}
         self._plp_cache = None
+
+    # -- identity --------------------------------------------------------------
+    def fingerprint(self):
+        """Checkpoint hashes plus the run settings that change the numbers."""
+        if getattr(self, '_fingerprint', None) is None:
+            fp = checkpoint_fingerprint(self.model_path)
+            fp['max_context'] = self.max_context
+            fp['device'] = str(self.device)
+            fp['dtype'] = str(next(self.model.parameters()).dtype).replace('torch.', '')
+            self._fingerprint = fp
+        return self._fingerprint
 
     # -- probing -------------------------------------------------------------
     def probe(self):

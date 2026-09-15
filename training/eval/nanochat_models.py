@@ -113,6 +113,7 @@ def resolve_nanochat_tokenizer(ckpt: Path, explicit: Path | None = None) -> Path
     per run, and two 32,768-entry vocabularies built from different corpora
     disagree on almost every id.
     """
+
     def holds_a_vocabulary(directory: Path) -> bool:
         return (directory / 'tokenizer.pkl').is_file() or (directory / 'tokenizer.json').is_file()
 

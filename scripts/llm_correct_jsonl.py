@@ -13,7 +13,7 @@ import time
 
 import requests
 
-SYSTEM_PROMPT = """You are a helpful assistant that corrects badly scanned OCR text from old newspaper archives, year 1800.
+SYSTEM_PROMPT_TEMPLATE = """You are a helpful assistant that corrects badly scanned OCR text from old newspaper archives, year {year}.
 Your task is to correct scanning errors and typos.
 Don't judge, don't add any extra commentary or explanations.
 Do NOT alter the original meaning, tone, or style, this text is a historical document and MUST be preserved!
@@ -29,7 +29,12 @@ Printed publications attacking private character, is considered with great reaso
 """
 
 
-def correct_text_batch(chunk, url, api_key=None, model=None, delay=0):
+def system_prompt_for(year=None):
+    """System prompt with the publication year filled in (default 1800 keeps the historical behaviour)."""
+    return SYSTEM_PROMPT_TEMPLATE.format(year=year or 1800)
+
+
+def correct_text_batch(chunk, url, api_key=None, model=None, delay=0, year=None):
     if delay:
         if delay > 1:
             sign = random.choice([-1, 1])
@@ -44,7 +49,7 @@ def correct_text_batch(chunk, url, api_key=None, model=None, delay=0):
 
     data = {
         'messages': [
-            {'role': 'system', 'content': SYSTEM_PROMPT},
+            {'role': 'system', 'content': system_prompt_for(year)},
             {'role': 'user', 'content': f'Correct the following OCR text:\n\n{chunk}'},
         ],
         'temperature': 0.1,
@@ -66,9 +71,9 @@ def correct_text_batch(chunk, url, api_key=None, model=None, delay=0):
         print(f'LLM response: {response.text[:1000]}')
 
 
-def correct_text(text, url, key_cycle, model=None, delay=0):
+def correct_text(text, url, key_cycle, model=None, delay=0, year=None):
     api_key = next(key_cycle) if key_cycle is not None else None
-    return correct_text_batch(text, url, api_key=api_key, model=model, delay=delay)
+    return correct_text_batch(text, url, api_key=api_key, model=model, delay=delay, year=year)
 
 
 def load_processed_keys(output_file):
@@ -111,6 +116,12 @@ def main():
     parser.add_argument('--model', help='(Optional) Model name to use, e.g. "gemini-2.5-flash" or "gpt-4o-mini"')
     parser.add_argument(
         '--delay', type=float, default=0, help='Seconds to wait before each API call (e.g. 10 to call at most once per 10 s).'
+    )
+    parser.add_argument(
+        '--year',
+        type=int,
+        default=None,
+        help='Publication year to state in the system prompt. Default: each entry\'s own "year" field if present, else 1800.',
     )
 
     args = parser.parse_args()
@@ -171,7 +182,8 @@ def main():
                 f'  Input  first/last word: {repr(orig_words[0]) if orig_words else "(empty)"} / {repr(orig_words[-1]) if orig_words else "(empty)"}'
             )
 
-            corrected = correct_text(original_text, args.api_url, key_cycle=key_cycle, model=args.model, delay=args.delay)
+            year = args.year or entry.get('year')
+            corrected = correct_text(original_text, args.api_url, key_cycle=key_cycle, model=args.model, delay=args.delay, year=year)
             if not corrected:
                 print(f'  No correction returned, skipping entry {line_num}.')
                 continue

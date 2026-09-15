@@ -44,9 +44,11 @@ sampled run against a greedy one.
 """
 
 import argparse
+import hashlib
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 import torch
@@ -54,7 +56,8 @@ import torch
 if __package__ in (None, ''):  # allow running the file directly, not just -m
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from eval.helpers import (  # noqa: E402
+from eval import metrics as M
+from eval.helpers import (
     DEFAULT_HELDOUT,
     EVAL_DATA,
     free_model,
@@ -62,7 +65,7 @@ from eval.helpers import (  # noqa: E402
     load_text_items,
     resolve_tokenizer,
 )
-from eval import metrics as M  # noqa: E402
+from eval.leaderboard import name_for_checkpoint
 
 DEFAULT_PROBES = EVAL_DATA / 'chat_probes.jsonl'
 SENT_END = re.compile(r'[.!?]["\')\]]*\s*$')
@@ -168,7 +171,20 @@ def run_checks(text, checks):
 # ============================================================================
 
 
-def generate_replies(tokenizer, model, probes, max_new_tokens, sample, temperature, top_p, seed, reply_after=None, repeat=1):
+def generate_replies(
+    tokenizer,
+    model,
+    probes,
+    max_new_tokens,
+    sample,
+    temperature,
+    top_p,
+    seed,
+    reply_after=None,
+    repeat=1,
+    repetition_penalty=1.0,
+    on_probe=None,
+):
     """One reply per probe, chat template applied, EOS NEVER forced.
 
     min_new_tokens is deliberately absent. The whole point is to find out
@@ -187,7 +203,11 @@ def generate_replies(tokenizer, model, probes, max_new_tokens, sample, temperatu
         text = tokenizer.apply_chat_template(history, tokenize=False, add_generation_prompt=True)
         enc = tokenizer(text, return_tensors='pt', add_special_tokens=False).to(model.device)
         n_in = enc.input_ids.shape[1]
-        kw = dict(max_new_tokens=max_new_tokens, pad_token_id=pad_id, use_cache=True)
+        # Default 1.0, i.e. OFF, because looping is a property of the model and
+        # a penalty hides it. llama.cpp and ollama ship 1.1, so a run at 1.1 is
+        # the deployment condition; the DIFFERENCE between the two is the
+        # number worth having, and neither run gives it alone.
+        kw = dict(max_new_tokens=max_new_tokens, pad_token_id=pad_id, use_cache=True, repetition_penalty=repetition_penalty)
         if sample:
             torch.manual_seed(run_seed)
             if model.device.type == 'cuda':
@@ -241,26 +261,41 @@ def generate_replies(tokenizer, model, probes, max_new_tokens, sample, temperatu
         }
 
     out = []
-    for p in probes:
+    for index, p in enumerate(probes, 1):
         # Seeds are seed, seed+1, ... so a repeat run is reproducible while
         # still being a different draw each time, which is what a person gets.
         attempts = [one_attempt(p, seed + i) for i in range(repeat)]
+        if on_probe is not None:
+            on_probe(index, len(probes))
         if repeat == 1:
             out.append(attempts[0])
             continue
         passed = [bool(a['checks']) and all(c['passed'] for c in a['checks']) for a in attempts]
         # The representative row is the FIRST draw, not the best one. Picking
         # the best would report the model a lucky user meets, which is the
-        # illusion this whole mode exists to dispel.
+        # illusion this whole mode exists to dispel. Every draw is kept in
+        # `attempts` so the summary can be computed over all of them.
         row = dict(attempts[0])
-        row['attempts'] = [
-            {'seed': a['seed'], 'reply': a['reply'], 'stopped': a['stopped'], 'passed': ok} for a, ok in zip(attempts, passed, strict=True)
-        ]
+        row['attempts'] = attempts
         row['n_attempts'] = repeat
         row['n_passed'] = sum(passed) if any(a['checks'] for a in attempts) else None
         row['stop_count'] = sum(a['stopped'] for a in attempts)
         out.append(row)
     return out
+
+
+def every_draw(rows):
+    """Flatten probe rows into one record per generated reply.
+
+    Behaviour summaries must be computed over every draw, not over the first
+    one. A model that loops on three tries in ten is a model that loops, and
+    scoring only the first draw would report it as clean or as broken
+    depending on nothing but the seed.
+    """
+    flat = []
+    for row in rows:
+        flat.extend(row.get('attempts') or [row])
+    return flat
 
 
 # ============================================================================
@@ -468,7 +503,7 @@ def judge_vintage(judge_dir, tokenizer_override, device, dtype, samples, heldout
 
 def render_reliability_md(results):
     """The repeat-sampling table: what a person meets, not what one draw shows."""
-    L = ['# Reliability under repeated asking', '']
+    L = ['## Reliability under repeated asking', '']
     rel0 = next((r['reliability'] for r in results if r.get('reliability')), None)
     if rel0 is None:
         return ''
@@ -504,7 +539,10 @@ def render_reliability_md(results):
             seen = []
             for a in s['attempts']:
                 text = a['reply'].strip().replace('\n', ' / ').replace('|', '\\|')[:70]
-                seen.append(('OK ' if a['passed'] else 'x ') + text)
+                # `attempts` holds full sample records, so the verdict is
+                # recomputed from their checks rather than stored twice.
+                ok = bool(a['checks']) and all(c['passed'] for c in a['checks'])
+                seen.append(('OK ' if ok else 'x ') + text)
             L.append(f'| {s["id"]} | {s["n_passed"]}/{s["n_attempts"]} | ' + '<br>'.join(seen) + ' |')
         L.append('')
     return '\n'.join(L)
@@ -512,10 +550,25 @@ def render_reliability_md(results):
 
 def render_md(results):
     L = ['# Chat-behaviour evaluation', '']
-    L += ['Generated text, not likelihood. Greedy unless a run says otherwise.', '']
-    if any(r.get('reliability') for r in results):
-        L += [render_reliability_md(results), '']
-        return '\n'.join(L)
+    repeats = next((r.get('repeat') for r in results if r.get('repeat')), 1)
+    penalty = next((r.get('repetition_penalty') for r in results if r.get('repetition_penalty')), 1.0)
+    L += ['Generated text, not likelihood. Greedy, one draw per probe.']
+    if repeats > 1:
+        L[-1] = (
+            f'Generated text, not likelihood. Every probe asked {repeats} times at the run temperature; '
+            'the rates below are over ALL draws, which is what a person meets. Greedy decoding is NOT '
+            'used: it sends several of these models into repetition loops they never show under sampling, '
+            'so a greedy ranking is reproducible and wrong.'
+        )
+    L += [
+        f'Repetition penalty {penalty:.2f}'
+        + (
+            '. 1.0 means OFF, so looping stays visible; it is a property of the model.'
+            if penalty == 1.0
+            else ', the llama.cpp/ollama default, so this is the deployment condition rather than the model alone.'
+        ),
+        '',
+    ]
     L += [
         '| model | capability | stop | checks | multi-turn | loops | leak | self-talk | unterm | judge dev |',
         '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|',
@@ -550,6 +603,9 @@ def render_md(results):
         'writing, not modern writing.',
         '',
     ]
+    if any(r.get('reliability') for r in results):
+        L += ['', render_reliability_md(results), '']
+
     for r in results:
         L += [f'## {r["label"]}', '']
         parts = r['summary'].get('chat_capability_parts') or {}
@@ -564,12 +620,37 @@ def render_md(results):
             ok = '' if not s['checks'] else ('pass' if all(c['passed'] for c in s['checks']) else 'FAIL')
             body = s['reply'].strip().replace('\n', ' / ').replace('|', '\\|')
             turns = '' if s.get('turns', 1) == 1 else f' (turn {s["turns"]})'
+            if s.get('n_passed') is not None:
+                ok = f'{s["n_passed"]}/{s["n_attempts"]}'
             L.append(
                 f'| {s["id"]}{turns} | {"y" if s["stopped"] else "NO"} | {s["new_tokens"]} | '
                 f'{s.get("repetition", 0.0):.2f} | {ok} | {body[:160]} |'
             )
         L.append('')
     return '\n'.join(L)
+
+
+def warn_if_base(path):
+    """Say so when a checkpoint's own metadata calls it a base model.
+
+    `tokenizer.chat_template is not None` is not a base/chat signal for
+    nanochat: every nanochat tokenizer carries <|assistant_start|> whether or
+    not the weights were ever fine-tuned on conversations. So a base model
+    sails straight through the template check and produces a full set of
+    plausible, meaningless chat scores. Scoring a base model on purpose is a
+    useful control, which is why this warns instead of refusing.
+    """
+    from .nanochat_models import is_nanochat_checkpoint, nanochat_stage, read_meta
+
+    path = Path(path)
+    if not is_nanochat_checkpoint(path):
+        return
+    if nanochat_stage(read_meta(path)) == 'base':
+        print(
+            f'  WARNING: {path.name} records stage=base. Its tokenizer has chat markers because every '
+            'nanochat tokenizer does, not because the weights were tuned for conversation. Treat the '
+            'scores as a base-model control, not as chat capability.'
+        )
 
 
 def main():
@@ -602,6 +683,14 @@ def main():
     )
     p.add_argument('--temperature', type=float, default=0.8)
     p.add_argument('--top-p', type=float, default=0.95)
+    p.add_argument(
+        '--repetition-penalty',
+        type=float,
+        default=1.0,
+        help='1.0 (default) measures the model: looping is a defect and a penalty hides it. '
+        '1.1 is the llama.cpp/ollama default and measures the deployment condition. Run both and '
+        'compare: a model that only stops looping at 1.1 is leaning on the sampler.',
+    )
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--device', default='auto')
     p.add_argument('--out', type=Path, default=None)
@@ -620,6 +709,7 @@ def main():
         probes = [p for p in probes if p['tag'] not in drop]
         if not probes:
             raise SystemExit(f'every probe in {a.probes} was excluded by {sorted(drop)}')
+    probes_hash = hashlib.sha256(a.probes.read_bytes()).hexdigest()
     if a.repeat < 1:
         raise SystemExit('--repeat must be at least 1')
     if a.repeat > 1 and not a.sample:
@@ -632,42 +722,79 @@ def main():
     dtype = torch.bfloat16 if device.type == 'cuda' else torch.float32
     heldout = [t.text for t in load_text_items(a.heldout, 100)] if a.heldout.exists() else []
 
+    out = a.out or Path('chat_eval.json')
+
+    def save(results):
+        """Write after every model.
+
+        A nine-model sampled run is over an hour of generation. Writing once at
+        the end means an interrupt at minute eighty loses all of it, which
+        happened often enough to be worth these four lines.
+        """
+        out.write_text(json.dumps({'results': results}, indent=2))
+        out.with_suffix('.md').write_text(render_md(results))
+
     results = []
-    for mpath in a.models:
+    for position, mpath in enumerate(a.models, 1):
+        warn_if_base(mpath)
         tok_dir = resolve_tokenizer(mpath, a.tokenizer)
-        print(f'loading {mpath} ...')
+        started = time.time()
+        print(f'[{position}/{len(a.models)}] loading {mpath} ...', flush=True)
         model, tokenizer = load_model_and_tokenizer(mpath, tok_dir, device, dtype)
         # Training configs ship use_cache=false; generation wants it on.
         model.config.use_cache = True
+
+        def progress(done, total, _started=started):
+            elapsed = time.time() - _started
+            eta = (elapsed / done) * (total - done)
+            end = '\n' if done == total else ''
+            print(f'\r  probe {done}/{total}  {elapsed / 60:.1f}m elapsed, ~{eta / 60:.1f}m left ', end=end, flush=True)
+
         try:
             samples = generate_replies(
-                tokenizer, model, probes, a.max_new_tokens, a.sample, a.temperature, a.top_p, a.seed, a.reply_after, a.repeat
+                tokenizer,
+                model,
+                probes,
+                a.max_new_tokens,
+                a.sample,
+                a.temperature,
+                a.top_p,
+                a.seed,
+                a.reply_after,
+                a.repeat,
+                a.repetition_penalty,
+                progress,
             )
         finally:
             free_model(model, device)
-        base_summary = score(samples)
+        # Summaries read every draw; reliability reads the per-probe rows.
+        base_summary = score(every_draw(samples))
         r = {
-            'label': mpath.parent.parent.name if mpath.name in ('final', 'final_merged') else mpath.name,
+            'label': name_for_checkpoint(mpath),
             'checkpoint': str(mpath.resolve()),
             'decoding': 'sample' if a.sample else 'greedy',
             'reply_after': a.reply_after,
+            'probes': str(a.probes),
+            # The probe file is edited as flaws are found. `fact_capital_italy`
+            # accepted only Rome until 2026-09-15, which marked a period-correct
+            # Turin as wrong. Recording the hash is how a reader tells which
+            # version produced a number instead of assuming.
+            'probes_sha256': probes_hash,
             'repeat': a.repeat,
+            'repetition_penalty': a.repetition_penalty,
             'n_probes': len(probes),
             'probe_tags': sorted({p['tag'] for p in probes}),
             'temperature': a.temperature if a.sample else None,
             'seed': a.seed,
             'max_new_tokens': a.max_new_tokens,
             'samples': samples,
-            # chat_capability is deliberately absent from a repeat run. It would be
-            # computed from the first draw of a probe SUBSET, which is neither the
-            # capability question nor the reliability one, and having the number
-            # sitting in the JSON is an invitation to quote it.
-            'summary': {**base_summary, **({} if a.repeat > 1 else chat_capability(base_summary, samples))},
+            'summary': {**base_summary, **chat_capability(base_summary, every_draw(samples))},
             'reliability': reliability(samples),
         }
         if a.judge and heldout:
             r['vintage'] = judge_vintage(a.judge, a.tokenizer, device, dtype, samples, heldout)
         results.append(r)
+        save(results)
         s = r['summary']
         cpr = s['check_pass_rate']
         cpr_s = 'n/a' if cpr is None else f'{cpr:.0%}'
@@ -685,9 +812,7 @@ def main():
                 f'leak {s["token_leak_rate"]:.0%}, checks {cpr_s}, loops {s["looping_rate"]:.0%}'
             )
 
-    out = a.out or Path('chat_eval.json')
-    out.write_text(json.dumps({'results': results}, indent=2))
-    out.with_suffix('.md').write_text(render_md(results))
+    save(results)
     print(f'JSON: {out}\nMD:   {out.with_suffix(".md")}')
     return 0
 

@@ -1,0 +1,15 @@
+{%- for message in messages -%}
+  {%- if message['role'] == 'assistant' -%}
+    {{- bos_token + '<|assistant|>\n' -}}
+    {%- generation -%}
+      {{- message['content'].strip() + eos_token -}}
+    {%- endgeneration -%}
+    {{- '\n' -}}
+  {%- else -%}
+    {{- bos_token + '<|' + message['role'] + '|>\n' + message['content'].strip() + eos_token + '\n' -}}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- if add_generation_prompt -%}
+  {{- bos_token + '<|assistant|>\n' -}}
+{%- endif -%}

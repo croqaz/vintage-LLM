@@ -61,9 +61,7 @@ def plot_trainer_metrics(json_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot loss and learning rate from a trainer_state.json file')
-    parser.add_argument(
-        '--input', type=str, help='Path to the trainer_state.json file'
-    )
+    parser.add_argument('--input', type=str, help='Path to the trainer_state.json file')
     args = parser.parse_args()
 
     plot_trainer_metrics(args.input)

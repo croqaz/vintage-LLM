@@ -161,33 +161,6 @@ class MeasurementReportTests(unittest.TestCase):
         self.assertIn('/run/recipe\\.toml', markdown)
         self.assertIn('Generation chat template applied: no', markdown)
 
-    def test_reference_points_are_descriptive_and_do_not_affect_scores(self):
-        result = {
-            'params_millions': 77.08,
-            'summary': {'prose_bpb': 1.51552, 'prose_uniform_token_bpb': 3.51201, 'bake_score': 25.4},
-            'evaluation_settings': {'heldout_sha256': R.REFERENCE_PROSE_SHA256},
-        }
-        before = copy.deepcopy(result)
-        markdown = '\n'.join(R.render_reference_section(result))
-        self.assertIn('| **This checkpoint** | 77.08 | **1.51552** | this run |', markdown)
-        self.assertIn('Uniform-token baseline | — | 3.51201', markdown)
-        self.assertIn('| Talkie-1930-13b | 13280 | 0.91380 | recorded INT8 |', markdown)
-        self.assertIn('source-file hash matches this run', markdown)
-        self.assertIn('not a validated ranking', markdown)
-        self.assertIn('not an evaluated untrained network', markdown)
-        self.assertIn('do not affect the composite', markdown)
-        # A matching source file is the ONLY case that earns one shared table.
-        self.assertNotIn('NOT comparable', markdown)
-        self.assertEqual(result, before)
-        missing = '\n'.join(R.render_reference_section({}))
-        self.assertIn('| **This checkpoint** | — | **—** | this run |', missing)
-        self.assertIn('source-file hash differs from or is unrecorded', missing)
-        self.assertIn('NOT comparable to the table above', missing)
-        self.assertEqual(len(R.PROSE_REFERENCES), 7)
-        for name, _, _, _ in R.PROSE_REFERENCES:
-            self.assertEqual(markdown.count(f'| {name} |'), 1)
-            self.assertEqual(missing.count(f'| {name} |'), 1)
-
     def _reference_tables(self, markdown):
         """Rows of each rendered table, in order, without the header rows."""
         tables, rows = [], None
@@ -203,48 +176,79 @@ class MeasurementReportTests(unittest.TestCase):
                 rows = None
         return tables
 
-    def test_reference_points_sort_checkpoint_and_baseline_with_all_models(self):
+    def _leaderboard(self, result, peers=(), hidden=0):
+        """Render the section against a fixed leaderboard instead of the real file."""
+        original = R.entries_for
+        R.entries_for = lambda h: (list(peers), hidden)
+        try:
+            return '\n'.join(R.render_reference_section(result))
+        finally:
+            R.entries_for = original
+
+    def test_the_leaderboard_is_descriptive_and_does_not_affect_scores(self):
+        result = {
+            'params_millions': 77.08,
+            'summary': {'prose_bpb': 1.51552, 'prose_uniform_token_bpb': 3.51201, 'bake_score': 25.4},
+            'evaluation_settings': {'heldout_sha256': 'abc'},
+        }
+        before = copy.deepcopy(result)
+        peers = [{'name': 'peer', 'display': 'A Peer', 'params_millions': 340, 'prose_bpb': 1.11899, 'note': 'BF16'}]
+        markdown = self._leaderboard(result, peers)
+        self.assertIn('| **This checkpoint** | 77.08 | **1.51552** |', markdown)
+        self.assertIn('Uniform-token baseline | — | 3.51201', markdown)
+        self.assertIn('| A Peer | 340 | 1.11899 |', markdown)
+        self.assertIn('not an evaluated untrained network', markdown)
+        self.assertIn('do not affect the composite', markdown)
+        self.assertEqual(result, before)
+
+    def test_an_empty_result_still_renders_one_table(self):
+        missing = self._leaderboard({})
+        self.assertIn('| **This checkpoint** | — | **—** |', missing)
+        self.assertEqual(len(self._reference_tables(missing)), 1)
+        self.assertNotIn('NOT comparable', missing)
+
+    def test_the_leaderboard_sorts_the_checkpoint_and_baseline_among_the_peers(self):
+        peers = [
+            {'name': 'high', 'display': 'High', 'params_millions': 7240.0, 'prose_bpb': 1.44380},
+            {'name': 'low', 'display': 'Low', 'params_millions': 152.0, 'prose_bpb': 1.36439},
+        ]
         for bpb in (4.0, 1.4, 0.8, None, float('nan'), float('inf')):
             with self.subTest(bpb=bpb):
                 result = {
                     'summary': {'prose_bpb': bpb, 'prose_uniform_token_bpb': 3.5},
-                    'evaluation_settings': {'heldout_sha256': R.REFERENCE_PROSE_SHA256},
+                    'evaluation_settings': {'heldout_sha256': 'abc'},
                 }
-                markdown = '\n'.join(R.render_reference_section(result))
+                markdown = self._leaderboard(result, peers)
                 (table,) = self._reference_tables(markdown)
                 values = [line.split('|')[3].strip().strip('*') for line in table]
                 finite = [float(value) for value in values if value != '—']
                 self.assertEqual(finite, sorted(finite, reverse=True))
-                self.assertEqual(len(table), 9)
+                self.assertEqual(len(table), 4)
                 if not M.is_finite(bpb):
                     self.assertIn('**This checkpoint**', table[-1])
                 elif bpb == 1.4:
-                    self.assertLess(markdown.index('| TypeWriter-1913-7B-v1 |'), markdown.index('| **This checkpoint** |'))
-                    self.assertLess(markdown.index('| **This checkpoint** |'), markdown.index('| Violet-160m |'))
+                    self.assertLess(markdown.index('| High |'), markdown.index('| **This checkpoint** |'))
+                    self.assertLess(markdown.index('| **This checkpoint** |'), markdown.index('| Low |'))
+
+    def test_rendering_the_leaderboard_twice_gives_the_same_text(self):
         result = {
             'summary': {'prose_bpb': 1.36439, 'prose_uniform_token_bpb': None},
-            'evaluation_settings': {'heldout_sha256': R.REFERENCE_PROSE_SHA256},
+            'evaluation_settings': {'heldout_sha256': 'abc'},
         }
-        markdown = '\n'.join(R.render_reference_section(result))
-        self.assertEqual(markdown, '\n'.join(R.render_reference_section(result)))
-        self.assertLess(markdown.index('| **This checkpoint** |'), markdown.index('| Violet-160m |'))
-        self.assertLess(markdown.index('| Talkie-1930-13b |'), markdown.index('| Uniform-token baseline |'))
+        peers = [{'name': 'low', 'display': 'Low', 'params_millions': 152, 'prose_bpb': 1.11899}]
+        self.assertEqual(self._leaderboard(result, peers), self._leaderboard(result, peers))
 
-    def test_other_corpora_are_split_out_and_cannot_outrank_this_run(self):
+    def test_rows_from_another_corpus_are_counted_not_listed(self):
+        # The regression this section was rewritten for: a row scored elsewhere
+        # must never appear beside one that can be ranked, whatever its number.
         result = {'summary': {'prose_bpb': 1.36439, 'prose_uniform_token_bpb': 3.5}}
-        markdown = '\n'.join(R.render_reference_section(result))
-        run_table, other_table = self._reference_tables(markdown)
-        # This run and its own calculated baseline; nothing measured elsewhere.
-        self.assertEqual(len(run_table), 2)
-        self.assertIn('Uniform-token baseline', run_table[0])
-        self.assertIn('**This checkpoint**', run_table[1])
-        # Every named reference sits below the "not comparable" heading, still sorted.
-        self.assertEqual(len(other_table), len(R.PROSE_REFERENCES))
-        others = [float(line.split('|')[3].strip()) for line in other_table]
-        self.assertEqual(others, sorted(others, reverse=True))
-        self.assertLess(markdown.index('| **This checkpoint** |'), markdown.index('NOT comparable'))
-        # A reference with a LOWER bpb must not be rendered above this run.
-        self.assertLess(markdown.index('| **This checkpoint** |'), markdown.index('| Talkie-1930-13b |'))
+        markdown = self._leaderboard(result, peers=(), hidden=7)
+        (table,) = self._reference_tables(markdown)
+        self.assertEqual(len(table), 2)
+        self.assertIn('Uniform-token baseline', table[0])
+        self.assertIn('**This checkpoint**', table[1])
+        self.assertIn('7 further entries', markdown)
+        self.assertNotIn('NOT comparable', markdown)
 
     def test_composite_shows_the_actual_inputs_with_units(self):
         result = {

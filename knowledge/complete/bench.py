@@ -71,9 +71,20 @@ def run_level(api_url, model, seeds, concurrency, gen, timeout):
     t0 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=concurrency) as pool:
         futs = [
-            pool.submit(one_request, api_url, model, seeds[i], i,
-                        gen['max_tokens'], gen['temperature'], gen['top_p'],
-                        gen['top_k'], gen['min_p'], gen['rep_pen'], timeout)
+            pool.submit(
+                one_request,
+                api_url,
+                model,
+                seeds[i],
+                i,
+                gen['max_tokens'],
+                gen['temperature'],
+                gen['top_p'],
+                gen['top_k'],
+                gen['min_p'],
+                gen['rep_pen'],
+                timeout,
+            )
             for i in range(n)
         ]
         for f in as_completed(futs):
@@ -153,25 +164,39 @@ def main():
         print(f'[bench] warming up with {args.warmup} request(s) ...', file=sys.stderr)
         try:
             for i in range(args.warmup):
-                one_request(args.api_url, args.model, seeds[i % len(seeds)], i,
-                            gen['max_tokens'], gen['temperature'], gen['top_p'],
-                            gen['top_k'], gen['min_p'], gen['rep_pen'], args.timeout)
+                one_request(
+                    args.api_url,
+                    args.model,
+                    seeds[i % len(seeds)],
+                    i,
+                    gen['max_tokens'],
+                    gen['temperature'],
+                    gen['top_p'],
+                    gen['top_k'],
+                    gen['min_p'],
+                    gen['rep_pen'],
+                    args.timeout,
+                )
         except Exception as exc:  # noqa: BLE001
             print(f'[bench] warmup failed: {exc}', file=sys.stderr)
 
     out_fh = open(args.output, 'a', encoding='utf-8') if args.output else None
     levels = [int(x) for x in args.concurrency.split(',') if x.strip()]
-    print(f'[bench] label={args.label!r}  requests/level={args.limit}  '
-          f'max_tokens={args.max_tokens}  levels={levels}', file=sys.stderr)
-    print(f'{"conc":>5} {"reqs":>5} {"wall_s":>8} {"out_tok/s":>10} {"req/s":>7} '
-          f'{"mean_lat":>9} {"p95_lat":>8} {"tok/req":>8}', file=sys.stderr)
+    print(f'[bench] label={args.label!r}  requests/level={args.limit}  max_tokens={args.max_tokens}  levels={levels}', file=sys.stderr)
+    print(
+        f'{"conc":>5} {"reqs":>5} {"wall_s":>8} {"out_tok/s":>10} {"req/s":>7} {"mean_lat":>9} {"p95_lat":>8} {"tok/req":>8}',
+        file=sys.stderr,
+    )
     for c in levels:
         row = run_level(args.api_url, args.model, seeds, c, gen, args.timeout)
         row['label'] = args.label
-        print(f'{row["concurrency"]:>5} {row["ok"]:>5} {row["wall_s"]:>8} '
-              f'{row["output_tok_per_s"]:>10} {row["requests_per_s"]:>7} '
-              f'{row["mean_latency_s"]:>9} {row["p95_latency_s"]:>8} '
-              f'{row["mean_tok_per_req"]:>8}', file=sys.stderr)
+        print(
+            f'{row["concurrency"]:>5} {row["ok"]:>5} {row["wall_s"]:>8} '
+            f'{row["output_tok_per_s"]:>10} {row["requests_per_s"]:>7} '
+            f'{row["mean_latency_s"]:>9} {row["p95_latency_s"]:>8} '
+            f'{row["mean_tok_per_req"]:>8}',
+            file=sys.stderr,
+        )
         line = json.dumps(row, ensure_ascii=False)
         print(line)
         if out_fh:

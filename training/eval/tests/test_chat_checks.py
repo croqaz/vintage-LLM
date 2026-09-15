@@ -8,7 +8,8 @@ worse than no check, so every trap that bit us has a test.
 
 import unittest
 
-from eval.chat_eval import CHECKS, chat_capability, reliability, repetition_rate, run_checks, score
+from eval.chat_eval import CHECKS, chat_capability, every_draw, reliability, repetition_rate, run_checks, score
+from eval.leaderboard import name_for_checkpoint
 
 
 def passes(kind, text, value):
@@ -120,6 +121,68 @@ class ReliabilityBands(unittest.TestCase):
     def test_worst_probe_is_named(self):
         samples = self.make([10, 2, 8])
         self.assertEqual(reliability(samples)['worst_probe'], 'p1')
+
+
+class EveryDraw(unittest.TestCase):
+    """Summaries must be computed over all draws, never the first one.
+
+    Scoring the first draw only would report a model that loops three times in
+    ten as clean or as broken depending on nothing but the seed.
+    """
+
+    def row(self, replies, checks_pass):
+        attempts = [
+            {
+                'id': 'p',
+                'tag': 'length',
+                'reply': text,
+                'stopped': True,
+                'truncated': False,
+                'turns': 1,
+                'new_tokens': 10,
+                'repetition': repetition_rate(text),
+                'checks': [{'type': 'max_words', 'value': 5, 'passed': ok}],
+            }
+            for text, ok in zip(replies, checks_pass, strict=True)
+        ]
+        return {**attempts[0], 'attempts': attempts, 'n_attempts': len(attempts), 'n_passed': sum(checks_pass)}
+
+    def test_a_single_draw_row_is_passed_through_unchanged(self):
+        plain = {'id': 'p', 'reply': 'x', 'checks': []}
+        self.assertEqual(every_draw([plain]), [plain])
+
+    def test_flattening_returns_one_record_per_generated_reply(self):
+        rows = [self.row(['a', 'b', 'c'], [True, True, False])]
+        self.assertEqual(len(every_draw(rows)), 3)
+
+    def test_a_loop_on_a_later_draw_is_not_hidden_by_a_clean_first_draw(self):
+        clean = 'A market is a place of trade.'
+        loop = 'the cat sat on the mat ' * 6
+        rows = [self.row([clean, loop, loop], [True, True, True])]
+        over_all = score(every_draw(rows))
+        first_only = score([rows[0]])
+        self.assertGreater(over_all['looping_rate'], 0)
+        self.assertEqual(first_only['looping_rate'], 0)
+
+    def test_the_pass_rate_is_over_every_draw(self):
+        rows = [self.row(['a', 'b', 'c', 'd'], [True, False, False, False])]
+        self.assertAlmostEqual(score(every_draw(rows))['check_pass_rate'], 0.25)
+
+
+class Naming(unittest.TestCase):
+    """One model, one name, in every table.
+
+    chat_eval and the leaderboard used to derive names separately, so a
+    checkpoint under Bartholomew-sft/checkpoints/ was "Bartholomew-sft" in one
+    report and "checkpoints" in the other.
+    """
+
+    def test_a_weights_directory_is_not_a_model_name(self):
+        self.assertEqual(name_for_checkpoint('MODELS/Bartholomew-sft/checkpoints'), 'Bartholomew-sft')
+        self.assertEqual(name_for_checkpoint('x/attnonly-r16/sft_checkpoints/final'), 'attnonly-r16')
+
+    def test_an_ordinary_directory_keeps_its_name(self):
+        self.assertEqual(name_for_checkpoint('MODELS/Violet-1b4-chat'), 'Violet-1b4-chat')
 
 
 class Capability(unittest.TestCase):

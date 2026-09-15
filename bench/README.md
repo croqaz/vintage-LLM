@@ -148,6 +148,10 @@ resolves to the checkpoint's own chat template for generation mode. Notes:
 - The faithful MC scorer benefits from an internal KV prefix cache, so the
   per-candidate forward passes after the first are nearly free.
 - `use_cache` is forced on even if the checkpoint config disables it.
+- The summary JSON gains a `local_checkpoint` block: MD5 and SHA-256 of every
+  weight file plus `config.json`, `generation_config.json` and the tokenizer
+  files, with the `max_context`, device and dtype used. Two results with the
+  same hashes were scored on the same bytes, whatever the folder was called.
 
 The programmatic API mirrors this: `evaluate(local_path="checkpoints/checkpoint-xx", ...)`.
 

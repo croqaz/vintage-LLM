@@ -78,7 +78,38 @@ GUIDE = {
         caveat='Not a knowledge-cutoff or contamination test.',
     ),
     'embedding_mean_norm': _m('Mean L2 norm of all input-token embedding vectors.', 'norm'),
-    'embedding_mean_cosine': _m('Mean off-diagonal pairwise cosine among up to 512 seed-selected input embeddings.', 'cosine'),
+    'embedding_mean_cosine': _m(
+        'Mean off-diagonal pairwise cosine among seed-selected input embeddings.',
+        'cosine',
+        caveat='Dominated by the shared offset vector every token carries; compare embedding_mean_cosine_centered.',
+    ),
+    'embedding_mean_cosine_centered': _m(
+        'Mean pairwise cosine after subtracting the mean embedding.', 'cosine', caveat='Near zero for most models; the raw value is not.'
+    ),
+    'embedding_shared_vector_norm': _m('L2 norm of the mean embedding, the offset every token carries.', 'norm'),
+    'embedding_residual_norm': _m(
+        'Mean L2 norm after removing the shared offset.',
+        'norm',
+        caveat='Compare against the initialisation scale, 0.02*sqrt(width) for a stock Llama, to see whether training grew it.',
+    ),
+    'embedding_effective_dims': _m(
+        'Participation ratio of the centred embedding covariance spectrum: how many independent directions carry per-token signal.',
+        'dimensions',
+        caveat='A Llama at initialisation measures ~750 of 768. Far below that means the vocabulary shares a narrow subspace.',
+    ),
+    'embedding_effective_dims_fraction': _m('effective_dims divided by embedding width.', 'fraction'),
+    'embedding_effective_dims_excl_top1': _m(
+        'Participation ratio after discarding the single largest direction.',
+        'dimensions',
+        caveat='Read WITH effective_dims. A large gap means one fat axis, not a collapsed space.',
+    ),
+    'embedding_top_direction_share': _m(
+        'Share of centred embedding variance held by the single largest direction.',
+        'fraction',
+        caveat='Above ~0.10 it pins effective_dims near 1/share^2 and makes that metric unreadable alone.',
+    ),
+    'embedding_width': _m('Embedding dimension.', 'dimensions'),
+    'embedding_rows_sampled': _m('Embedding rows sampled for the geometry measurement.', 'count'),
     'sense_shift_mean_cosine': _m(
         'Mean cosine of the same words in paired historical/modern contexts.',
         'cosine',

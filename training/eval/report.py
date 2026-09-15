@@ -5,22 +5,16 @@ from __future__ import annotations
 from html import escape
 
 from .helpers import fmt, human_tokens
+from .leaderboard import entries_for
 from .metrics import SURFACE_REASONS, WEIGHTS, is_finite
 from .prompts import HISTORICAL_WORDS
 
-# Recorded reference runs: autoresearch/HANDOFF15.md, 2026-08-23.
-# Display context only: these aggregates lack matched scored-span/protocol records
-# and must never enter composite transforms or statistical comparison groups.
-REFERENCE_PROSE_SHA256 = '51b30a75d40a40d3499b3372ab08b87752b756dc6b4ebccad51f507c89765f00'
-PROSE_REFERENCES = (
-    ('TypeWriter-1913-7B-v1', 7240, 1.44380, 'BF16; chat-tuned; chat-target BPB 0.7128'),
-    ('Violet-160m', 152, 1.36439, 'BF16; GPT-NeoX; 1800–1899 training'),
-    ('TypeWriter-1913-7B-v2', 7240, 1.27043, 'BF16; chat-tuned; chat-target BPB 0.7068'),
-    ('TimeCapsule', 498.8, 1.19189, 'BF16; Llama; ~4.7B training tokens'),
-    ('Llama-77M-v1', 77, 1.16932, 'BF16; Llama; 16.7B training tokens / 80 h'),
-    ('vintage-LLM-340m', 340.8, 1.11899, 'BF16; Llama'),
-    ('Talkie-1930-13b', 13280, 0.91380, 'INT8'),
-)
+# The leaderboard is measured, not recorded. Entries live in
+# eval_data/leaderboard.json and each carries the held-out hash it was scored
+# against; see leaderboard.py for why that replaced a hard-coded table here.
+# The retired pre-v1 figures were scored on heldout-Sprocket-n-Say.jsonl and
+# have been deleted. They were never comparable to anything in the current
+# table; re-measure a model rather than looking for them.
 
 
 def _literal(text) -> str:
@@ -315,49 +309,77 @@ def render_bake_section(r: dict) -> list[str]:
 
 
 def render_reference_section(r: dict) -> list[str]:
-    """Reference points, kept in the same table only when the source file matches."""
-    s, settings = r.get('summary') or {}, r.get('evaluation_settings') or {}
-    matched = settings.get('heldout_sha256') == REFERENCE_PROSE_SHA256
-    source = 'matches this run' if matched else 'differs from or is unrecorded for this run'
+    """One leaderboard: this checkpoint among everything scored the same way.
+
+    Rows come from eval_data/leaderboard.json and only those scored on the
+    same held-out file are shown, so the column can be ranked honestly. A row
+    that cannot be compared is counted in the caption, never listed beside one
+    that can.
+    """
+    s = r.get('summary') or {}
+    settings = r.get('evaluation_settings') or {}
+    peers, hidden = entries_for(settings.get('heldout_sha256'))
+    this_name = (r.get('model_label') or r.get('name') or '').strip()
+
+    note = ''
+    if hidden:
+        note = (
+            f' {hidden} further entr{"y is" if hidden == 1 else "ies are"} on file but scored against a '
+            'different held-out set and therefore not shown; re-run them to add them.'
+        )
     L = [
-        '### Prose BPB reference points',
+        '### Prose BPB leaderboard',
         '',
-        'Highest BPB first; missing values last. Lower BPB means higher likelihood per byte, not better capabilities overall. '
-        'Named references are recorded scores on 200 documents; their source-file hash '
-        f'{source}. Exact scored spans and precision protocols are not verified as matched: reference context, not a validated ranking.',
+        'Every row below was scored by this code on the same held-out documents, so the column can be read '
+        'as a ranking. Lower BPB means higher likelihood per byte, which is retention of the training '
+        f'register, not overall capability.{note}',
         '',
-        '| model / baseline | params (M) | prose BPB | measurement / notes |',
-        '|---|---:|---:|---|',
+        '| model | params (M) | prose BPB | hist | modern | modern/hist | notes |',
+        '|---|---:|---:|---:|---:|---:|---|',
     ]
+
+    def ratio(hist, modern):
+        if is_finite(hist) and is_finite(modern) and hist:
+            return f'{modern / hist:.2f}'
+        return '\u2014'
+
     rows = [
-        (s.get('prose_bpb'), f'| **This checkpoint** | {fmt(r.get("params_millions"), 2)} | **{fmt(s.get("prose_bpb"), 5)}** | this run |'),
+        (
+            s.get('prose_bpb'),
+            f'| **This checkpoint** | {fmt(r.get("params_millions"), 2)} | **{fmt(s.get("prose_bpb"), 5)}** | '
+            f'{fmt(s.get("probe_historical_bpb"), 4)} | {fmt(s.get("probe_modern_bpb"), 4)} | '
+            f'{ratio(s.get("probe_historical_bpb"), s.get("probe_modern_bpb"))} | this run |',
+        ),
         (
             s.get('prose_uniform_token_bpb'),
-            f'| Uniform-token baseline | — | {fmt(s.get("prose_uniform_token_bpb"), 5)} | calculated for this tokenizer and scored text |',
+            f'| Uniform-token baseline | \u2014 | {fmt(s.get("prose_uniform_token_bpb"), 5)} | \u2014 | \u2014 | \u2014 | '
+            'calculated for this tokenizer and scored text |',
         ),
     ]
-    references = [(bpb, f'| {name} | {params:g} | {bpb:.5f} | recorded {notes} |') for name, params, bpb, notes in PROSE_REFERENCES]
-    # Scored on a different held-out file, so they are not one ranking. Keeping them
-    # in one sorted column reads as a scoreboard no matter what the caption says.
-    if matched:
-        rows += references
+    for e in peers:
+        if e.get('name') == this_name:
+            continue  # the live measurement above is the same model
+        bits = [b for b in (e.get('kind'), e.get('origin'), e.get('note')) if b]
+        rows.append(
+            (
+                e.get('prose_bpb'),
+                f'| {_cell(e.get("display") or e.get("name"))} | {fmt(e.get("params_millions"), 2)} | '
+                f'{fmt(e.get("prose_bpb"), 5)} | {fmt(e.get("probe_historical_bpb"), 4)} | '
+                f'{fmt(e.get("probe_modern_bpb"), 4)} | {ratio(e.get("probe_historical_bpb"), e.get("probe_modern_bpb"))} | '
+                f'{_cell("; ".join(bits)) if bits else "measured " + str(e.get("measured", ""))} |',
+            )
+        )
+
     L.extend(line for _, line in sorted(rows, key=lambda row: _descending(row[0])))
-    if not matched:
-        L += [
-            '',
-            '#### Recorded on other corpora — NOT comparable to the table above',
-            '',
-            'These were scored on a different held-out file. No paired documents, no matched scored spans, '
-            'no shared protocol: the numbers are listed for context and must not be ranked against this run.',
-            '',
-            '| model | params (M) | prose BPB | measurement / notes |',
-            '|---|---:|---:|---|',
-        ]
-        L.extend(line for _, line in sorted(references, key=lambda row: _descending(row[0])))
     return L + [
         '',
-        '`prose_uniform_token_bpb` = log2(model vocabulary size) × scored tokens / scored bytes; '
-        'equal token probabilities, not an evaluated untrained network. Reference points do not affect the composite.',
+        'modern/hist is the modern-probe BPB over the historical-probe BPB. Above 1 means the model finds '
+        'period text easier than modern text, which is what a vintage model should do. At or below 1 the '
+        'model is more at home in modern English whatever its prose BPB says, which is the signature of a '
+        'fine-tune over a modern base rather than pre-modern pretraining.',
+        '',
+        '`prose_uniform_token_bpb` = log2(model vocabulary size) \u00d7 scored tokens / scored bytes; '
+        'equal token probabilities, not an evaluated untrained network. Leaderboard rows do not affect the composite.',
         '',
     ]
 

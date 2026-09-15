@@ -43,16 +43,16 @@ from tokenizers.trainers import BpeTrainer
 from transformers import PreTrainedTokenizerFast
 
 HERE = Path(__file__).resolve().parent
-DATA = HERE.parent / 'DATA-CLEAN'   # rebuilt from raw by t-v7/prepare.py
+DATA = HERE.parent / 'DATA-CLEAN'  # rebuilt from raw by t-v7/prepare.py
 CACHE = HERE / 'cache'
 WORDS = HERE.parent / 'words-uncased' / 'words-cased.json'
 TARGET_VOCAB = 32_768
 MIN_FREQUENCY = 1000
 TOP_WORDS = 2_000
-RECIPE = 'plain-bytelevel-v1'      # cache key component; no custom regex
-SPECIAL_TOKENS = ['<|pad|>', '<|unk|>', '<|mask|>', '<|bos|>', '<|eos|>',
-                  '<|system|>', '<|user|>', '<|assistant|>'] \
-    + [f'<|future{i}|>' for i in range(1, 9)]
+RECIPE = 'plain-bytelevel-v1'  # cache key component; no custom regex
+SPECIAL_TOKENS = ['<|pad|>', '<|unk|>', '<|mask|>', '<|bos|>', '<|eos|>', '<|system|>', '<|user|>', '<|assistant|>'] + [
+    f'<|future{i}|>' for i in range(1, 9)
+]
 
 # all 100 bare digit-pair chunks must exist; missing ones are APPENDED at the
 # end of the merge table (append-only — reordering learned merges breaks
@@ -73,8 +73,7 @@ def digits_ok(text):
 # --- byte-level key <-> text --------------------------------------------------
 bs = list(range(33, 127)) + list(range(161, 173)) + list(range(174, 256))
 _missing = [b for b in range(256) if b not in bs]
-INV_BYTELEVEL = {chr(c): b for b, c in
-                 zip(bs + _missing, bs + [256 + i for i in range(len(_missing))])}
+INV_BYTELEVEL = {chr(c): b for b, c in zip(bs + _missing, bs + [256 + i for i in range(len(_missing))])}
 
 
 def bl_to_text(key):
@@ -88,8 +87,7 @@ def reachable_keys(spec):
     for idx, (a, b) in enumerate(spec['model']['merges']):
         by_part.setdefault(a, []).append(idx)
         by_part.setdefault(b, []).append(idx)
-    pending = [i for i, (a, b) in enumerate(spec['model']['merges'])
-               if a in have and b in have]
+    pending = [i for i, (a, b) in enumerate(spec['model']['merges']) if a in have and b in have]
     while pending:
         idx = pending.pop()
         a, b = spec['model']['merges'][idx]
@@ -103,8 +101,7 @@ def reachable_keys(spec):
 def drop_zombies(spec):
     while True:
         have = reachable_keys(spec)
-        alive = [[a, b] for a, b in spec['model']['merges']
-                 if a in have and b in have]
+        alive = [[a, b] for a, b in spec['model']['merges'] if a in have and b in have]
         if len(alive) == len(spec['model']['merges']):
             return have
         spec['model']['merges'] = alive
@@ -113,8 +110,7 @@ def drop_zombies(spec):
 def rebuild_vocab(spec, specials):
     have = reachable_keys(spec)
     old = spec['model']['vocab']
-    survivors = sorted((k for k in old if k in have or k in specials),
-                       key=lambda k: old[k])
+    survivors = sorted((k for k in old if k in have or k in specials), key=lambda k: old[k])
     spec['model']['vocab'] = {k: i for i, k in enumerate(survivors)}
     for entry in spec.get('added_tokens', []):
         entry['id'] = spec['model']['vocab'][entry['content']]
@@ -153,9 +149,12 @@ def train_once(files):
     tok.pre_tokenizer = ByteLevel(add_prefix_space=False, use_regex=True)
     tok.decoder = ByteLevelDecoder()
     t0 = time.time()
-    tok.train([str(f) for f in files], BpeTrainer(
-        vocab_size=TARGET_VOCAB, min_frequency=MIN_FREQUENCY,
-        initial_alphabet=ByteLevel.alphabet(), special_tokens=SPECIAL_TOKENS))
+    tok.train(
+        [str(f) for f in files],
+        BpeTrainer(
+            vocab_size=TARGET_VOCAB, min_frequency=MIN_FREQUENCY, initial_alphabet=ByteLevel.alphabet(), special_tokens=SPECIAL_TOKENS
+        ),
+    )
     print(f'trained in {time.time() - t0:.0f}s', flush=True)
     CACHE.mkdir(exist_ok=True)
     ckpt.write_text(tok.to_str())
@@ -174,8 +173,7 @@ def append_repairs(spec, tok, targets, protected):
     next_id = max(vocab.values()) + 1
     appended = 0
     for t in targets:
-        pieces = [id2key[i] for i in
-                  tok.encode(t, add_special_tokens=False).ids]
+        pieces = [id2key[i] for i in tok.encode(t, add_special_tokens=False).ids]
         acc = pieces[0]
         for p in pieces[1:]:
             if [acc, p] not in merges:
@@ -194,8 +192,7 @@ def ensure_digit_pairs(spec):
     of the merge table, so every 2-digit chunk exists. Natural learned ranks
     stay untouched — that is what keeps tokie/gigatoken id-exact."""
     vocab, merges = spec['model']['vocab'], spec['model']['merges']
-    have = {a + b for a, b in merges
-            if len(a) == 1 and len(b) == 1 and a.isdigit() and b.isdigit()}
+    have = {a + b for a, b in merges if len(a) == 1 and len(b) == 1 and a.isdigit() and b.isdigit()}
     next_id = max(vocab.values()) + 1
     appended = []
     for key in DIGIT_CHUNKS:
@@ -228,10 +225,8 @@ def apply_warrant(spec):
     # 3. word + spaced-chunk warrant, with unfixables reported
     targets = warrant_targets()
     base_tok = Tokenizer.from_str(json.dumps(spec))
-    unfixable = sorted(t for t in missing_targets(base_tok, targets)
-                       if len(base_tok.pre_tokenizer.pre_tokenize_str(t)) > 1)
-    print(f'unfixable under the GPT-2 scheme ({len(unfixable)}): '
-          f'{[t.strip() for t in unfixable]}', flush=True)
+    unfixable = sorted(t for t in missing_targets(base_tok, targets) if len(base_tok.pre_tokenizer.pre_tokenize_str(t)) > 1)
+    print(f'unfixable under the GPT-2 scheme ({len(unfixable)}): {[t.strip() for t in unfixable]}', flush=True)
     fixable = [t for t in targets if t not in unfixable]
 
     for round_no in range(1, 25):
@@ -239,8 +234,7 @@ def apply_warrant(spec):
         todo = [t for t in missing_targets(tok, fixable)]
         if todo:
             n = append_repairs(spec, tok, todo, protected)
-            print(f'warrant round {round_no}: repaired {len(todo)} targets '
-                  f'(+{n} merges)', flush=True)
+            print(f'warrant round {round_no}: repaired {len(todo)} targets (+{n} merges)', flush=True)
         size = rebuild_vocab(spec, specials)
         if size == TARGET_VOCAB and not todo:
             break
@@ -248,19 +242,16 @@ def apply_warrant(spec):
             # trim the LAST unprotected (= least-frequent learned) merge;
             # appended digit pairs and warrant repairs are never touched
             merges = spec['model']['merges']
-            idx = max(i for i, m in enumerate(merges)
-                      if (m[0], m[1]) not in protected)
+            idx = max(i for i, m in enumerate(merges) if (m[0], m[1]) not in protected)
             del merges[idx]
             drop_zombies(spec)
             size = rebuild_vocab(spec, specials)
         if size < TARGET_VOCAB:
-            extra = [' ' + w for w in load_top_words()[TOP_WORDS:TOP_WORDS + 500]]
+            extra = [' ' + w for w in load_top_words()[TOP_WORDS : TOP_WORDS + 500]]
             tok = Tokenizer.from_str(json.dumps(spec))
-            filler = [t for t in missing_targets(tok, extra)
-                      if len(tok.pre_tokenizer.pre_tokenize_str(t)) == 1]
-            filler = filler[:TARGET_VOCAB - size]
-            print(f'warrant round {round_no}: short by {TARGET_VOCAB - size}, '
-                  f'filling with {filler}', flush=True)
+            filler = [t for t in missing_targets(tok, extra) if len(tok.pre_tokenizer.pre_tokenize_str(t)) == 1]
+            filler = filler[: TARGET_VOCAB - size]
+            print(f'warrant round {round_no}: short by {TARGET_VOCAB - size}, filling with {filler}', flush=True)
             append_repairs(spec, tok, filler, protected)
             rebuild_vocab(spec, specials)
     else:
@@ -273,10 +264,10 @@ STRESS_STRINGS = [
     "In 1884, the cat wasn't sad.\n\nIt cost 12 pounds.",
     "Mr. John went to London in 1899; o'clock it was — don’t!",
     "“Mother’s,” he said. “To-morrow” — well-known; o'er the hills.",
-    "αὐτός καὶ ἡ γῆ · naïve façade ſ long s",
-    "🙂 emoji 😀 and CJK 漢字 and العربية و עברית",
-    "\tTabs\tand  spaces   and\r\nCRLF line endings.",
-    "Numbers: 7, 42, 99, 100, 101, 250, 1066, 1104, 1700, 1805, 1884, 12345.",
+    'αὐτός καὶ ἡ γῆ · naïve façade ſ long s',
+    '🙂 emoji 😀 and CJK 漢字 and العربية و עברית',
+    '\tTabs\tand  spaces   and\r\nCRLF line endings.',
+    'Numbers: 7, 42, 99, 100, 101, 250, 1066, 1104, 1700, 1805, 1884, 12345.',
 ]
 
 
@@ -286,8 +277,7 @@ def verify(tok, spec, unfixable):
         assert tok.decode(tok.encode(s).ids) == s, f'roundtrip failed: {s!r}'
 
     # numeric policy scan: no reachable token carries 3+ consecutive digits
-    bad = [bl_to_text(k) for k in reachable_keys(spec)
-           if not digits_ok(bl_to_text(k))]
+    bad = [bl_to_text(k) for k in reachable_keys(spec) if not digits_ok(bl_to_text(k))]
     assert not bad, f'3+-digit tokens reachable: {sorted(bad)[:10]}'
 
     # exhaustive number check 0..2099, bare and spaced. Under natural merge
@@ -315,12 +305,14 @@ def verify(tok, spec, unfixable):
     assert not still, f'fixable warrant targets missing: {still[:10]}'
 
     top = [' ' + w for w in load_top_words()[:TOP_WORDS]]
-    got = sum(1 for e in tok.encode_batch(top, add_special_tokens=False)
-              if len(e.ids) == 1)
-    print(f'verify OK: exact 2**15, top-{TOP_WORDS} coverage {got}/{TOP_WORDS} '
-          f'(unfixable under GPT-2 scheme: {len(unfixable)}), numbers 0..2099 '
-          f'optimal except {len(spaced_exc)} spaced (all 200X) / '
-          f'{len(bare_exc)} bare at +1 token, roundtrips byte-exact', flush=True)
+    got = sum(1 for e in tok.encode_batch(top, add_special_tokens=False) if len(e.ids) == 1)
+    print(
+        f'verify OK: exact 2**15, top-{TOP_WORDS} coverage {got}/{TOP_WORDS} '
+        f'(unfixable under GPT-2 scheme: {len(unfixable)}), numbers 0..2099 '
+        f'optimal except {len(spaced_exc)} spaced (all 200X) / '
+        f'{len(bare_exc)} bare at +1 token, roundtrips byte-exact',
+        flush=True,
+    )
     return spaced_exc, bare_exc
 
 
@@ -331,15 +323,15 @@ def verify_fast_libraries(json_path):
     the probe set includes a multi-megabyte slice of every raw source."""
     import tokie
     import gigatoken
+
     hf = Tokenizer.from_file(json_path)
     probes = STRESS_STRINGS + [' '.join(STRESS_STRINGS) * 20]
     for raw in sorted((HERE.parent / 'DATA').glob('dataset-text*.txt')):
         with open(raw, encoding='utf-8', errors='ignore') as f:
             chunk = f.read(4 << 20)
-        probes.append(chunk[:chunk.rfind('\n')])
+        probes.append(chunk[: chunk.rfind('\n')])
     refs = [hf.encode(s, add_special_tokens=False).ids for s in probes]
-    for name, tok in (('tokie', tokie.Tokenizer.from_json(json_path)),
-                      ('gigatoken', gigatoken.Tokenizer(json_path))):
+    for name, tok in (('tokie', tokie.Tokenizer.from_json(json_path)), ('gigatoken', gigatoken.Tokenizer(json_path))):
         for s, ref in zip(probes, refs):
             e = tok.encode(s)
             ids = list(e.ids) if hasattr(e, 'ids') else list(e)
@@ -350,8 +342,7 @@ def verify_fast_libraries(json_path):
 def main():
     files = corpus_files()
     total = sum(f.stat().st_size for f in files) / 1e9
-    print(f'building t-v7: {len(files)} files, {total:.1f} GB, '
-          f'vocab {TARGET_VOCAB:,}, recipe {RECIPE}', flush=True)
+    print(f'building t-v7: {len(files)} files, {total:.1f} GB, vocab {TARGET_VOCAB:,}, recipe {RECIPE}', flush=True)
 
     tok = train_once(files)
     spec = json.loads(tok.to_str())
@@ -363,31 +354,36 @@ def main():
     out = HERE / 'tokenizer.json'
     tok.save(str(out))
     verify_fast_libraries(str(out))
-    fast = PreTrainedTokenizerFast(tokenizer_file=str(out),
-                                   bos_token='<|bos|>', eos_token='<|eos|>',
-                                   unk_token='<|unk|>', pad_token='<|pad|>')
+    fast = PreTrainedTokenizerFast(
+        tokenizer_file=str(out), bos_token='<|bos|>', eos_token='<|eos|>', unk_token='<|unk|>', pad_token='<|pad|>'
+    )
     fast.save_pretrained(str(HERE))
-    (HERE / 'build-manifest.json').write_text(json.dumps({
-        'experiment': 'regex-free deployable tokenizer: rules enforced in the '
-                      'data (prepare.py) plus append-only merge surgery; '
-                      'warrant targets from the case-preserving curated '
-                      'dictionary (words-uncased/words-cased.json)',
-        'recipe': RECIPE,
-        'data': 'DATA-CLEAN (prepare.py: charset + 2-digit number explosion)',
-        'learned_merges_before_warrant': n_learned,
-        'merges_after': len(spec['model']['merges']),
-        'top_words': TOP_WORDS,
-        'unfixable_targets': [t.strip() for t in unfixable],
-        'numeric_policy': 'no token with 3+ consecutive digits; append-only '
-                          'chunk repairs under natural merge ranks => '
-                          'ceil(digits/2) tokens for 0..2099 except the '
-                          'documented +1-token exceptions below',
-        'numeric_exceptions_spaced': spaced_exc,
-        'numeric_exceptions_bare': bare_exc,
-        'target_vocab': TARGET_VOCAB,
-    }, indent=2))
+    (HERE / 'build-manifest.json').write_text(
+        json.dumps(
+            {
+                'experiment': 'regex-free deployable tokenizer: rules enforced in the '
+                'data (prepare.py) plus append-only merge surgery; '
+                'warrant targets from the case-preserving curated '
+                'dictionary (words-uncased/words-cased.json)',
+                'recipe': RECIPE,
+                'data': 'DATA-CLEAN (prepare.py: charset + 2-digit number explosion)',
+                'learned_merges_before_warrant': n_learned,
+                'merges_after': len(spec['model']['merges']),
+                'top_words': TOP_WORDS,
+                'unfixable_targets': [t.strip() for t in unfixable],
+                'numeric_policy': 'no token with 3+ consecutive digits; append-only '
+                'chunk repairs under natural merge ranks => '
+                'ceil(digits/2) tokens for 0..2099 except the '
+                'documented +1-token exceptions below',
+                'numeric_exceptions_spaced': spaced_exc,
+                'numeric_exceptions_bare': bare_exc,
+                'target_vocab': TARGET_VOCAB,
+            },
+            indent=2,
+        )
+    )
 
-    sample = "Mr. John went to London in 1884; it cost 100 pounds — 250 men."
+    sample = 'Mr. John went to London in 1884; it cost 100 pounds — 250 men.'
     ids = tok.encode(sample).ids
     assert tok.decode(ids) == sample
     print(f'sample: {[tok.id_to_token(i) for i in ids]}', flush=True)
